@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SDD Navigator | Precision Research Roadmapping</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Hanken+Grotesk:wght@600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-container": "#0057db",
+                    "on-tertiary-fixed": "#001849",
+                    "inverse-surface": "#dee1f7",
+                    "error": "#ffb4ab",
+                    "on-secondary-fixed": "#23005b",
+                    "on-primary-fixed": "#002021",
+                    "outline": "#849495",
+                    "on-secondary": "#3c0090",
+                    "tertiary-container": "#d3dcff",
+                    "status-pulse": "#00f5ff",
+                    "secondary": "#d1bcff",
+                    "primary-fixed-dim": "#00dce5",
+                    "error-container": "#93000a",
+                    "tertiary": "#faf9ff",
+                    "on-surface": "#dee1f7",
+                    "secondary-container": "#7000ff",
+                    "primary": "#e9feff",
+                    "surface-variant": "#2f3445",
+                    "secondary-fixed": "#e9ddff",
+                    "inverse-primary": "#00696e",
+                    "surface-container": "#1a1f2f",
+                    "on-error-container": "#ffdad6",
+                    "surface-container-high": "#25293a",
+                    "on-tertiary-fixed-variant": "#003fa4",
+                    "primary-fixed": "#63f7ff",
+                    "primary-container": "#00f5ff",
+                    "on-error": "#690005",
+                    "on-primary-fixed-variant": "#004f53",
+                    "secondary-fixed-dim": "#d1bcff",
+                    "glass-border": "rgba(255, 255, 255, 0.1)",
+                    "on-secondary-container": "#ddcdff",
+                    "on-tertiary": "#002b75",
+                    "inverse-on-surface": "#2b3040",
+                    "data-mono": "#94a3b8",
+                    "background": "#0e1322",
+                    "outline-variant": "#3a494a",
+                    "surface-container-highest": "#2f3445",
+                    "on-surface-variant": "#b9caca",
+                    "on-background": "#dee1f7",
+                    "surface-dim": "#0e1322",
+                    "tertiary-fixed": "#dae1ff",
+                    "on-primary-container": "#006c71",
+                    "surface": "#0e1322",
+                    "on-primary": "#003739",
+                    "surface-container-low": "#161b2b",
+                    "surface-bright": "#343949",
+                    "tertiary-fixed-dim": "#b3c5ff",
+                    "glass-surface": "rgba(255, 255, 255, 0.03)",
+                    "surface-tint": "#00dce5",
+                    "on-secondary-fixed-variant": "#5700c9",
+                    "surface-container-lowest": "#090e1c"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "base": "8px",
+                    "max-width": "1440px",
+                    "gutter": "24px",
+                    "margin-desktop": "64px",
+                    "margin-mobile": "16px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "headline-lg-mobile": ["Hanken Grotesk"],
+                    "display-lg": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "code-sm": ["JetBrains Mono"],
+                    "data-label": ["JetBrains Mono"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                    "code-sm": ["13px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "data-label": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #0e1322;
+            color: #dee1f7;
+            overflow-x: hidden;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-primary {
+            box-shadow: 0 0 15px rgba(0, 245, 255, 0.3);
+        }
+        .status-pulse-ring {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            70% { transform: scale(2); opacity: 0; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        .particle-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        .molecule-grid {
+            background-image: radial-gradient(rgba(0, 220, 229, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- Background Layer -->
+<div class="particle-bg molecule-grid"></div>
+<canvas class="particle-bg" id="particleCanvas"></canvas>
+<!-- Navigation Header -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-20 max-w-max-width mx-auto bg-glass-surface backdrop-blur-xl border-b border-glass-border shadow-sm">
+<div class="flex items-center gap-base">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">hub</span>
+<span class="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">SDD Navigator</span>
+</div>
+<nav class="hidden md:flex gap-gutter">
+<a class="text-primary border-b-2 border-primary pb-1 font-body-md text-body-md" href="#">Home</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors duration-200 font-body-md text-body-md" href="#">Knowledge Hub</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors duration-200 font-body-md text-body-md" href="#">Navigator</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors duration-200 font-body-md text-body-md" href="#">Graph</a>
+</nav>
+<div class="flex items-center gap-base">
+<button class="text-on-surface hover:text-primary transition-all duration-150 ease-in-out active:scale-95 px-4 py-2 font-data-label text-data-label">Login</button>
+<button class="bg-primary-container text-on-primary-container px-6 py-2 rounded-lg font-data-label text-data-label font-bold hover:shadow-[0_0_15px_rgba(0,245,255,0.3)] transition-all active:scale-95">Register</button>
+</div>
+</header>
+<main class="pt-32">
+<!-- Hero Section -->
+<section class="max-w-max-width mx-auto px-margin-mobile md:px-margin-desktop mb-24 relative">
+<div class="max-w-3xl">
+<div class="flex items-center gap-2 mb-6">
+<span class="relative flex h-3 w-3">
+<span class="status-pulse-ring absolute inline-flex h-full w-full rounded-full bg-status-pulse opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-status-pulse"></span>
+</span>
+<span class="font-data-label text-data-label uppercase tracking-widest text-primary-fixed-dim">System Status: Optimal</span>
+</div>
+<h1 class="font-display-lg text-display-lg md:text-display-lg text-white mb-6 leading-tight">
+                    You have A.<br/>
+<span class="text-primary-container">We find your path to D.</span>
+</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mb-10 max-w-2xl">
+                    The global research roadmap platform — connect your assets to your goals with AI-powered guidance and matched service providers worldwide.
+                </p>
+<div class="flex flex-col md:flex-row gap-gutter">
+<button class="bg-primary-container text-on-primary-container px-8 py-4 rounded-xl font-headline-lg text-headline-lg flex items-center justify-center gap-base glow-primary transition-all active:scale-95">
+                        Explore Knowledge Hub
+                        <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+<button class="glass-card text-primary px-8 py-4 rounded-xl font-headline-lg text-headline-lg flex items-center justify-center gap-base hover:bg-white/5 transition-all active:scale-95">
+                        Try Navigator
+                    </button>
+</div>
+</div>
+<!-- Hero Decorative Image -->
+<div class="hidden lg:block absolute top-0 right-margin-desktop w-[500px] h-[500px]">
+<div class="relative w-full h-full rounded-full bg-gradient-to-br from-primary-container/20 to-transparent blur-3xl"></div>
+<img alt="Technical Visualization" class="absolute top-0 left-0 w-full h-full object-contain opacity-80 mix-blend-screen" data-alt="A futuristic 3D visualization of a neural network or molecular structure with glowing cyan connections against a deep navy background. The style is hyper-technical and scientific, featuring intricate lines and data points that suggest advanced biological research and computational power. The lighting is soft and ethereal, emphasizing depth and complexity in a visionary laboratory setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJo9c9LLU9e83LQ05ES-gxSqHFH8IJF7hdv52AWi_IJQt3FRD4L20oUevJ0qcljhdOg_kCtufgg4Ms875fOyKImHZH63Sv8vStlHkbIgOKFHBkJGNLXey3UiqAJhPOQ1W-7t7XhNJc_xDEq-mX7vPLsYvNN0U6UHnZuXu3qpa5eCKbClOG9QeFb54zk8FaFvIklLsOQYhminnYZA78IuW3zhlSkJwgPLCJSy6mdRojZDHK_7mmALtCb9w6Akj3hBPwfrk1fbgY2iU"/>
+</div>
+</section>
+<!-- Stats Bar -->
+<section class="max-w-max-width mx-auto px-margin-mobile md:px-margin-desktop mb-24">
+<div class="glass-card rounded-2xl py-8 px-12 grid grid-cols-2 md:grid-cols-4 gap-gutter text-center">
+<div class="flex flex-col gap-1">
+<span class="font-headline-lg text-headline-lg text-primary-fixed">500+</span>
+<span class="font-data-label text-data-label text-on-surface-variant uppercase">Researchers</span>
+</div>
+<div class="flex flex-col gap-1 border-l border-glass-border">
+<span class="font-headline-lg text-headline-lg text-primary-fixed">50+</span>
+<span class="font-data-label text-data-label text-on-surface-variant uppercase">Wiki Pages</span>
+</div>
+<div class="flex flex-col gap-1 border-l border-glass-border">
+<span class="font-headline-lg text-headline-lg text-primary-fixed">30+</span>
+<span class="font-data-label text-data-label text-on-surface-variant uppercase">Service Providers</span>
+</div>
+<div class="flex flex-col gap-1 border-l border-glass-border">
+<span class="font-headline-lg text-headline-lg text-primary-fixed">12</span>
+<span class="font-data-label text-data-label text-on-surface-variant uppercase">Countries</span>
+</div>
+</div>
+</section>
+<!-- Features Bento Grid -->
+<section class="max-w-max-width mx-auto px-margin-mobile md:px-margin-desktop mb-32">
+<div class="mb-12">
+<span class="font-data-label text-data-label text-primary-container uppercase tracking-widest">Platform Core</span>
+<h2 class="font-headline-lg text-headline-lg text-white mt-2">Precision Scientific Architecture</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- Intelligent Navigator -->
+<div class="glass-card rounded-2xl p-base flex flex-col h-full group hover:bg-white/5 transition-all duration-300">
+<div class="aspect-video mb-base overflow-hidden rounded-lg">
+<img alt="Navigator UI" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A clean, high-density dashboard interface displaying complex scientific data and analytical charts in a dark mode setting. The UI uses sharp lines, translucent containers, and a primary cyan color for data highlights. The overall aesthetic is professional, clinical, and data-driven, representing a mission control center for pharmaceutical or biological research." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJo9c9LLU9e83LQ05ES-gxSqHFH8IJF7hdv52AWi_IJQt3FRD4L20oUevJ0qcljhdOg_kCtufgg4Ms875fOyKImHZH63Sv8vStlHkbIgOKFHBkJGNLXey3UiqAJhPOQ1W-7t7XhNJc_xDEq-mX7vPLsYvNN0U6UHnZuXu3qpa5eCKbClOG9QeFb54zk8FaFvIklLsOQYhminnYZA78IuW3zhlSkJwgPLCJSy6mdRojZDHK_7mmALtCb9w6Akj3hBPwfrk1fbgY2iU"/>
+</div>
+<div class="p-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary-container">explore</span>
+<h3 class="font-headline-lg text-headline-lg text-white">Intelligent Navigator</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Automated pathfinding from initial research assets to clinical outcomes using AI-driven logic models.</p>
+</div>
+</div>
+<!-- Knowledge Hub -->
+<div class="glass-card rounded-2xl p-base flex flex-col h-full group hover:bg-white/5 transition-all duration-300">
+<div class="aspect-video mb-base overflow-hidden rounded-lg">
+<img alt="Knowledge Hub" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A macro digital representation of an interconnected global network, glowing with fiber optic light against a dark navy space background. The visual represents a vast database or a global knowledge hub, where points of light signify research nodes. The mood is visionary and expansive, using cool blues and crisp whites to convey high-speed data transmission." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJo9c9LLU9e83LQ05ES-gxSqHFH8IJF7hdv52AWi_IJQt3FRD4L20oUevJ0qcljhdOg_kCtufgg4Ms875fOyKImHZH63Sv8vStlHkbIgOKFHBkJGNLXey3UiqAJhPOQ1W-7t7XhNJc_xDEq-mX7vPLsYvNN0U6UHnZuXu3qpa5eCKbClOG9QeFb54zk8FaFvIklLsOQYhminnYZA78IuW3zhlSkJwgPLCJSy6mdRojZDHK_7mmALtCb9w6Akj3hBPwfrk1fbgY2iU"/>
+</div>
+<div class="p-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary-container">menu_book</span>
+<h3 class="font-headline-lg text-headline-lg text-white">Knowledge Hub</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">A curated repository of biological assets, methodologies, and cross-disciplinary scientific insights.</p>
+</div>
+</div>
+<!-- Global Graph -->
+<div class="glass-card rounded-2xl p-base flex flex-col h-full group hover:bg-white/5 transition-all duration-300">
+<div class="aspect-video mb-base overflow-hidden rounded-lg">
+<img alt="Global Graph" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A laboratory setting featuring advanced robotic systems or high-precision instrumentation for medical testing. The room is sterile with a surgical blue and grey color palette, illuminated by professional laboratory lighting. The focus is on precision and automation in modern clinical science, showcasing high-tech equipment used for global service provision." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJo9c9LLU9e83LQ05ES-gxSqHFH8IJF7hdv52AWi_IJQt3FRD4L20oUevJ0qcljhdOg_kCtufgg4Ms875fOyKImHZH63Sv8vStlHkbIgOKFHBkJGNLXey3UiqAJhPOQ1W-7t7XhNJc_xDEq-mX7vPLsYvNN0U6UHnZuXu3qpa5eCKbClOG9QeFb54zk8FaFvIklLsOQYhminnYZA78IuW3zhlSkJwgPLCJSy6mdRojZDHK_7mmALtCb9w6Akj3hBPwfrk1fbgY2iU"/>
+</div>
+<div class="p-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary-container">account_tree</span>
+<h3 class="font-headline-lg text-headline-lg text-white">Global Graph</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Interactive mapping of service providers, researchers, and collaborative entities worldwide.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Affiliates Section -->
+<section class="max-w-max-width mx-auto px-margin-mobile md:px-margin-desktop mb-24">
+<div class="border-t border-glass-border pt-12 flex flex-col md:flex-row justify-between items-center gap-gutter">
+<span class="font-data-label text-data-label text-on-surface-variant uppercase tracking-widest">Collaborating Partners</span>
+<div class="flex items-center gap-12 grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all">
+<!-- SPARC Placeholder -->
+<div class="flex items-center gap-2">
+<div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center">
+<span class="font-bold text-on-primary-container">S</span>
+</div>
+<span class="font-headline-lg text-headline-lg text-white font-bold tracking-tighter">SPARC</span>
+</div>
+<!-- AI.MED Lab Placeholder -->
+<div class="flex items-center gap-2">
+<div class="w-10 h-10 border-2 border-primary rounded-full flex items-center justify-center">
+<span class="font-bold text-primary">A</span>
+</div>
+<span class="font-headline-lg text-headline-lg text-white font-bold tracking-tighter">AI.MED Lab</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full py-12 px-margin-mobile md:px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-base bg-surface-container-lowest border-t border-glass-border">
+<div class="flex flex-col items-center md:items-start gap-2">
+<div class="flex items-center gap-base">
+<span class="material-symbols-outlined text-primary-container">hub</span>
+<span class="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight">SDD Navigator</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant text-center md:text-left">© 2024 UAB SPARC. Bridging research assets to outcomes worldwide.</p>
+</div>
+<div class="flex gap-gutter mt-8 md:mt-0">
+<a class="font-data-label text-data-label text-on-surface-variant hover:text-primary transition-colors" href="#">Hub</a>
+<a class="font-data-label text-data-label text-on-surface-variant hover:text-primary transition-colors" href="#">Navigator</a>
+<a class="font-data-label text-data-label text-on-surface-variant hover:text-primary transition-colors" href="#">Graph</a>
+<a class="font-data-label text-data-label text-on-surface-variant hover:text-primary transition-colors" href="#">About</a>
+<a class="font-data-label text-data-label text-on-surface-variant hover:text-primary transition-colors" href="#">Contact</a>
+</div>
+</footer>
+<script>
+        // Atmospheric Particle Animation
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 1.5 + 0.5;
+                this.speedX = Math.random() * 0.5 - 0.25;
+                this.speedY = Math.random() * 0.5 - 0.25;
+                this.opacity = Math.random() * 0.5;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x > canvas.width || this.x < 0 || this.y > canvas.height || this.y < 0) {
+                    this.reset();
+                }
+            }
+            draw() {
+                ctx.fillStyle = `rgba(0, 245, 255, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < 100; i++) {
+            particles.push(new Particle());
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+</body></html>

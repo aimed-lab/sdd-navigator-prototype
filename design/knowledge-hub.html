@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Knowledge Hub | SDD Navigator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Hanken+Grotesk:wght@600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        .status-pulse-outer {
+            animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+        }
+        .dna-grid {
+            background-image: radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+            background-size: 40px 40px;
+        }
+        .glass-card {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-card:hover {
+            border-color: rgba(0, 245, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 245, 255, 0.15);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#0057db",
+                        "on-tertiary-fixed": "#001849",
+                        "inverse-surface": "#dee1f7",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed": "#23005b",
+                        "on-primary-fixed": "#002021",
+                        "outline": "#849495",
+                        "on-secondary": "#3c0090",
+                        "tertiary-container": "#d3dcff",
+                        "status-pulse": "#00f5ff",
+                        "secondary": "#d1bcff",
+                        "primary-fixed-dim": "#00dce5",
+                        "error-container": "#93000a",
+                        "tertiary": "#faf9ff",
+                        "on-surface": "#dee1f7",
+                        "secondary-container": "#7000ff",
+                        "primary": "#e9feff",
+                        "surface-variant": "#2f3445",
+                        "secondary-fixed": "#e9ddff",
+                        "inverse-primary": "#00696e",
+                        "surface-container": "#1a1f2f",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-high": "#25293a",
+                        "on-tertiary-fixed-variant": "#003fa4",
+                        "primary-fixed": "#63f7ff",
+                        "primary-container": "#00f5ff",
+                        "on-error": "#690005",
+                        "on-primary-fixed-variant": "#004f53",
+                        "secondary-fixed-dim": "#d1bcff",
+                        "glass-border": "rgba(255, 255, 255, 0.1)",
+                        "on-secondary-container": "#ddcdff",
+                        "on-tertiary": "#002b75",
+                        "inverse-on-surface": "#2b3040",
+                        "data-mono": "#94a3b8",
+                        "background": "#0e1322",
+                        "outline-variant": "#3a494a",
+                        "surface-container-highest": "#2f3445",
+                        "on-surface-variant": "#b9caca",
+                        "on-background": "#dee1f7",
+                        "surface-dim": "#0e1322",
+                        "tertiary-fixed": "#dae1ff",
+                        "on-primary-container": "#006c71",
+                        "surface": "#0e1322",
+                        "on-primary": "#003739",
+                        "surface-container-low": "#161b2b",
+                        "surface-bright": "#343949",
+                        "tertiary-fixed-dim": "#b3c5ff",
+                        "glass-surface": "rgba(255, 255, 255, 0.03)",
+                        "surface-tint": "#00dce5",
+                        "on-secondary-fixed-variant": "#5700c9",
+                        "surface-container-lowest": "#090e1c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "max-width": "1440px",
+                        "gutter": "24px",
+                        "margin-desktop": "64px",
+                        "margin-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "code-sm": ["JetBrains Mono"],
+                        "data-label": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                        "code-sm": ["13px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "data-label": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md dna-grid min-h-screen selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-desktop h-20 max-w-max-width mx-auto bg-glass-surface backdrop-blur-xl border-b border-glass-border shadow-sm">
+<div class="flex items-center gap-8">
+<span class="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">SDD Navigator</span>
+<nav class="hidden md:flex gap-6">
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Home</a>
+<a class="font-body-md text-body-md text-primary border-b-2 border-primary pb-1" href="#">Knowledge Hub</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Navigator</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Graph</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="font-body-md text-body-md px-4 py-2 text-on-surface-variant hover:text-primary transition-all duration-150 ease-in-out active:scale-95">Login</button>
+<button class="font-body-md text-body-md px-6 py-2 bg-primary-container text-on-primary-container font-bold rounded hover:shadow-[0_0_15px_rgba(0,245,255,0.3)] transition-all duration-150 ease-in-out active:scale-95">Register</button>
+</div>
+</header>
+<main class="pt-32 pb-20 px-margin-mobile md:px-margin-desktop max-w-max-width mx-auto">
+<!-- Hero / Search Section -->
+<section class="mb-16 text-center max-w-3xl mx-auto">
+<div class="flex items-center justify-center gap-3 mb-4">
+<div class="relative flex items-center justify-center w-3 h-3">
+<div class="absolute w-full h-full bg-status-pulse rounded-full opacity-50"></div>
+<div class="absolute w-full h-full bg-status-pulse rounded-full status-pulse-outer"></div>
+</div>
+<span class="font-data-label text-data-label text-status-pulse tracking-widest uppercase">Live Knowledge Database</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg md:font-display-lg md:text-display-lg text-primary mb-8 tracking-tight">Knowledge Hub</h1>
+<div class="relative group">
+<div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-on-surface-variant">search</span>
+</div>
+<input class="w-full bg-surface-container-low border-b border-glass-border py-5 pl-14 pr-6 text-on-surface focus:outline-none focus:border-primary transition-all duration-300 placeholder:text-on-surface-variant/50 font-body-md" placeholder="Search clinical papers, wiki episodes, or target insights..." type="text"/>
+<div class="absolute inset-y-0 right-4 flex items-center gap-2">
+<span class="font-data-label text-data-label text-on-surface-variant/40 border border-glass-border px-2 py-1 rounded">⌘ K</span>
+</div>
+</div>
+</section>
+<!-- Bento Grid / Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- Card 1 -->
+<article class="glass-card p-6 flex flex-col group transition-all duration-300">
+<div class="flex justify-between items-start mb-6">
+<span class="font-data-label text-data-label text-data-mono">EPISODE #001</span>
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary transition-colors">science</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary mb-3 leading-tight">Digital Twins in Clinical Trials</h3>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="font-data-label text-[10px] px-2 py-1 bg-surface-container-highest text-primary border border-glass-border rounded-full">Clinical</span>
+<span class="font-data-label text-[10px] px-2 py-1 bg-surface-container-highest text-primary border border-glass-border rounded-full">Data Modeling</span>
+</div>
+<p class="font-body-md text-on-surface-variant mb-8 flex-grow">Leveraging computational replicas of patients to optimize control groups and predict treatment response in real-time environments.</p>
+<button class="w-full py-3 bg-transparent border border-primary text-primary font-bold hover:bg-primary/10 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98]">
+                    Read Wiki <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</article>
+<!-- Card 2 -->
+<article class="glass-card p-6 flex flex-col group transition-all duration-300">
+<div class="flex justify-between items-start mb-6">
+<span class="font-data-label text-data-label text-data-mono">EPISODE #002</span>
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary transition-colors">matter</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary mb-3 leading-tight">Molecular Glue Degraders</h3>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="font-data-label text-[10px] px-2 py-1 bg-surface-container-highest text-primary border border-glass-border rounded-full">Pharma</span>
+<span class="font-data-label text-[10px] px-2 py-1 bg-surface-container-highest text-primary border border-glass-border rounded-full">Degradation</span>
+</div>
+<p class="font-body-md text-on-surface-variant mb-8 flex-grow">Exploring the frontier of induced proximity and E3 ligase recruitment for previously undruggable oncology targets.</p>
+<button class="w-full py-3 bg-transparent border border-primary text-primary font-bold hover:bg-primary/10 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98]">
+                    Read Wiki <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</article>
+<!-- Card 3 -->
+<article class="glass-card p-6 flex flex-col group transition-all duration-300">
+<div class="flex justify-between items-start mb-6">
+<span class="font-data-label text-data-label text-data-mono">EPISODE #003</span>
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary transition-colors">biotech</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary mb-3 leading-tight">Companion Diagnostic Biomarkers</h3>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="font-data-label text-[10px] px-2 py-1 bg-surface-container-highest text-primary border border-glass-border rounded-full">Diagnostics</span>
+<span class="font-data-label text-[10px] px-2 py-1 bg-surface-container-highest text-primary border border-glass-border rounded-full">Clinical</span>
+</div>
+<p class="font-body-md text-on-surface-variant mb-8 flex-grow">A deep dive into the regulatory landscape and clinical utility of predictive biomarkers in personalized medicine.</p>
+<button class="w-full py-3 bg-transparent border border-primary text-primary font-bold hover:bg-primary/10 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98]">
+                    Read Wiki <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</article>
+<!-- Card 4 -->
+<article class="glass-card p-6 flex flex-col group transition-all duration-300">
+<div class="flex justify-between items-start mb-6">
+<span class="font-data-label text-data-label text-data-mono">EPISODE #004</span>
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary transition-colors">psychology</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary mb-3 leading-tight">AI in Target Identification</h3>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="font-data-label text-[10px] px-2 py-1 bg-surface-container-highest text-primary border border-glass-border rounded-full">AI</span>
+<span class="font-data-label text-[10px] px-2 py-1 bg-surface-container-highest text-primary border border-glass-border rounded-full">Discovery</span>
+</div>
+<p class="font-body-md text-on-surface-variant mb-8 flex-grow">Utilizing graph neural networks to map interactomes and uncover novel disease-driving biological pathways.</p>
+<button class="w-full py-3 bg-transparent border border-primary text-primary font-bold hover:bg-primary/10 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98]">
+                    Read Wiki <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</article>
+<!-- Card 5 -->
+<article class="glass-card p-6 flex flex-col group transition-all duration-300">
+<div class="flex justify-between items-start mb-6">
+<span class="font-data-label text-data-label text-data-mono">EPISODE #005</span>
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary transition-colors">database</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary mb-3 leading-tight">ADMET Prediction with ML</h3>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="font-data-label text-[10px] px-2 py-1 bg-surface-container-highest text-primary border border-glass-border rounded-full">ML</span>
+<span class="font-data-label text-[10px] px-2 py-1 bg-surface-container-highest text-primary border border-glass-border rounded-full">Toxicity</span>
+</div>
+<p class="font-body-md text-on-surface-variant mb-8 flex-grow">Reducing attrition rates by predicting Absorption, Distribution, Metabolism, Excretion, and Toxicity using deep learning.</p>
+<button class="w-full py-3 bg-transparent border border-primary text-primary font-bold hover:bg-primary/10 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98]">
+                    Read Wiki <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</article>
+<!-- Card 6 -->
+<article class="glass-card p-6 flex flex-col group transition-all duration-300">
+<div class="flex justify-between items-start mb-6">
+<span class="font-data-label text-data-label text-data-mono">EPISODE #006</span>
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary transition-colors">hub</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary mb-3 leading-tight">Multi-Agent Drug Discovery</h3>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="font-data-label text-[10px] px-2 py-1 bg-surface-container-highest text-primary border border-glass-border rounded-full">AI</span>
+<span class="font-data-label text-[10px] px-2 py-1 bg-surface-container-highest text-primary border border-glass-border rounded-full">Pharma</span>
+</div>
+<p class="font-body-md text-on-surface-variant mb-8 flex-grow">Orchestrating autonomous AI agents to manage large-scale chemical synthesis and validation pipelines.</p>
+<button class="w-full py-3 bg-transparent border border-primary text-primary font-bold hover:bg-primary/10 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98]">
+                    Read Wiki <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</article>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full py-12 px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-base bg-surface-container-lowest border-t border-glass-border">
+<div class="flex flex-col gap-2">
+<span class="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight">SDD Navigator</span>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80 max-w-sm">© 2024 UAB SPARC. Bridging research assets to outcomes worldwide.</p>
+</div>
+<div class="flex gap-8">
+<div class="flex flex-col gap-2">
+<span class="font-data-label text-data-label text-primary font-bold">RESOURCES</span>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Hub</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Navigator</a>
+</div>
+<div class="flex flex-col gap-2">
+<span class="font-data-label text-data-label text-primary font-bold">COMPANY</span>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">About</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Contact</a>
+</div>
+</div>
+</footer>
+<!-- Interactive Search Focus Micro-interaction -->
+<script>
+        document.querySelector('input').addEventListener('focus', function() {
+            this.parentElement.classList.add('scale-[1.01]');
+            this.parentElement.style.transition = 'transform 0.3s ease-out';
+        });
+        document.querySelector('input').addEventListener('blur', function() {
+            this.parentElement.classList.remove('scale-[1.01]');
+        });
+    </script>
+</body></html>
