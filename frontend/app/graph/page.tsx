@@ -1,7 +1,9 @@
 "use client";
 import { useRef, useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useAuth } from "@/context/AuthContext";
 
 type NodeType = "episode" | "concept" | "resource";
 
@@ -36,6 +38,16 @@ const graphNodes = {
 };
 
 export default function GraphPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
+  // Auth guard — redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, authLoading, router]);
+
   const svgRef = useRef<SVGSVGElement>(null);
   const [modal, setModal] = useState<NodeModal | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -105,6 +117,15 @@ export default function GraphPage() {
     if (!svg) return;
     viewBox.current = { x: 0, y: 0, w: 1440, h: 800 };
     svg.setAttribute("viewBox", "0 0 1440 800");
+  }
+
+  // Show nothing while auth resolves or redirecting
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+      </div>
+    );
   }
 
   return (

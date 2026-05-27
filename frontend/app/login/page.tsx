@@ -1,8 +1,45 @@
 "use client";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  // If already logged in, redirect away
+  useEffect(() => {
+    if (!loading && user) {
+      router.push("/navigator");
+    }
+  }, [user, loading, router]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError(error.message);
+      setSubmitting(false);
+    } else {
+      router.push("/navigator");
+    }
+  }
+
   return (
     <div className="bg-background text-on-surface font-body-md min-h-screen relative flex flex-col">
       {/* Nav */}
@@ -58,7 +95,16 @@ export default function LoginPage() {
                 </p>
               </header>
 
-              <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+              {error && (
+                <div className="mb-6 p-3 rounded-lg bg-error/10 border border-error/30 text-error font-data-label text-sm flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[16px]">
+                    error
+                  </span>
+                  {error}
+                </div>
+              )}
+
+              <form className="space-y-6" onSubmit={handleSubmit}>
                 <div className="space-y-2">
                   <label className="font-data-label text-data-label text-on-surface-variant uppercase ml-1">
                     Research Email
@@ -69,6 +115,9 @@ export default function LoginPage() {
                     </span>
                     <input
                       type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className="w-full bg-surface-container-low border-b border-[rgba(255,255,255,0.1)] focus:border-primary text-on-surface pl-12 py-3 rounded-t-lg transition-all outline-none"
                       placeholder="name@institution.edu"
                     />
@@ -93,6 +142,9 @@ export default function LoginPage() {
                     </span>
                     <input
                       type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       className="w-full bg-surface-container-low border-b border-[rgba(255,255,255,0.1)] focus:border-primary text-on-surface pl-12 py-3 rounded-t-lg transition-all outline-none"
                       placeholder="••••••••"
                     />
@@ -101,12 +153,22 @@ export default function LoginPage() {
 
                 <button
                   type="submit"
-                  className="w-full py-4 bg-primary-container text-on-primary-container font-headline-lg text-lg rounded-lg transition-all duration-150 ease-in-out active:scale-95 hover:shadow-[0_0_20px_rgba(0,245,255,0.4)] flex items-center justify-center gap-2 group"
+                  disabled={submitting}
+                  className="w-full py-4 bg-primary-container text-on-primary-container font-headline-lg text-lg rounded-lg transition-all duration-150 ease-in-out active:scale-95 hover:shadow-[0_0_20px_rgba(0,245,255,0.4)] flex items-center justify-center gap-2 group disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <span>Login</span>
-                  <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">
-                    arrow_forward
-                  </span>
+                  {submitting ? (
+                    <>
+                      <span className="w-5 h-5 border-2 border-on-primary-container/30 border-t-on-primary-container rounded-full animate-spin" />
+                      Authenticating...
+                    </>
+                  ) : (
+                    <>
+                      <span>Login</span>
+                      <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">
+                        arrow_forward
+                      </span>
+                    </>
+                  )}
                 </button>
               </form>
 

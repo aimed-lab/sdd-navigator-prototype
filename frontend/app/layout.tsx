@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
   title: "SDD Navigator | Precision Research Roadmapping",
@@ -25,7 +26,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body-md text-body-md selection:bg-primary-container selection:text-on-primary-container">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

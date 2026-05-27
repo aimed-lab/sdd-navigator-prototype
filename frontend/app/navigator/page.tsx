@@ -1,7 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useAuth } from "@/context/AuthContext";
 
 const loadingPhrases = [
   "Parsing Regulatory Graph",
@@ -65,9 +67,28 @@ const stages = [
 ];
 
 export default function NavigatorPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
+  // Auth guard — redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, authLoading, router]);
+
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState(loadingPhrases[0]);
+
+  // Show nothing while auth resolves or redirecting
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+      </div>
+    );
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
