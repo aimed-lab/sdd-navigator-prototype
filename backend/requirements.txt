@@ -1,0 +1,20 @@
+# ── Transcription ─────────────────────────────
+openai-whisper          # Local Whisper ASR model (base, runs on CPU)
+# NOTE: Whisper requires ffmpeg on your system:
+#   Windows: winget install ffmpeg
+#   Mac:     brew install ffmpeg
+#   Linux:   sudo apt install ffmpeg
+
+# ── AI / LLM ──────────────────────────────────
+groq                    # Groq SDK — llama3-70b-8192
+
+# ── RSS / HTTP ────────────────────────────────
+feedparser              # Podcast RSS parsing
+requests                # HTTP downloads + Supabase REST API calls
+
+# ── Utilities ─────────────────────────────────
+python-dotenv           # Load .env file
+
+# NOTE: supabase-py is intentionally excluded.
+# It pulls in httpcore which is incompatible with Python 3.14+.
+# Supabase is accessed directly via the PostgREST REST API using requests.
