@@ -138,10 +138,28 @@ def parse_rss(rss_url: str) -> list[dict]:
             print(f"   ⚠️  No audio URL for '{entry.title}'. Skipping.")
             continue
 
+        # ── Episode URL (Spotify / podcast page link) ──────────────────
+        # Prefer the <link> rel="alternate" (web page), not the audio file.
+        episode_url = ""
+        for lnk in getattr(entry, "links", []):
+            rel  = lnk.get("rel", "")
+            href = lnk.get("href", "")
+            mime = lnk.get("type", "")
+            # Skip audio enclosures — we want the HTML episode page
+            if "audio" in mime or href.endswith(".mp3"):
+                continue
+            if rel in ("alternate", "self") or "http" in href:
+                episode_url = href
+                break
+        # Final fallback: entry.link (the canonical link set by feedparser)
+        if not episode_url:
+            episode_url = getattr(entry, "link", "")
+
         episodes.append({
             "episode_number": _parse_episode_number(entry, i, total),
             "title":          entry.title.strip(),
             "audio_url":      audio_url,
+            "episode_url":    episode_url,
             "description":    entry.get("summary", ""),
             "published":      entry.get("published", ""),
         })

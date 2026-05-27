@@ -24,7 +24,12 @@ ONLY a JSON object with this exact structure:
   "title": "string",
   "episode_number": 0,
   "slug": "url-friendly-title",
-  "summary": "2-3 sentence summary of the episode.",
+  "description": "2-3 sentence overview of the episode for display on the wiki card.",
+  "summary": [
+    "Bullet summarising one main point from the episode.",
+    "Another key takeaway or finding discussed.",
+    "Add as many bullets as needed to fully cover all main points — no limit."
+  ],
   "concepts": [
     {
       "title": "Concept Name",
@@ -50,6 +55,10 @@ Rules:
 - Return ONLY the raw JSON object — no markdown fences, no explanation.
 - Every field must be present even if its value is an empty array.
 - "slug" must be lowercase, hyphen-separated, no special chars (e.g. "digital-twins-in-oncology").
+- "description" is 2-3 sentences max — a human-readable card teaser.
+- "summary" is an ARRAY of strings (bullet points). Include as many bullets as needed
+  to fully cover every significant point, finding, or discussion from the transcript.
+  Do NOT truncate or limit the number of bullets — completeness is required.
 - "type" in nodes must be exactly one of: episode, concept, resource.
 - "source" and "target" in edges must exactly match a "label" in the nodes array.
 - Extract at least 5 concepts and 10 nodes when the transcript is long enough.
@@ -107,7 +116,8 @@ def _validate(data: dict, metadata: dict) -> dict:
         "title": title,
         "episode_number": ep_num,
         "slug": re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-"),
-        "summary": "",
+        "description": "",
+        "summary": [],
         "concepts": [],
         "tags": [],
         "entities": {"drugs": [], "proteins": [], "targets": [], "tools": []},
@@ -195,6 +205,7 @@ def extract_knowledge(transcript: str, metadata: dict) -> dict:
     # Summary stats
     print(
         f"   📊 Extracted: "
+        f"{len(data['summary'])} summary bullets · "
         f"{len(data['concepts'])} concepts · "
         f"{len(data['tags'])} tags · "
         f"{len(data['nodes'])} nodes · "

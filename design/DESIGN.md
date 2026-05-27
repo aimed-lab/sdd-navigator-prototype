@@ -1,90 +1,107 @@
 ---
-name: Clinical Intelligence Horizon
+name: Clinical Excellence Framework
 colors:
-  surface: '#0e1322'
-  surface-dim: '#0e1322'
-  surface-bright: '#343949'
-  surface-container-lowest: '#090e1c'
-  surface-container-low: '#161b2b'
-  surface-container: '#1a1f2f'
-  surface-container-high: '#25293a'
-  surface-container-highest: '#2f3445'
-  on-surface: '#dee1f7'
-  on-surface-variant: '#b9caca'
-  inverse-surface: '#dee1f7'
-  inverse-on-surface: '#2b3040'
-  outline: '#849495'
-  outline-variant: '#3a494a'
-  surface-tint: '#00dce5'
-  primary: '#e9feff'
-  on-primary: '#003739'
-  primary-container: '#00f5ff'
-  on-primary-container: '#006c71'
-  inverse-primary: '#00696e'
-  secondary: '#d1bcff'
-  on-secondary: '#3c0090'
-  secondary-container: '#7000ff'
-  on-secondary-container: '#ddcdff'
-  tertiary: '#faf9ff'
-  on-tertiary: '#002b75'
-  tertiary-container: '#d3dcff'
-  on-tertiary-container: '#0057db'
-  error: '#ffb4ab'
-  on-error: '#690005'
-  error-container: '#93000a'
-  on-error-container: '#ffdad6'
-  primary-fixed: '#63f7ff'
-  primary-fixed-dim: '#00dce5'
-  on-primary-fixed: '#002021'
-  on-primary-fixed-variant: '#004f53'
-  secondary-fixed: '#e9ddff'
-  secondary-fixed-dim: '#d1bcff'
-  on-secondary-fixed: '#23005b'
-  on-secondary-fixed-variant: '#5700c9'
-  tertiary-fixed: '#dae1ff'
-  tertiary-fixed-dim: '#b3c5ff'
-  on-tertiary-fixed: '#001849'
-  on-tertiary-fixed-variant: '#003fa4'
-  background: '#0e1322'
-  on-background: '#dee1f7'
-  surface-variant: '#2f3445'
-  glass-surface: rgba(255, 255, 255, 0.03)
-  glass-border: rgba(255, 255, 255, 0.1)
-  data-mono: '#94a3b8'
-  status-pulse: '#00f5ff'
+  surface: '#f8f9fa'
+  surface-dim: '#d9dadb'
+  surface-bright: '#f8f9fa'
+  surface-container-lowest: '#ffffff'
+  surface-container-low: '#f3f4f5'
+  surface-container: '#edeeef'
+  surface-container-high: '#e7e8e9'
+  surface-container-highest: '#e1e3e4'
+  on-surface: '#191c1d'
+  on-surface-variant: '#3f4944'
+  inverse-surface: '#2e3132'
+  inverse-on-surface: '#f0f1f2'
+  outline: '#6f7974'
+  outline-variant: '#bfc9c2'
+  surface-tint: '#1d6a51'
+  primary: '#00523c'
+  on-primary: '#ffffff'
+  primary-container: '#1e6b52'
+  on-primary-container: '#9ee9c9'
+  inverse-primary: '#8cd5b7'
+  secondary: '#346854'
+  on-secondary: '#ffffff'
+  secondary-container: '#b4ecd3'
+  on-secondary-container: '#386c58'
+  tertiary: '#344f00'
+  on-tertiary: '#ffffff'
+  tertiary-container: '#476900'
+  on-tertiary-container: '#aded3e'
+  error: '#ba1a1a'
+  on-error: '#ffffff'
+  error-container: '#ffdad6'
+  on-error-container: '#93000a'
+  primary-fixed: '#a7f2d2'
+  primary-fixed-dim: '#8cd5b7'
+  on-primary-fixed: '#002116'
+  on-primary-fixed-variant: '#00513b'
+  secondary-fixed: '#b7eed5'
+  secondary-fixed-dim: '#9cd2ba'
+  on-secondary-fixed: '#002116'
+  on-secondary-fixed-variant: '#1a503d'
+  tertiary-fixed: '#b6f647'
+  tertiary-fixed-dim: '#9bd929'
+  on-tertiary-fixed: '#121f00'
+  on-tertiary-fixed-variant: '#344e00'
+  background: '#f8f9fa'
+  on-background: '#191c1d'
+  surface-variant: '#e1e3e4'
 typography:
   display-lg:
-    fontFamily: Hanken Grotesk
+    fontFamily: Inter
     fontSize: 48px
     fontWeight: '700'
     lineHeight: 56px
     letterSpacing: -0.02em
   headline-lg:
-    fontFamily: Hanken Grotesk
+    fontFamily: Inter
     fontSize: 32px
     fontWeight: '600'
     lineHeight: 40px
+    letterSpacing: -0.01em
   headline-lg-mobile:
-    fontFamily: Hanken Grotesk
+    fontFamily: Inter
     fontSize: 24px
     fontWeight: '600'
     lineHeight: 32px
+  headline-md:
+    fontFamily: Inter
+    fontSize: 24px
+    fontWeight: '600'
+    lineHeight: 32px
+  title-lg:
+    fontFamily: Inter
+    fontSize: 20px
+    fontWeight: '600'
+    lineHeight: 28px
+  title-md:
+    fontFamily: Inter
+    fontSize: 16px
+    fontWeight: '600'
+    lineHeight: 24px
+  body-lg:
+    fontFamily: Inter
+    fontSize: 18px
+    fontWeight: '400'
+    lineHeight: 28px
   body-md:
     fontFamily: Inter
     fontSize: 16px
     fontWeight: '400'
     lineHeight: 24px
-  data-label:
-    fontFamily: JetBrains Mono
-    fontSize: 12px
-    fontWeight: '500'
-    lineHeight: 16px
-    letterSpacing: 0.05em
-  code-sm:
-    fontFamily: JetBrains Mono
-    fontSize: 13px
+  body-sm:
+    fontFamily: Inter
+    fontSize: 14px
     fontWeight: '400'
     lineHeight: 20px
+  label-md:
+    fontFamily: Inter
+    fontSize: 12px
+    fontWeight: '600'
+    lineHeight: 16px
+    letterSpacing: 0.05em
 rounded:
   sm: 0.125rem
   DEFAULT: 0.25rem
@@ -94,52 +111,61 @@ rounded:
   full: 9999px
 spacing:
   base: 8px
+  container-max: 1280px
   gutter: 24px
   margin-desktop: 64px
   margin-mobile: 16px
-  max-width: 1440px
+  stack-sm: 4px
+  stack-md: 16px
+  stack-lg: 32px
 ---
 
 ## Brand & Style
-The brand personality is authoritative, visionary, and hyper-precise. It operates at the intersection of life sciences and advanced computation, evoking the feeling of a "Mission Control for Human Biology." The target audience consists of clinical researchers and data scientists who require high-density information without sacrificing clarity.
+This design system is engineered for professional academic medical research, balancing the institutional prestige of UAB with the editorial clarity of top-tier scientific journals like Nature. The brand personality is authoritative, meticulous, and transparent. It avoids decorative "AI-generated" aesthetics in favor of a structural, information-first approach.
 
-The design style is a hybrid of **Glassmorphism** and **Corporate Modern**, infused with a **Sci-Fi** technical layer. The interface utilizes depth through translucent surfaces and "glowing" light sources to guide the eye toward critical medical insights. The atmosphere is quiet, focused, and sterile, yet intellectually stimulating.
+The design style is **Corporate / Modern** with a focus on high-density information management. It utilizes a sophisticated "White Space First" philosophy to ensure complex medical data remains legible and reduces cognitive load for researchers and clinicians.
 
 ## Colors
-The palette is rooted in a deep, nocturnal base of #0a0f1e to reduce eye strain during long research sessions. The **Medical Cyan (#00f5ff)** acts as the primary signature color, used for interactive elements and "active" AI states. 
-
-A secondary deep violet and tertiary blue provide depth for data visualization categories. The "Glass Surface" color is a low-opacity white that interacts with the background gradients to create the frosted medical glass effect. High-contrast white is reserved strictly for primary reading paths and critical labels.
+The palette is rooted in a deep "Academic Green" to establish trust and institutional heritage. 
+- **Primary & Dark Green:** Used for core branding, primary actions, and navigational headers.
+- **Light Green Accent:** Reserved for success states, active progress indicators, and subtle highlights in data visualization.
+- **Gold Accent:** Used exclusively as a "low-frequency" signal for high-importance alerts or special academic designations (e.g., featured research).
+- **Surface Colors:** Pure white (#FFFFFF) is the primary work surface. Light gray (#F8F9FA) is used for section differentiation and background containers to group related research parameters.
 
 ## Typography
-The typography system uses a tri-font approach to maximize the "technical but readable" requirement. 
-- **Hanken Grotesk** is used for headlines, providing a sharp, modern, and clinical Swiss-inspired look.
-- **Inter** handles the heavy lifting for body text, ensuring maximum legibility for dense research papers and findings.
-- **JetBrains Mono** is the "Technical Accent" font, used for DNA sequences, coordinates, medical IDs, and status indicators. This adds a layer of precision and helps differentiate raw data from narrative content.
+Inter is the exclusive typeface for this design system, chosen for its exceptional legibility in data-dense environments. 
+- **Headlines:** Use tighter letter spacing and semi-bold weights to create a strong visual anchor for research papers and study titles.
+- **Body Text:** Standard weight (400) with a generous line height (1.5x) to facilitate long-form reading of clinical abstracts and methodology.
+- **Labels:** Small caps or uppercase with increased tracking (0.05em) should be used for metadata, such as DOI numbers, publication dates, and author tags.
 
 ## Layout & Spacing
-The layout follows a **Fluid Grid** philosophy within a max-width container. A 12-column grid is used for the dashboard views, allowing cards to span 3, 4, 6, or 12 columns. 
-
-Large margins on desktop (64px) create a premium, spacious feel, while the 24px gutter ensures that complex data cards have enough "air" to be scanned individually. On mobile, the system collapses to a single-column stack with 16px margins. Components should prioritize vertical rhythm using increments of 8px (base unit).
+The layout follows a **Fixed Grid** model on desktop, centered to create an editorial feel reminiscent of a scientific journal.
+- **Grid:** A 12-column grid with 24px gutters.
+- **Vertical Rhythm:** A strict 8px baseline grid ensures alignment across multi-column data views.
+- **Breakpoints:** 
+  - Mobile (<600px): 4 columns, 16px margins.
+  - Tablet (600px - 1024px): 8 columns, 32px margins.
+  - Desktop (>1024px): 12 columns, max-width 1280px.
+- **White Space:** Use "Stack-LG" (32px) between major research sections and "Stack-MD" (16px) between elements within a card.
 
 ## Elevation & Depth
-Depth is created through **Glassmorphism** rather than traditional drop shadows. 
-1.  **Level 0 (Background):** Deep navy with subtle radial gradients of medical blue in the corners.
-2.  **Level 1 (Sub-surface):** Subtle DNA/Molecule grid patterns at 5% opacity.
-3.  **Level 2 (Containers):** Semi-transparent surfaces (3-5% white) with a 20px backdrop blur and a thin 1px border (glass-border).
-4.  **Level 3 (Active/Interactive):** Elements that are hovered or active receive an outer glow (box-shadow) using the primary cyan color at low opacity to simulate a "lit" display.
+Depth is communicated through **Tonal Layers** and **Low-contrast Outlines** rather than heavy shadows.
+- **Level 0 (Background):** #F8F9FA.
+- **Level 1 (Cards/Surface):** #FFFFFF with a 1px solid border (#E9ECEF).
+- **Level 2 (Hover/Active):** A very soft, diffuse ambient shadow (0px 4px 12px rgba(0,0,0,0.05)) to indicate interactivity without breaking the flat academic aesthetic.
+- **Depth Cues:** Use the Primary Green (#1E6B52) as a 2px top-border on cards to signify categorized content or "featured" research modules.
 
 ## Shapes
-The shape language is "Soft" (0.25rem - 0.75rem) to maintain a professional, scientific rigor. Sharp corners are avoided to keep the UI feeling approachable, but excessive rounding is also avoided to prevent it from looking "toy-like." Large cards use 0.75rem (`rounded-xl`), while small UI elements like input fields and buttons use 0.25rem (`rounded-sm`).
+The shape language is **Soft** (4px / 0.25rem). This subtle rounding provides a modern touch while maintaining a professional, serious tone. 
+- **Buttons & Inputs:** 4px border radius.
+- **Cards:** 8px (rounded-lg) to provide clear container definition.
+- **Data Tags/Chips:** Fully rounded (pill) to distinguish them from actionable buttons.
 
 ## Components
-### Buttons & Controls
-Buttons use a solid Primary Cyan fill with black text for high contrast. Secondary buttons use a "Ghost" style with a cyan border and a subtle hover glow. All interactive controls should have a 150ms ease-in-out transition for their glow states.
-
-### Glass Data Cards
-The core component of the system. Cards must have a `backdrop-filter: blur(20px)` and a `border: 1px solid rgba(255,255,255,0.1)`. Headers within cards should use the `data-label` monospace font for a "readout" effect.
-
-### Pulsing Status Indicators
-For AI processing states, use a small 8px circle with a `status-pulse` color. Apply a keyframe animation that expands a secondary outer ring from 100% to 200% size while fading opacity to 0, creating a "heartbeat" effect.
-
-### Technical Inputs
-Input fields should be dark and recessed, with a subtle 1px bottom border that lights up in Cyan when focused. Data-heavy tables should use zebra-striping with the `glass-surface` color for better row tracking.
+- **Academic Cards:** White background, 1px border (#E9ECEF), 8px radius. Include a 4px accent top-border in Primary Green for active studies.
+- **Primary Buttons:** Solid Primary Green (#1E6B52) with white text. No gradients.
+- **Secondary Buttons:** Ghost style with 1px border (#1E6B52) and Primary Green text.
+- **Input Fields:** 1px border (#DEE2E6), 4px radius. Use Inter Body-MD. On focus, border changes to Primary Green with a 2px soft outer glow.
+- **Data Visualizations:** Use a palette of Primary Green, Secondary Green, and Light Green. Avoid high-contrast clashing colors; use tonal variations for chart series.
+- **Navigation:** Top-tier global nav in Dark Green (#144B39). Secondary "Breadcrumb" navigation in Gray for deep-link research hierarchies.
+- **Status Indicators:** Use Light Green (#88C408) for "Open/Active" and Gold (#FFD602) for "Pending Review" or "Urgent Attention."

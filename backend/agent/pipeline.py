@@ -12,7 +12,7 @@ Flow:
     RSS feed
       └─► transcribe.py  (local Whisper base → backend/output/episode_{N}.json)
             └─► [reads JSON from disk]
-                  └─► extract.py  (Groq llama3-70b-8192)
+                  └─► extract.py  (Groq llama-3.3-70b-versatile)
                         └─► Supabase REST API  (raw requests — NO Python client)
 
 Why raw requests?
@@ -93,10 +93,13 @@ def _sb_post(table: str, payload: dict | list) -> list:
 
 def _save_wiki_page(metadata: dict, transcript: str, extracted: dict) -> str:
     """Insert into wiki_pages. Returns the new UUID."""
-    ep_num         = metadata["episode_number"]
-    slug           = extracted.get("slug") or f"episode-{ep_num}"
-    concept_titles = [
-        c["title"] for c in extracted.get("concepts", []) if c.get("title")
+    ep_num = metadata["episode_number"]
+    slug   = extracted.get("slug") or f"episode-{ep_num}"
+
+    # concepts is now stored as jsonb — full objects with title + bullets
+    concepts_jsonb = [
+        c for c in extracted.get("concepts", [])
+        if isinstance(c, dict) and c.get("title")
     ]
 
     row = {
@@ -104,7 +107,11 @@ def _save_wiki_page(metadata: dict, transcript: str, extracted: dict) -> str:
         "title":          extracted.get("title") or metadata["title"],
         "episode_number": ep_num,
         "transcript":     transcript,
-        "concepts":       concept_titles,
+        # new columns
+        "episode_url":    metadata.get("episode_url", ""),
+        "description":    extracted.get("description") or metadata.get("description", ""),
+        "summary":        extracted.get("summary", []),
+        "concepts":       concepts_jsonb,
         "tags":           extracted.get("tags", []),
     }
 

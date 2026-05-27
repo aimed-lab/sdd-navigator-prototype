@@ -6,7 +6,7 @@ openai-whisper          # Local Whisper ASR model (base, runs on CPU)
 #   Linux:   sudo apt install ffmpeg
 
 # ── AI / LLM ──────────────────────────────────
-groq                    # Groq SDK — llama3-70b-8192
+groq                    # Groq SDK — llama-3.3-70b-versatile
 
 # ── RSS / HTTP ────────────────────────────────
 feedparser              # Podcast RSS parsing

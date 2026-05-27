@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<title>Register | SDD Navigator</title>
+<!-- Include Theme Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#191c1d",
+                    "tertiary-container": "#476900",
+                    "on-error-container": "#93000a",
+                    "primary": "#00523c",
+                    "surface-container-low": "#f3f4f5",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-container": "#aded3e",
+                    "outline": "#6f7974",
+                    "secondary-container": "#b4ecd3",
+                    "on-primary-fixed-variant": "#00513b",
+                    "surface-tint": "#1d6a51",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed": "#121f00",
+                    "on-secondary-fixed": "#002116",
+                    "surface-container-highest": "#e1e3e4",
+                    "tertiary-fixed-dim": "#9bd929",
+                    "outline-variant": "#bfc9c2",
+                    "on-tertiary-fixed-variant": "#344e00",
+                    "on-error": "#ffffff",
+                    "background": "#f8f9fa",
+                    "on-primary-fixed": "#002116",
+                    "tertiary": "#344f00",
+                    "surface-container": "#edeeef",
+                    "on-surface-variant": "#3f4944",
+                    "error-container": "#ffdad6",
+                    "on-primary-container": "#9ee9c9",
+                    "primary-fixed-dim": "#8cd5b7",
+                    "on-background": "#191c1d",
+                    "on-primary": "#ffffff",
+                    "on-secondary-fixed-variant": "#1a503d",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-container": "#386c58",
+                    "surface-container-high": "#e7e8e9",
+                    "surface": "#f8f9fa",
+                    "secondary": "#346854",
+                    "inverse-surface": "#2e3132",
+                    "secondary-fixed-dim": "#9cd2ba",
+                    "primary-fixed": "#a7f2d2",
+                    "surface-variant": "#e1e3e4",
+                    "surface-bright": "#f8f9fa",
+                    "primary-container": "#1e6b52",
+                    "inverse-on-surface": "#f0f1f2",
+                    "surface-dim": "#d9dadb",
+                    "secondary-fixed": "#b7eed5",
+                    "inverse-primary": "#8cd5b7",
+                    "tertiary-fixed": "#b6f647"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "base": "8px",
+                    "stack-lg": "32px",
+                    "stack-sm": "4px",
+                    "margin-desktop": "64px",
+                    "margin-mobile": "16px",
+                    "gutter": "24px",
+                    "stack-md": "16px",
+                    "container-max": "1280px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "title-md": ["Inter"],
+                    "label-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "title-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-md": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "title-md": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "title-lg": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #F8F9FA;
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .academic-card {
+            border-top: 4px solid #1E6B52;
+            box-shadow: 0px 4px 12px rgba(0,0,0,0.05);
+        }
+        .input-focus-ring:focus {
+            outline: none;
+            border-color: #1E6B52;
+            box-shadow: 0 0 0 2px rgba(30, 107, 82, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-body-md text-body-md text-on-surface">
+<!-- Suppress TopNavBar and BottomNavBar as per "Destination Rule" for Transactional Screens -->
+<main class="flex-grow flex items-center justify-center px-margin-mobile md:px-margin-desktop py-stack-lg">
+<div class="w-full max-w-[520px] bg-surface-container-lowest academic-card rounded-lg p-stack-lg border border-outline-variant">
+<!-- Identity Header -->
+<div class="flex flex-col items-center mb-stack-lg">
+<div class="text-primary font-title-lg text-title-lg font-extrabold tracking-tight mb-stack-sm">
+                    SDD Navigator
+                </div>
+<h1 class="font-headline-md text-headline-md text-on-surface text-center">Create your research account</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2 text-center">Join the global network of clinical and translational scientists.</p>
+</div>
+<!-- Registration Form -->
+<form action="#" class="space-y-stack-md" method="POST">
+<!-- Full Name -->
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface-variant" for="full_name">FULL NAME</label>
+<input class="w-full px-4 py-2 bg-surface-container rounded border border-outline-variant font-body-md text-body-md input-focus-ring transition-all" id="full_name" name="full_name" placeholder="Dr. Jane Smith" required="" type="text"/>
+</div>
+<!-- Email Address -->
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface-variant" for="email">INSTITUTIONAL EMAIL</label>
+<input class="w-full px-4 py-2 bg-surface-container rounded border border-outline-variant font-body-md text-body-md input-focus-ring transition-all" id="email" name="email" placeholder="j.smith@university.edu" required="" type="email"/>
+</div>
+<!-- Password -->
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface-variant" for="password">PASSWORD</label>
+<div class="relative">
+<input class="w-full px-4 py-2 bg-surface-container rounded border border-outline-variant font-body-md text-body-md input-focus-ring transition-all" id="password" name="password" placeholder="••••••••" required="" type="password"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+<!-- Two Column Grid for Professional Details -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Affiliation Dropdown -->
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface-variant" for="affiliation">AFFILIATION</label>
+<select class="w-full px-4 py-2 bg-surface-container rounded border border-outline-variant font-body-md text-body-md input-focus-ring transition-all appearance-none" id="affiliation" name="affiliation" required="">
+<option disabled="" selected="" value="">Select type</option>
+<option value="Researcher">Researcher</option>
+<option value="Lab">Lab</option>
+<option value="Pharma">Pharma</option>
+<option value="Industry">Industry</option>
+</select>
+</div>
+<!-- Country -->
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface-variant" for="country">COUNTRY</label>
+<input class="w-full px-4 py-2 bg-surface-container rounded border border-outline-variant font-body-md text-body-md input-focus-ring transition-all" id="country" name="country" placeholder="United States" required="" type="text"/>
+</div>
+</div>
+<!-- Institution Name -->
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface-variant" for="institution">INSTITUTION NAME</label>
+<input class="w-full px-4 py-2 bg-surface-container rounded border border-outline-variant font-body-md text-body-md input-focus-ring transition-all" id="institution" name="institution" placeholder="UAB Center for Clinical Science" required="" type="text"/>
+</div>
+<!-- Submit Button -->
+<div class="pt-stack-sm">
+<button class="w-full bg-primary-container text-on-primary font-title-md text-title-md py-3 rounded-lg hover:brightness-110 active:scale-[0.98] transition-all shadow-sm" type="submit">
+                        Create Free Account
+                    </button>
+</div>
+<!-- Footer Link -->
+<div class="text-center pt-stack-sm">
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                        Already have an account? 
+                        <a class="text-primary font-semibold hover:underline transition-all" href="/login">Log In</a>
+</p>
+</div>
+</form>
+<!-- Institutional Disclaimer -->
+<div class="mt-stack-lg pt-stack-md border-t border-outline-variant">
+<p class="text-[11px] leading-relaxed text-on-surface-variant/70 text-center italic">
+                    By registering, you agree to the SDD Navigator Institutional Review Board guidelines and our academic data privacy policy. Your credentials will be verified against institutional directories.
+                </p>
+</div>
+</div>
+</main>
+<!-- Shared Footer -->
+<footer class="bg-surface-container-highest border-t border-outline-variant">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-lg w-full px-margin-desktop py-stack-lg max-w-container-max mx-auto">
+<div class="flex flex-col gap-2">
+<span class="font-title-md text-title-md font-bold text-primary">SDD Navigator</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">© 2024 UAB SPARC - Center for Clinical and Translational Science. All rights reserved.</p>
+</div>
+<div class="flex flex-wrap md:justify-end gap-x-gutter gap-y-2">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary hover:underline transition-all" href="#">Privacy Policy</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary hover:underline transition-all" href="#">Terms of Service</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary hover:underline transition-all" href="#">Institutional Review Board</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary hover:underline transition-all" href="#">Contact Support</a>
+</div>
+</div>
+</footer>
+<script>
+        // Simple Interaction: Toggle Password Visibility
+        const toggleBtn = document.querySelector('button .material-symbols-outlined');
+        const passInput = document.getElementById('password');
+        
+        if (toggleBtn) {
+            toggleBtn.parentElement.addEventListener('click', () => {
+                if (passInput.type === 'password') {
+                    passInput.type = 'text';
+                    toggleBtn.textContent = 'visibility_off';
+                } else {
+                    passInput.type = 'password';
+                    toggleBtn.textContent = 'visibility';
+                }
+            });
+        }
+
+        // Atmospheric Effect: Subtle mouse move parallax on the card
+        const card = document.querySelector('.academic-card');
+        document.addEventListener('mousemove', (e) => {
+            if (window.innerWidth > 1024) {
+                const xAxis = (window.innerWidth / 2 - e.pageX) / 100;
+                const yAxis = (window.innerHeight / 2 - e.pageY) / 100;
+                card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+            }
+        });
+        
+        // Reset transform on mouse leave
+        document.addEventListener('mouseleave', () => {
+            card.style.transform = `rotateY(0deg) rotateX(0deg)`;
+        });
+    </script>
+</body></html>
