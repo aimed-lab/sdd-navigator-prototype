@@ -4,7 +4,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 const navLinks = [
-  { href: "/", label: "Home" },
   { href: "/knowledge-hub", label: "Knowledge Hub" },
   { href: "/navigator", label: "Navigator" },
   { href: "/graph", label: "Graph" },
@@ -21,68 +20,69 @@ export default function Navbar() {
   }
 
   return (
-    <header className="fixed top-0 w-full z-50 flex justify-between items-center px-4 md:px-16 h-20 max-w-[1440px] mx-auto bg-[rgba(255,255,255,0.03)] backdrop-blur-xl border-b border-[rgba(255,255,255,0.1)] shadow-sm">
-      <div className="flex items-center gap-8">
-        <Link href="/" className="flex items-center gap-2">
-          <span
-            className="material-symbols-outlined text-[#00f5ff]"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            hub
-          </span>
-          <span className="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">
-            SDD Navigator
-          </span>
-        </Link>
-        <nav className="hidden md:flex gap-6">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={
-                pathname === link.href
-                  ? "text-primary border-b-2 border-primary pb-1 font-body-md text-body-md"
-                  : "text-on-surface-variant hover:text-primary transition-colors duration-200 font-body-md text-body-md"
-              }
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-      </div>
-
-      <div className="flex items-center gap-2">
-        {!loading && user ? (
-          /* ── Logged-in state ── */
-          <>
-            <span className="hidden md:block font-data-label text-data-label text-on-surface-variant mr-2 truncate max-w-[180px]">
-              {user.email}
+    <header className="bg-primary shadow-sm sticky top-0 z-50">
+      <div className="flex justify-between items-center w-full px-margin-desktop py-4 max-w-container-max mx-auto">
+        {/* Logo */}
+        <div className="flex items-center gap-stack-md">
+          <Link href="/" className="flex flex-col leading-tight">
+            <span className="font-title-lg text-title-lg font-bold text-on-primary tracking-tight leading-none">
+              SDD Navigator
             </span>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1 px-4 py-2 rounded-lg border border-[rgba(255,255,255,0.1)] text-on-surface-variant hover:text-error hover:border-error transition-all font-data-label text-data-label active:scale-95"
-            >
-              <span className="material-symbols-outlined text-[18px]">
-                logout
+            <span className="text-[10px] font-bold text-on-primary/70 tracking-widest uppercase -mt-0.5">
+              by UAB SPARC
+            </span>
+          </Link>
+
+          {/* Nav links */}
+          <nav className="hidden md:flex items-center ml-stack-md gap-gutter">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={
+                  pathname === link.href
+                    ? "text-on-primary border-b-2 border-secondary-container pb-1 font-semibold font-label-md text-label-md"
+                    : "text-on-primary/80 hover:text-on-primary transition-colors font-medium font-label-md text-label-md"
+                }
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        {/* Auth buttons */}
+        <div className="flex items-center gap-4">
+          {!loading && user ? (
+            <>
+              <span className="hidden md:block font-label-md text-label-md text-on-primary/70 truncate max-w-[160px]">
+                {user.email}
               </span>
-              Logout
-            </button>
-          </>
-        ) : (
-          /* ── Logged-out state ── */
-          <>
-            <Link href="/login">
-              <button className="text-on-surface hover:text-primary transition-all duration-150 ease-in-out active:scale-95 px-4 py-2 font-data-label text-data-label">
-                Login
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1 text-on-primary font-label-md text-label-md hover:bg-white/10 px-4 py-2 rounded-lg transition-all"
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  logout
+                </span>
+                Logout
               </button>
-            </Link>
-            <Link href="/register">
-              <button className="bg-primary-container text-on-primary-container px-6 py-2 rounded-lg font-data-label text-data-label font-bold hover:shadow-[0_0_15px_rgba(0,245,255,0.3)] transition-all active:scale-95">
-                Register
-              </button>
-            </Link>
-          </>
-        )}
+            </>
+          ) : (
+            <>
+              <Link href="/login">
+                <button className="text-on-primary font-label-md text-label-md hover:bg-white/10 px-4 py-2 rounded-lg transition-all">
+                  Sign In
+                </button>
+              </Link>
+              <Link href="/register">
+                <button className="bg-primary-fixed text-on-primary-fixed font-label-md text-label-md px-4 py-2 rounded-lg font-bold hover:scale-95 transition-transform">
+                  Register
+                </button>
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

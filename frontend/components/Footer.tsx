@@ -2,36 +2,96 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="w-full py-12 px-4 md:px-16 flex flex-col md:flex-row justify-between items-center gap-2 bg-surface-container-lowest border-t border-[rgba(255,255,255,0.1)]">
-      <div className="flex flex-col items-center md:items-start gap-2">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary-container">
-            hub
-          </span>
-          <span className="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight">
-            SDD Navigator
-          </span>
+    <footer className="bg-surface-container-highest border-t border-outline-variant">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-stack-lg w-full px-margin-desktop py-stack-lg max-w-container-max mx-auto">
+        {/* Brand */}
+        <div className="flex flex-col gap-stack-md">
+          <div className="flex flex-col">
+            <span className="font-title-md text-title-md font-bold text-primary">
+              SDD Navigator
+            </span>
+            <span className="font-body-sm text-body-sm text-on-surface-variant">
+              Center for Clinical and Translational Science
+            </span>
+          </div>
+          <p className="font-body-sm text-body-sm text-on-surface-variant max-w-sm">
+            Dedicated to accelerating the translation of laboratory discoveries
+            into treatments for patients. Part of the UAB Research Ecosystem.
+          </p>
+          <div className="flex gap-stack-md">
+            <span className="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-colors">
+              public
+            </span>
+            <span className="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-colors">
+              mail
+            </span>
+            <span className="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-colors">
+              description
+            </span>
+          </div>
         </div>
-        <p className="font-body-md text-body-md text-on-surface-variant text-center md:text-left">
-          © 2024 UAB SPARC. Bridging research assets to outcomes worldwide.
-        </p>
+
+        {/* Links */}
+        <div className="grid grid-cols-2 gap-gutter">
+          <div className="flex flex-col gap-2">
+            <h5 className="font-label-md text-label-md text-on-surface font-bold">
+              Resources
+            </h5>
+            <Link
+              href="/knowledge-hub"
+              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
+            >
+              Knowledge Hub
+            </Link>
+            <Link
+              href="/navigator"
+              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
+            >
+              Navigator
+            </Link>
+            <Link
+              href="/graph"
+              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
+            >
+              Knowledge Graph
+            </Link>
+            <Link
+              href="#"
+              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
+            >
+              Institutional Review Board
+            </Link>
+          </div>
+          <div className="flex flex-col gap-2">
+            <h5 className="font-label-md text-label-md text-on-surface font-bold">
+              Support
+            </h5>
+            <Link
+              href="#"
+              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
+            >
+              Contact Support
+            </Link>
+            <Link
+              href="#"
+              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              href="#"
+              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
+            >
+              Terms of Service
+            </Link>
+          </div>
+        </div>
       </div>
-      <div className="flex gap-6 mt-8 md:mt-0">
-        {[
-          { href: "/knowledge-hub", label: "Hub" },
-          { href: "/navigator", label: "Navigator" },
-          { href: "/graph", label: "Graph" },
-          { href: "#", label: "About" },
-          { href: "#", label: "Contact" },
-        ].map((link) => (
-          <Link
-            key={link.label}
-            href={link.href}
-            className="font-data-label text-data-label text-on-surface-variant hover:text-primary transition-colors"
-          >
-            {link.label}
-          </Link>
-        ))}
+      <div className="border-t border-outline-variant py-4 px-margin-desktop text-center max-w-container-max mx-auto">
+        <p className="font-body-sm text-body-sm text-on-surface-variant/70">
+          © 2024 UAB SPARC - Center for Clinical and Translational Science. All
+          rights reserved.
+        </p>
       </div>
     </footer>
   );

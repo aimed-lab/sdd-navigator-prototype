@@ -12,6 +12,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -41,149 +42,164 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="bg-background text-on-surface font-body-md min-h-screen relative flex flex-col">
-      {/* Nav */}
-      <nav className="fixed top-0 w-full z-50 flex justify-between items-center px-4 md:px-16 h-20 max-w-[1440px] mx-auto bg-[rgba(255,255,255,0.03)] backdrop-blur-xl border-b border-[rgba(255,255,255,0.1)]">
-        <Link
-          href="/"
-          className="font-headline-lg text-headline-lg font-bold text-primary tracking-tight"
-        >
-          SDD Navigator
-        </Link>
-        <div className="flex gap-6 items-center">
-          <span className="font-data-label text-data-label text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="status-pulse-ring absolute inline-flex h-full w-full rounded-full bg-status-pulse opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-status-pulse" />
-            </span>
-            Secure Terminal v4.2
-          </span>
+    <div className="bg-background min-h-screen flex flex-col">
+      <main className="flex-grow flex items-center justify-center px-margin-mobile md:px-margin-desktop py-stack-lg relative overflow-hidden">
+        {/* Atmospheric background */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-40">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-fixed-dim/20 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-secondary-fixed/20 rounded-full blur-[120px]" />
         </div>
-      </nav>
 
-      {/* Content */}
-      <main className="flex-grow flex items-center justify-center pt-24 pb-12 relative">
-        {/* Background effects */}
-        <div
-          className="absolute inset-0 opacity-20 pointer-events-none"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(0, 245, 255, 0.05) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(0, 245, 255, 0.05) 1px, transparent 1px)
-            `,
-            backgroundSize: "40px 40px",
-          }}
-        />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/5 rounded-full blur-[120px] pointer-events-none" />
+        {/* Login Card */}
+        <div className="relative z-10 w-full max-w-[440px] bg-surface-container-lowest border border-outline-variant rounded-lg shadow-sm overflow-hidden flex flex-col">
+          {/* Green accent bar */}
+          <div className="h-1 bg-primary w-full" />
 
-        <div className="container mx-auto px-4 md:px-16 flex justify-center z-10">
-          <div className="w-full max-w-md">
-            <div className="glass-card p-8 md:p-12 rounded-xl shadow-2xl relative overflow-hidden">
-              {/* Security accent */}
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
-
-              <header className="mb-8">
-                <div className="font-data-label text-data-label text-status-pulse mb-2 tracking-[0.2em] uppercase">
-                  Authentication Required
-                </div>
-                <h1 className="font-headline-lg text-headline-lg text-primary mb-2">
-                  Welcome Back
-                </h1>
-                <p className="text-on-surface-variant font-body-md">
-                  Enter your credentials to access the Navigator.
-                </p>
-              </header>
-
-              {error && (
-                <div className="mb-6 p-3 rounded-lg bg-error/10 border border-error/30 text-error font-data-label text-sm flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[16px]">
-                    error
-                  </span>
-                  {error}
-                </div>
-              )}
-
-              <form className="space-y-6" onSubmit={handleSubmit}>
-                <div className="space-y-2">
-                  <label className="font-data-label text-data-label text-on-surface-variant uppercase ml-1">
-                    Research Email
-                  </label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">
-                      alternate_email
-                    </span>
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-surface-container-low border-b border-[rgba(255,255,255,0.1)] focus:border-primary text-on-surface pl-12 py-3 rounded-t-lg transition-all outline-none"
-                      placeholder="name@institution.edu"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between items-end ml-1">
-                    <label className="font-data-label text-data-label text-on-surface-variant uppercase">
-                      Security Password
-                    </label>
-                    <a
-                      href="#"
-                      className="font-data-label text-data-label text-primary-fixed-dim hover:text-primary transition-colors"
-                    >
-                      Forgot Access?
-                    </a>
-                  </div>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">
-                      lock
-                    </span>
-                    <input
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-surface-container-low border-b border-[rgba(255,255,255,0.1)] focus:border-primary text-on-surface pl-12 py-3 rounded-t-lg transition-all outline-none"
-                      placeholder="••••••••"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-4 bg-primary-container text-on-primary-container font-headline-lg text-lg rounded-lg transition-all duration-150 ease-in-out active:scale-95 hover:shadow-[0_0_20px_rgba(0,245,255,0.4)] flex items-center justify-center gap-2 group disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {submitting ? (
-                    <>
-                      <span className="w-5 h-5 border-2 border-on-primary-container/30 border-t-on-primary-container rounded-full animate-spin" />
-                      Authenticating...
-                    </>
-                  ) : (
-                    <>
-                      <span>Login</span>
-                      <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">
-                        arrow_forward
-                      </span>
-                    </>
-                  )}
-                </button>
-              </form>
-
-              <footer className="mt-8 pt-8 border-t border-[rgba(255,255,255,0.1)] text-center">
-                <p className="text-on-surface-variant text-sm">
-                  New to SDD Navigator?{" "}
-                  <Link
-                    href="/register"
-                    className="text-primary font-bold hover:underline underline-offset-4 ml-1"
-                  >
-                    Request Scientific Access
-                  </Link>
-                </p>
-              </footer>
+          <div className="p-stack-lg flex flex-col gap-stack-md">
+            {/* Header */}
+            <div className="flex flex-col items-center gap-base mb-2">
+              <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-on-primary mb-2">
+                <span className="material-symbols-outlined text-[32px]">
+                  science
+                </span>
+              </div>
+              <h1 className="font-title-lg text-title-lg text-primary tracking-tight font-bold">
+                SDD Navigator
+              </h1>
+              <p className="font-body-sm text-body-sm text-on-surface-variant text-center max-w-[280px]">
+                Secure access for clinical and translational science
+                researchers.
+              </p>
             </div>
+
+            {/* Error message */}
+            {error && (
+              <div className="p-3 rounded-lg bg-error-container border border-error/30 text-error font-body-sm text-body-sm flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">
+                  error
+                </span>
+                {error}
+              </div>
+            )}
+
+            {/* Form */}
+            <form className="flex flex-col gap-stack-md" onSubmit={handleSubmit}>
+              {/* Email */}
+              <div className="flex flex-col gap-base">
+                <label
+                  className="font-label-md text-label-md text-on-surface-variant"
+                  htmlFor="email"
+                >
+                  EMAIL ADDRESS
+                </label>
+                <div className="relative group">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 group-focus-within:text-primary transition-colors">
+                    mail
+                  </span>
+                  <input
+                    id="email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
+                    placeholder="researcher@uab.edu"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="flex flex-col gap-base">
+                <div className="flex justify-between items-center">
+                  <label
+                    className="font-label-md text-label-md text-on-surface-variant"
+                    htmlFor="password"
+                  >
+                    PASSWORD
+                  </label>
+                  <a
+                    href="#"
+                    className="font-label-md text-label-md text-primary hover:underline transition-all"
+                  >
+                    Forgot Password?
+                  </a>
+                </div>
+                <div className="relative group">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 group-focus-within:text-primary transition-colors">
+                    lock
+                  </span>
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-12 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 hover:text-on-surface transition-colors"
+                  >
+                    <span className="material-symbols-outlined">
+                      {showPassword ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="mt-2 w-full bg-primary text-on-primary font-title-md text-title-md py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-primary-container transition-all active:scale-[0.98] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {submitting ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
+                    Authenticating...
+                  </>
+                ) : (
+                  <>
+                    <span>Login</span>
+                    <span className="material-symbols-outlined text-[18px]">
+                      arrow_forward
+                    </span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Divider */}
+            <div className="flex items-center gap-stack-md py-stack-sm">
+              <div className="h-[1px] flex-grow bg-outline-variant" />
+              <span className="font-label-md text-label-md text-on-surface-variant/60">
+                OR
+              </span>
+              <div className="h-[1px] flex-grow bg-outline-variant" />
+            </div>
+
+            {/* Register link */}
+            <p className="text-center font-body-sm text-body-sm text-on-surface-variant">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/register"
+                className="text-primary font-semibold hover:underline transition-all"
+              >
+                Register
+              </Link>
+            </p>
+          </div>
+
+          {/* SSO Footer bar */}
+          <div className="bg-surface-container-low px-stack-lg py-stack-sm flex items-center justify-center gap-2 border-t border-outline-variant">
+            <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
+              verified_user
+            </span>
+            <span className="font-label-md text-label-md text-on-surface-variant">
+              Institutional Single Sign-On Enabled
+            </span>
           </div>
         </div>
       </main>

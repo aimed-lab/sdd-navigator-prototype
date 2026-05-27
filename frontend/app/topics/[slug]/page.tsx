@@ -9,14 +9,22 @@ import { supabase } from "@/lib/supabase";
 // Types
 // ─────────────────────────────────────────────
 
+type Concept = {
+  title: string;
+  bullets: string[];
+};
+
 type WikiPage = {
   id: string;
   slug: string;
   title: string;
   episode_number: number;
   transcript: string;
-  concepts: string[];
+  concepts: Concept[] | string[];
   tags: string[];
+  episode_url: string;
+  description: string;
+  summary: string[];
 };
 
 type RelatedEpisode = {
@@ -84,6 +92,30 @@ async function fetchPubMedPapers(query: string): Promise<PubMedPaper[]> {
 }
 
 // ─────────────────────────────────────────────
+// Transcript toggle (client component)
+// ─────────────────────────────────────────────
+
+function TranscriptToggle({ transcript }: { transcript: string }) {
+  return (
+    <div className="academic-card overflow-hidden">
+      <details>
+        <summary className="w-full flex items-center justify-between p-stack-md bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer list-none">
+          <span className="font-title-md text-title-md text-on-surface">
+            View Full Transcript
+          </span>
+          <span className="material-symbols-outlined">expand_more</span>
+        </summary>
+        <div className="p-stack-lg border-t border-outline-variant bg-white">
+          <div className="space-y-stack-md text-body-md text-on-surface-variant max-h-[400px] overflow-y-auto pr-4 custom-scrollbar whitespace-pre-wrap">
+            {transcript}
+          </div>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────
 
@@ -97,7 +129,9 @@ export default async function WikiPage({
   // ── Fetch main wiki page ──────────────────
   const { data: pageData, error: pageError } = await supabase
     .from("wiki_pages")
-    .select("id, slug, title, episode_number, transcript, concepts, tags")
+    .select(
+      "id, slug, title, episode_number, transcript, concepts, tags, episode_url, description, summary"
+    )
     .eq("slug", slug)
     .single();
 
@@ -121,147 +155,147 @@ export default async function WikiPage({
   const relatedEpisodes: RelatedEpisode[] = relatedResult.data ?? [];
 
   // ── Helpers ───────────────────────────────
-  const episodeLabel = `#${String(page.episode_number).padStart(2, "0")}`;
+  const episodeLabel = `EP ${String(page.episode_number).padStart(3, "0")}`;
+  const spotifyUrl =
+    page.episode_url || "https://open.spotify.com/show/50grwY6FX198o7BoYlRH6D";
+
+  // Normalise concepts — may be string[] (legacy) or Concept[] (new)
+  const concepts: Concept[] = (page.concepts ?? []).map((c) => {
+    if (typeof c === "string") return { title: c, bullets: [] };
+    return c as Concept;
+  });
+
+  // Summary bullets
+  const summaryBullets: string[] = Array.isArray(page.summary)
+    ? page.summary
+    : [];
 
   return (
-    <>
-      {/* Atmospheric background */}
-      <div className="fixed inset-0 -z-10 pointer-events-none opacity-20">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/10 rounded-full blur-[100px] translate-y-1/3 -translate-x-1/4" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(14,19,34,0.8)_100%)]" />
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              "radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)",
-            backgroundSize: "40px 40px",
-          }}
-        />
-      </div>
-
+    <div className="bg-background text-on-surface min-h-screen">
       <Navbar />
 
-      <main className="pt-32 pb-20 px-4 md:px-16 max-w-[1440px] mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-10 gap-6">
-          {/* ── Left: Main Content ─────────────── */}
-          <div className="md:col-span-7 flex flex-col gap-12">
-
-            {/* Hero Header */}
-            <header className="flex flex-col gap-6">
-              <div className="flex items-center gap-4">
-                <span className="font-data-label text-data-label text-primary-fixed border border-primary-fixed/30 px-3 py-1 bg-primary-fixed/5">
-                  EPISODE {episodeLabel}
+      <main className="max-w-container-max mx-auto px-margin-desktop py-stack-lg">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-gutter">
+          {/* ── Left Column: Content ─────────────── */}
+          <section className="space-y-stack-lg">
+            {/* Header */}
+            <div className="space-y-stack-md">
+              <div className="flex items-center gap-stack-md flex-wrap">
+                <span className="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-sm text-label-md font-label-md uppercase tracking-wider">
+                  {episodeLabel}
                 </span>
+                <div className="flex flex-wrap gap-2">
+                  {page.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-outline text-label-md font-label-md"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <h1 className="font-display-lg text-display-lg text-primary">
+
+              <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
                 {page.title}
               </h1>
 
-              {/* Tags */}
-              <div className="flex flex-wrap gap-3">
-                {page.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-3 py-1 bg-surface-container-highest text-on-surface-variant font-data-label text-data-label border border-[rgba(255,255,255,0.1)]"
-                  >
-                    # {tag}
-                  </span>
-                ))}
-              </div>
+              {page.description && (
+                <p className="font-body-lg text-body-lg text-on-surface-variant max-w-3xl">
+                  {page.description}
+                </p>
+              )}
 
-              {/* Listen on Spotify */}
-              <div className="mt-4">
+              {/* Spotify button */}
+              <div className="pt-2">
                 <a
-                  href="https://open.spotify.com/show/50grwY6FX198o7BoYlRH6D"
+                  href={spotifyUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <button className="flex items-center gap-3 bg-primary text-background font-bold px-8 py-4 transition-all hover:shadow-[0_0_20px_rgba(233,254,255,0.5)] active:scale-95">
-                    <span className="material-symbols-outlined">play_circle</span>
+                  <button className="flex items-center gap-2 border-2 border-primary text-primary px-6 py-2 rounded-lg font-title-md text-title-md hover:bg-primary/5 transition-colors">
+                    <span
+                      className="material-symbols-outlined"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      play_circle
+                    </span>
                     Listen on Spotify
                   </button>
                 </a>
               </div>
-            </header>
+            </div>
+
+            {/* Episode Summary (bullets) */}
+            {summaryBullets.length > 0 && (
+              <article className="academic-card p-stack-lg shadow-sm">
+                <h2 className="font-title-lg text-title-lg text-on-surface mb-stack-md border-b border-outline-variant pb-stack-sm">
+                  Episode Summary
+                </h2>
+                <ul className="space-y-stack-md list-none text-body-md text-on-surface-variant">
+                  {summaryBullets.map((bullet, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span className="material-symbols-outlined text-primary mt-1 shrink-0">
+                        check_circle
+                      </span>
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            )}
 
             {/* Key Concepts */}
-            {page.concepts.length > 0 && (
-              <section className="flex flex-col gap-8">
-                <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.1)] pb-4">
-                  <h2 className="font-headline-lg text-headline-lg text-on-surface flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary-container">
-                      science
-                    </span>
-                    Key Concepts
-                  </h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {page.concepts.map((concept, idx) => (
-                    <div
-                      key={concept}
-                      className="glass-card p-6 flex flex-col gap-3 group hover:border-primary/40 transition-colors"
-                    >
-                      <span className="font-data-label text-data-label text-primary">
-                        CONCEPT {String(idx + 1).padStart(2, "0")}
-                      </span>
-                      <h3 className="font-headline-lg text-xl text-on-surface leading-snug">
-                        {concept}
-                      </h3>
-                    </div>
-                  ))}
-                </div>
-              </section>
+            {concepts.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+                {concepts.map((concept, idx) => (
+                  <div
+                    key={idx}
+                    className="academic-card p-stack-md border-l-4 border-l-primary"
+                  >
+                    <h3 className="font-title-md text-title-md text-primary mb-2">
+                      {concept.title}
+                    </h3>
+                    {concept.bullets.length > 0 && (
+                      <ul className="mt-stack-sm space-y-1 text-body-sm text-on-surface-variant opacity-80">
+                        {concept.bullets.slice(0, 3).map((b, bi) => (
+                          <li key={bi}>• {b}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
 
             {/* Full Transcript */}
             {page.transcript && (
-              <section className="glass-card overflow-hidden">
-                <details>
-                  <summary className="w-full flex items-center justify-between p-6 hover:bg-white/5 transition-colors cursor-pointer list-none">
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-on-surface-variant">
-                        description
-                      </span>
-                      <h2 className="font-headline-lg text-lg text-on-surface">
-                        Full Transcript
-                      </h2>
-                    </div>
-                    <span className="material-symbols-outlined transition-transform duration-300">
-                      expand_more
-                    </span>
-                  </summary>
-                  <div className="border-t border-[rgba(255,255,255,0.1)] p-8 bg-surface-container-lowest/50 text-on-surface-variant font-body-md leading-relaxed h-[400px] overflow-y-auto custom-scrollbar whitespace-pre-wrap">
-                    {page.transcript}
-                  </div>
-                </details>
-              </section>
+              <TranscriptToggle transcript={page.transcript} />
             )}
 
             {/* Comments — client component */}
             <CommentsSection wikiSlug={slug} />
-          </div>
+          </section>
 
-          {/* ── Right: Sidebar ─────────────────── */}
-          <aside className="md:col-span-3 flex flex-col gap-10">
-
-            {/* Live Literature — PubMed */}
-            <section className="flex flex-col gap-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-data-label text-data-label text-primary tracking-widest uppercase">
-                  Live Literature
-                </h3>
+          {/* ── Right Sidebar ─────────────────────── */}
+          <aside className="space-y-stack-lg lg:sticky lg:top-24 self-start">
+            {/* Live Literature */}
+            <div className="academic-card p-stack-md">
+              <div className="flex items-center justify-between mb-stack-md">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-status-pulse pulse-effect" />
-                  <span className="text-[10px] font-data-label text-status-pulse">
-                    LIVE
-                  </span>
+                  <span className="pulse-dot" />
+                  <h3 className="font-title-md text-title-md text-on-surface">
+                    Live Literature
+                  </h3>
                 </div>
+                <span className="text-label-md font-label-md text-outline uppercase tracking-tight">
+                  Real-time
+                </span>
               </div>
 
-              <div className="flex flex-col gap-3">
+              <div className="space-y-stack-md">
                 {papers.length === 0 ? (
-                  <p className="font-data-label text-[11px] text-on-surface-variant">
+                  <p className="text-[12px] text-on-surface-variant">
                     No recent papers found.
                   </p>
                 ) : (
@@ -271,89 +305,98 @@ export default async function WikiPage({
                       href={`https://pubmed.ncbi.nlm.nih.gov/${paper.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="glass-card p-4 hover:bg-white/5 transition-all block group"
+                      className="group block cursor-pointer"
                     >
-                      <h4 className="text-xs font-bold text-on-surface mb-1 group-hover:text-primary transition-colors line-clamp-2">
+                      <h4 className="text-body-sm font-title-md text-on-surface group-hover:text-primary transition-colors line-clamp-2">
                         {paper.title}
                       </h4>
                       {paper.authors.length > 0 && (
-                        <p className="font-data-label text-[10px] text-on-surface-variant mb-1">
+                        <p className="text-[12px] text-outline mt-1">
                           {paper.authors.join(", ")}
-                          {paper.authors.length === 3 ? " et al." : ""}
+                          {paper.authors.length === 3 ? " et al." : ""} •{" "}
+                          {paper.journal}
+                          {paper.date ? ` • ${paper.date}` : ""}
                         </p>
                       )}
-                      <div className="flex items-center justify-between">
-                        <span className="font-data-label text-[10px] text-on-surface-variant">
-                          {[paper.journal, paper.date].filter(Boolean).join(" · ")}
-                        </span>
-                        <span className="material-symbols-outlined text-[14px] text-primary/40 group-hover:text-primary transition-colors">
-                          open_in_new
-                        </span>
-                      </div>
                     </a>
                   ))
                 )}
               </div>
-            </section>
 
-            {/* Knowledge Graph CTA */}
-            <section className="relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent pointer-events-none" />
-              <div className="glass-card p-8 border-primary/30 flex flex-col items-center text-center gap-4">
-                <span className="material-symbols-outlined text-4xl text-primary animate-pulse">
-                  hub
-                </span>
-                <h3 className="font-headline-lg text-lg text-on-surface">
-                  Knowledge Graph
-                </h3>
-                <p className="text-sm text-on-surface-variant mb-4">
-                  Visualize the multi-dimensional connections between researchers,
-                  papers, and clinical results.
-                </p>
-                <Link href="/register" className="w-full">
-                  <button className="w-full bg-primary-container text-on-primary-container py-3 font-bold hover:shadow-[0_0_20px_rgba(0,245,255,0.4)] transition-all">
-                    Register to explore graph
-                  </button>
-                </Link>
-              </div>
-            </section>
+              <button className="w-full mt-stack-md py-2 text-label-md font-label-md text-primary border border-primary/20 hover:bg-primary/5 transition-all rounded">
+                View Research Hub
+              </button>
+            </div>
 
             {/* Related Episodes */}
             {relatedEpisodes.length > 0 && (
-              <section className="flex flex-col gap-6">
-                <h3 className="font-data-label text-data-label text-primary tracking-widest uppercase">
+              <div className="academic-card p-stack-md">
+                <h3 className="font-title-md text-title-md text-on-surface mb-stack-md">
                   Related Episodes
                 </h3>
-                <div className="flex flex-col gap-4">
+                <div className="space-y-stack-md">
                   {relatedEpisodes.map((ep) => (
                     <Link
                       key={ep.slug}
                       href={`/topics/${ep.slug}`}
-                      className="flex gap-3 group cursor-pointer"
+                      className="flex gap-3 group"
                     >
-                      <div className="w-16 h-16 shrink-0 glass-card flex items-center justify-center overflow-hidden">
+                      <div className="w-16 h-16 bg-surface-container-high rounded shrink-0 flex items-center justify-center overflow-hidden border border-outline-variant">
                         <span className="material-symbols-outlined text-primary/40 text-3xl group-hover:text-primary transition-colors">
                           science
                         </span>
                       </div>
-                      <div className="flex flex-col justify-center">
-                        <span className="font-data-label text-[10px] text-primary">
-                          EP #{String(ep.episode_number).padStart(2, "0")}
-                        </span>
-                        <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-2">
+                      <div>
+                        <h4 className="text-body-sm font-title-md text-on-surface group-hover:text-primary transition-colors line-clamp-2">
+                          EP #{String(ep.episode_number).padStart(2, "0")}:{" "}
                           {ep.title}
                         </h4>
                       </div>
                     </Link>
                   ))}
                 </div>
-              </section>
+              </div>
             )}
+
+            {/* Knowledge Graph CTA */}
+            <div className="academic-card bg-on-surface text-on-primary p-stack-md overflow-hidden relative">
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="material-symbols-outlined text-secondary-fixed">
+                    hub
+                  </span>
+                  <h3 className="font-title-md text-title-md">
+                    Knowledge Graph
+                  </h3>
+                </div>
+                <p className="text-body-sm text-on-primary/70 mb-stack-md">
+                  Visualizing 12,000+ connections between concepts and clinical
+                  markers.
+                </p>
+                <div className="relative h-20 w-full flex items-center justify-center opacity-40 select-none mb-2">
+                  <svg
+                    className="absolute inset-0 w-full h-full fill-none"
+                    style={{ stroke: "rgba(255,255,255,0.2)" }}
+                  >
+                    <line x1="50%" y1="50%" x2="70%" y2="70%" />
+                    <line x1="50%" y1="50%" x2="35%" y2="35%" />
+                    <circle cx="50%" cy="50%" r="20" style={{ stroke: "rgba(255,255,255,0.1)" }} />
+                  </svg>
+                  <div className="absolute w-3 h-3 bg-secondary-container rounded-full" />
+                </div>
+                <Link href="/register" className="block">
+                  <button className="w-full py-2 bg-secondary-container text-on-secondary-container rounded font-label-md text-label-md font-bold">
+                    Open Interactive View
+                  </button>
+                </Link>
+              </div>
+              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]" />
+            </div>
           </aside>
         </div>
       </main>
 
       <Footer />
-    </>
+    </div>
   );
 }
