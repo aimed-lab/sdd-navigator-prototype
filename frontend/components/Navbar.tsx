@@ -5,14 +5,14 @@ import { useAuth } from "@/context/AuthContext";
 
 const navLinks = [
   { href: "/knowledge-hub", label: "Knowledge Hub" },
-  { href: "/navigator", label: "Navigator" },
-  { href: "/graph", label: "Graph" },
+  { href: "/navigator",    label: "Navigator"     },
+  { href: "/graph",        label: "Graph"          },
 ];
 
 export default function Navbar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, loading, signOut } = useAuth();
+  const router   = useRouter();
+  const { user, loading, displayName, signOut } = useAuth();
 
   async function handleLogout() {
     await signOut();
@@ -22,7 +22,7 @@ export default function Navbar() {
   return (
     <header className="bg-primary shadow-sm sticky top-0 z-50">
       <div className="flex justify-between items-center w-full px-margin-desktop py-4 max-w-container-max mx-auto">
-        {/* Logo */}
+        {/* Logo + nav */}
         <div className="flex items-center gap-stack-md">
           <Link href="/" className="flex flex-col leading-tight">
             <span className="font-title-lg text-title-lg font-bold text-on-primary tracking-tight leading-none">
@@ -33,7 +33,6 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Nav links */}
           <nav className="hidden md:flex items-center ml-stack-md gap-gutter">
             {navLinks.map((link) => (
               <Link
@@ -51,20 +50,28 @@ export default function Navbar() {
           </nav>
         </div>
 
-        {/* Auth buttons */}
+        {/* Auth area */}
         <div className="flex items-center gap-4">
           {!loading && user ? (
             <>
-              <span className="hidden md:block font-label-md text-label-md text-on-primary/70 truncate max-w-[160px]">
-                {user.email}
-              </span>
+              {/* User name */}
+              <div className="hidden md:flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center">
+                  <span className="text-on-secondary-container text-xs font-bold uppercase">
+                    {displayName.charAt(0) || "U"}
+                  </span>
+                </div>
+                <span className="font-label-md text-label-md text-on-primary/80 truncate max-w-[160px]">
+                  {displayName}
+                </span>
+              </div>
+
+              {/* Logout */}
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1 text-on-primary font-label-md text-label-md hover:bg-white/10 px-4 py-2 rounded-lg transition-all"
               >
-                <span className="material-symbols-outlined text-[18px]">
-                  logout
-                </span>
+                <span className="material-symbols-outlined text-[18px]">logout</span>
                 Logout
               </button>
             </>
