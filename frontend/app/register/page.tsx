@@ -2,28 +2,10 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
-const AFFILIATIONS = [
-  "Clinical Researcher",
-  "Data Scientist",
-  "Institutional Administrator",
-  "Pharma R&D Partner",
-];
-
-const COUNTRIES = [
-  "United States",
-  "United Kingdom",
-  "Germany",
-  "Canada",
-  "Australia",
-  "India",
-  "France",
-  "Japan",
-  "Other",
-];
+const AFFILIATIONS = ["Researcher", "Laboratory Head", "Institutional Admin", "Graduate Student"];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -34,18 +16,15 @@ export default function RegisterPage() {
     email: "",
     password: "",
     affiliation: AFFILIATIONS[0],
+    country: "",
     institution: "",
-    country: COUNTRIES[0],
   });
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Already logged in → go to hub.
   useEffect(() => {
-    if (!loading && user) {
-      router.replace("/knowledge-hub");
-    }
+    if (!loading && user) router.replace("/knowledge-hub");
   }, [user, loading, router]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -55,22 +34,21 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!agreed) {
-      setError("Please accept the Data Usage Agreement to continue.");
+      setError("Please accept the Terms of Service to continue.");
       return;
     }
     setError("");
     setSubmitting(true);
 
-    // 1. Create auth user with metadata.
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
         data: {
-          name:        form.name,
+          name: form.name,
           affiliation: form.affiliation,
           institution: form.institution,
-          country:     form.country,
+          country: form.country,
         },
       },
     });
@@ -81,76 +59,81 @@ export default function RegisterPage() {
       return;
     }
 
-    // 2. Insert profile row into public.users table.
     if (data.user) {
-      const { error: profileError } = await supabase.from("users").insert({
-        id:          data.user.id,
-        name:        form.name,
-        email:       form.email,
+      await supabase.from("users").insert({
+        id: data.user.id,
+        name: form.name,
+        email: form.email,
         affiliation: form.affiliation,
         institution: form.institution,
-        country:     form.country,
+        country: form.country,
       });
-
-      if (profileError) {
-        console.warn("Profile insert failed:", profileError.message);
-      }
     }
 
-    // 3. Redirect to Knowledge Hub.
     router.push("/knowledge-hub");
   }
 
   return (
-    <div className="bg-background min-h-screen flex flex-col">
-      <main className="flex-grow flex items-center justify-center px-margin-mobile md:px-margin-desktop py-stack-lg relative overflow-hidden">
-        {/* Atmospheric blobs */}
-        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-40">
-          <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary-fixed-dim/20 rounded-full blur-[120px]" />
-          <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-secondary-fixed/20 rounded-full blur-[120px]" />
+    <div className="bg-background min-h-screen flex flex-col academic-grid-pattern">
+      {/* Minimal nav */}
+      <header className="bg-surface shadow-sm">
+        <div className="flex justify-between items-center w-full px-gutter max-w-[1280px] mx-auto h-20">
+          <Link href="/">
+            <span className="font-display-lg text-display-lg font-bold text-primary cursor-pointer">
+              SDD Navigator
+            </span>
+          </Link>
+          <nav className="hidden md:flex items-center gap-8">
+            <Link href="/knowledge-hub" className="text-on-surface-variant font-medium hover:text-primary-container transition-colors font-body-md text-body-md">
+              Knowledge Hub
+            </Link>
+            <Link href="/navigator" className="text-on-surface-variant font-medium hover:text-primary-container transition-colors font-body-md text-body-md">
+              Navigator
+            </Link>
+          </nav>
+          <div className="flex items-center gap-4">
+            <Link href="/login">
+              <button className="text-on-surface-variant font-medium hover:text-primary-container transition-all px-4 py-2 font-label-sm text-label-sm">
+                Sign In
+              </button>
+            </Link>
+            <button className="bg-primary text-on-primary px-6 py-2.5 rounded-lg font-semibold hover:bg-primary-container transition-all shadow-sm font-label-sm text-label-sm">
+              Register
+            </button>
+          </div>
         </div>
+      </header>
 
-        <div className="relative z-10 w-full max-w-2xl bg-surface-container-lowest border border-outline-variant rounded-lg shadow-sm overflow-hidden flex flex-col">
-          <div className="h-1 bg-primary w-full" />
+      <main className="flex-grow flex items-center justify-center py-xl px-gutter relative overflow-hidden">
+        {/* Decorative blobs */}
+        <div className="absolute top-1/4 -left-20 w-64 h-64 bg-primary opacity-5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-secondary opacity-5 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="p-stack-lg flex flex-col gap-stack-md">
+        <section className="w-full max-w-[560px]">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
             {/* Header */}
-            <div className="flex justify-between items-start">
-              <div className="flex flex-col gap-1">
-                <h1 className="font-headline-md text-headline-md text-primary font-bold">
-                  Create Research Profile
-                </h1>
-                <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  Join the global network of clinical data scientists.
-                </p>
+            <div className="mb-lg text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-secondary-container rounded-full mb-4">
+                <span className="material-symbols-outlined text-primary text-3xl">school</span>
               </div>
-              <Link href="/login">
-                <button className="p-2 hover:bg-surface-container rounded-full transition-colors">
-                  <span className="material-symbols-outlined text-on-surface-variant">close</span>
-                </button>
-              </Link>
+              <h1 className="font-headline-md text-headline-md text-primary mb-2">Create Free Account</h1>
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                Join the global community of researchers and institutions.
+              </p>
             </div>
 
             {error && (
-              <div className="p-3 rounded-lg bg-error-container border border-error/30 text-error font-body-sm text-body-sm flex items-center gap-2">
+              <div className="mb-4 p-3 rounded-lg bg-error-container border border-error/30 text-error font-body-md text-body-md flex items-center gap-2">
                 <span className="material-symbols-outlined text-[16px]">error</span>
                 {error}
               </div>
             )}
 
-            <form
-              className="grid grid-cols-1 md:grid-cols-2 gap-x-gutter gap-y-stack-md"
-              onSubmit={handleSubmit}
-            >
-              {/* Full Name */}
-              <div className="flex flex-col gap-base col-span-2">
-                <label className="font-label-md text-label-md text-on-surface-variant">
-                  FULL NAME
-                </label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 group-focus-within:text-primary transition-colors">
-                    person
-                  </span>
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* Name + Email */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="font-label-sm text-label-sm text-on-surface-variant">Full Name</label>
                   <input
                     type="text"
                     name="name"
@@ -158,21 +141,12 @@ export default function RegisterPage() {
                     autoComplete="name"
                     value={form.name}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
                     placeholder="Dr. Jane Smith"
+                    className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
                   />
                 </div>
-              </div>
-
-              {/* Email */}
-              <div className="flex flex-col gap-base">
-                <label className="font-label-md text-label-md text-on-surface-variant">
-                  INSTITUTIONAL EMAIL
-                </label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 group-focus-within:text-primary transition-colors">
-                    mail
-                  </span>
+                <div className="space-y-1.5">
+                  <label className="font-label-sm text-label-sm text-on-surface-variant">Email Address</label>
                   <input
                     type="email"
                     name="email"
@@ -180,155 +154,111 @@ export default function RegisterPage() {
                     autoComplete="email"
                     value={form.email}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
                     placeholder="jane.smith@uab.edu"
+                    className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
                   />
                 </div>
               </div>
 
               {/* Password */}
-              <div className="flex flex-col gap-base">
-                <label className="font-label-md text-label-md text-on-surface-variant">
-                  PASSWORD
-                </label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 group-focus-within:text-primary transition-colors">
-                    lock
-                  </span>
-                  <input
-                    type="password"
-                    name="password"
-                    required
-                    autoComplete="new-password"
-                    minLength={8}
-                    value={form.password}
-                    onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
-                    placeholder="Min. 8 characters"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label className="font-label-sm text-label-sm text-on-surface-variant">Password</label>
+                <input
+                  type="password"
+                  name="password"
+                  required
+                  autoComplete="new-password"
+                  minLength={8}
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
+                />
               </div>
 
-              {/* Affiliation */}
-              <div className="flex flex-col gap-base">
-                <label className="font-label-md text-label-md text-on-surface-variant">
-                  AFFILIATION
-                </label>
-                <div className="relative">
+              {/* Affiliation + Country */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="font-label-sm text-label-sm text-on-surface-variant">Affiliation</label>
                   <select
                     name="affiliation"
                     value={form.affiliation}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none cursor-pointer"
+                    className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
                   >
-                    {AFFILIATIONS.map((opt) => <option key={opt}>{opt}</option>)}
+                    {AFFILIATIONS.map((a) => <option key={a}>{a}</option>)}
                   </select>
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline">
-                    expand_more
-                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-label-sm text-label-sm text-on-surface-variant">Country</label>
+                  <input
+                    type="text"
+                    name="country"
+                    value={form.country}
+                    onChange={handleChange}
+                    placeholder="United States"
+                    className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
+                  />
                 </div>
               </div>
 
               {/* Institution */}
-              <div className="flex flex-col gap-base">
-                <label className="font-label-md text-label-md text-on-surface-variant">
-                  INSTITUTION
-                </label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 group-focus-within:text-primary transition-colors">
-                    school
-                  </span>
-                  <input
-                    type="text"
-                    name="institution"
-                    required
-                    value={form.institution}
-                    onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
-                    placeholder="University of Alabama at Birmingham"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label className="font-label-sm text-label-sm text-on-surface-variant">Institution</label>
+                <input
+                  type="text"
+                  name="institution"
+                  value={form.institution}
+                  onChange={handleChange}
+                  placeholder="University of Alabama at Birmingham"
+                  className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
+                />
               </div>
 
-              {/* Country */}
-              <div className="flex flex-col gap-base">
-                <label className="font-label-md text-label-md text-on-surface-variant">
-                  COUNTRY
-                </label>
-                <div className="relative">
-                  <select
-                    name="country"
-                    value={form.country}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none cursor-pointer"
-                  >
-                    {COUNTRIES.map((opt) => <option key={opt}>{opt}</option>)}
-                  </select>
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline">
-                    expand_more
-                  </span>
-                </div>
-              </div>
-
-              {/* Data Usage Agreement */}
-              <div className="col-span-2 p-4 bg-surface-container-low border border-outline-variant rounded-lg">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={agreed}
-                    onChange={(e) => setAgreed(e.target.checked)}
-                    className="mt-1 rounded border-outline-variant text-primary focus:ring-primary"
-                  />
-                  <span className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
-                    I confirm that I am a certified professional in the life sciences field and agree
-                    to the{" "}
-                    <a href="#" className="text-primary font-semibold hover:underline">Data Usage Agreement</a>
-                    {" "}and{" "}
-                    <a href="#" className="text-primary font-semibold hover:underline">Clinical Privacy Policy</a>.
-                    This platform is intended for institutional and research use only.
-                  </span>
+              {/* Terms */}
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="agree"
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  className="mt-1 rounded text-primary focus:ring-primary border-outline-variant"
+                />
+                <label htmlFor="agree" className="font-body-md text-body-md text-on-surface-variant leading-tight cursor-pointer">
+                  I agree to the{" "}
+                  <a href="#" className="text-primary hover:underline font-semibold">Terms of Service</a>
+                  {" "}and{" "}
+                  <a href="#" className="text-primary hover:underline font-semibold">Privacy Policy</a>.
                 </label>
               </div>
 
-              {/* Submit */}
-              <div className="col-span-2">
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full bg-primary text-on-primary font-title-md text-title-md py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-primary-container transition-all active:scale-[0.98] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {submitting ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
-                      Creating Account…
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-[18px]">shield_person</span>
-                      Create Free Account
-                    </>
-                  )}
-                </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full bg-primary text-on-primary font-bold py-4 rounded-lg hover:bg-primary-container active:scale-[0.98] transition-all shadow-md font-body-lg text-body-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Creating Account…
+                  </>
+                ) : (
+                  "Create Free Account"
+                )}
+              </button>
+
+              <div className="pt-2 text-center">
+                <p className="font-body-md text-body-md text-on-surface-variant">
+                  Already have an account?{" "}
+                  <Link href="/login" className="text-primary font-bold hover:underline">
+                    Sign In
+                  </Link>
+                </p>
               </div>
             </form>
-
-            <p className="text-center font-body-sm text-body-sm text-on-surface-variant">
-              Already have an account?{" "}
-              <Link href="/login" className="text-primary font-semibold hover:underline">
-                Sign In
-              </Link>
-            </p>
           </div>
-
-          <div className="bg-surface-container-low px-stack-lg py-stack-sm flex items-center justify-center gap-2 border-t border-outline-variant">
-            <span className="material-symbols-outlined text-[16px] text-on-surface-variant">verified_user</span>
-            <span className="font-label-md text-label-md text-on-surface-variant">
-              Institutional Single Sign-On Enabled
-            </span>
-          </div>
-        </div>
+        </section>
       </main>
-      <Footer />
     </div>
   );
 }

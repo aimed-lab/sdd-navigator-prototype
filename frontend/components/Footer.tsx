@@ -2,96 +2,49 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="bg-surface-container-highest border-t border-outline-variant">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-stack-lg w-full px-margin-desktop py-stack-lg max-w-container-max mx-auto">
-        {/* Brand */}
-        <div className="flex flex-col gap-stack-md">
-          <div className="flex flex-col">
-            <span className="font-title-md text-title-md font-bold text-primary">
-              SDD Navigator
-            </span>
-            <span className="font-body-sm text-body-sm text-on-surface-variant">
-              Center for Clinical and Translational Science
-            </span>
-          </div>
-          <p className="font-body-sm text-body-sm text-on-surface-variant max-w-sm">
-            Dedicated to accelerating the translation of laboratory discoveries
-            into treatments for patients. Part of the UAB Research Ecosystem.
+    <footer className="bg-surface-container-low border-t border-outline-variant">
+      <div className="flex flex-col md:flex-row justify-between items-center w-full px-gutter py-lg max-w-[1280px] mx-auto gap-8">
+        <div className="flex flex-col gap-2">
+          <span className="font-headline-md text-headline-md font-semibold text-on-surface">
+            SDD Navigator
+          </span>
+          <p className="font-label-sm text-label-sm text-on-surface-variant">
+            Copyright 2024 University of Alabama at Birmingham
           </p>
-          <div className="flex gap-stack-md">
-            <span className="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-colors">
-              public
-            </span>
-            <span className="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-colors">
-              mail
-            </span>
-            <span className="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-colors">
-              description
-            </span>
-          </div>
         </div>
 
-        {/* Links */}
-        <div className="grid grid-cols-2 gap-gutter">
-          <div className="flex flex-col gap-2">
-            <h5 className="font-label-md text-label-md text-on-surface font-bold">
-              Resources
-            </h5>
-            <Link
-              href="/knowledge-hub"
-              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
-            >
-              Knowledge Hub
-            </Link>
-            <Link
-              href="/navigator"
-              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
-            >
-              Navigator
-            </Link>
-            <Link
-              href="/graph"
-              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
-            >
-              Knowledge Graph
-            </Link>
-            <Link
-              href="#"
-              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
-            >
-              Institutional Review Board
-            </Link>
-          </div>
-          <div className="flex flex-col gap-2">
-            <h5 className="font-label-md text-label-md text-on-surface font-bold">
-              Support
-            </h5>
-            <Link
-              href="#"
-              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
-            >
-              Contact Support
-            </Link>
-            <Link
-              href="#"
-              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
-            >
-              Privacy Policy
-            </Link>
-            <Link
-              href="#"
-              className="font-body-sm text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-all"
-            >
-              Terms of Service
-            </Link>
-          </div>
+        <div className="flex gap-8">
+          <Link
+            href="/knowledge-hub"
+            className="text-on-surface-variant font-medium hover:underline decoration-primary-container"
+          >
+            Knowledge Hub
+          </Link>
+          <Link
+            href="/navigator"
+            className="text-on-surface-variant font-medium hover:underline decoration-primary-container"
+          >
+            Navigator
+          </Link>
+          <a href="#" className="text-on-surface-variant font-medium hover:underline decoration-primary-container">
+            About
+          </a>
         </div>
-      </div>
-      <div className="border-t border-outline-variant py-4 px-margin-desktop text-center max-w-container-max mx-auto">
-        <p className="font-body-sm text-body-sm text-on-surface-variant/70">
-          © 2024 UAB SPARC - Center for Clinical and Translational Science. All
-          rights reserved.
-        </p>
+
+        <div className="flex gap-4">
+          <a
+            href="#"
+            className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-primary hover:text-white transition-all"
+          >
+            <span className="material-symbols-outlined text-[18px]">share</span>
+          </a>
+          <a
+            href="#"
+            className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-primary hover:text-white transition-all"
+          >
+            <span className="material-symbols-outlined text-[18px]">mail</span>
+          </a>
+        </div>
       </div>
     </footer>
   );

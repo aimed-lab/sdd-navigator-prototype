@@ -91,18 +91,19 @@ def parse_rss(rss_url: str) -> list[dict]:
         if not audio_url:
             continue
 
-        # Web page URL (non-audio link)
-        episode_url = ""
-        for lnk in getattr(entry, "links", []):
-            href = lnk.get("href", "")
-            mime = lnk.get("type", "")
-            if "audio" in mime or href.endswith(".mp3"):
-                continue
-            if href.startswith("http"):
-                episode_url = href
-                break
+        # Episode page URL — prefer entry.link (the canonical episode permalink,
+        # which is the anchor.fm/Spotify episode page that listeners can open).
+        # Fall back to the first non-audio link in entry.links if entry.link is absent.
+        episode_url = getattr(entry, "link", "").strip()
         if not episode_url:
-            episode_url = getattr(entry, "link", "")
+            for lnk in getattr(entry, "links", []):
+                href = lnk.get("href", "").strip()
+                mime = lnk.get("type", "")
+                if not href or "audio" in mime or href.endswith(".mp3"):
+                    continue
+                if href.startswith("http"):
+                    episode_url = href
+                    break
 
         episodes.append({
             "episode_number": _episode_number(entry, i, total),
@@ -138,6 +139,24 @@ def _transcribe_audio(path: str, model) -> str:
     text = result["text"].strip()
     print(f"   ✅ Transcript: {len(text.split()):,} words")
     return text
+
+
+# ── URL helpers ───────────────────────────────────────────────────────────────
+
+SPOTIFY_SHOW_URL = "https://open.spotify.com/show/50grwY6FX198o7BoYlRH6D"
+
+
+def _normalize_episode_url(url: str) -> str:
+    """
+    Replace Anchor.fm / Spotify for Creators URLs with the public listener
+    show page. Anchor.fm redirected to creators.spotify.com after the
+    acquisition, but both are uploader dashboards — not usable by listeners.
+    """
+    if not url:
+        return SPOTIFY_SHOW_URL
+    if "anchor.fm" in url or "creators.spotify.com" in url:
+        return SPOTIFY_SHOW_URL
+    return url
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
@@ -180,7 +199,7 @@ def transcribe_episode(episode: dict, output_dir: str, model) -> str:
             "episode_number": ep_num,
             "title":          episode["title"],
             "audio_url":      episode["audio_url"],
-            "episode_url":    episode["episode_url"],
+            "episode_url":    episode.get("episode_url", ""),
             "description":    episode["description"],
             "published":      episode.get("published", ""),
         },

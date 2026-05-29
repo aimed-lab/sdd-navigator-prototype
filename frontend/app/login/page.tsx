@@ -2,16 +2,13 @@
 import Link from "next/link";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
-// useSearchParams must be inside a Suspense boundary in Next.js App Router.
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
-
   const callbackUrl = searchParams.get("callbackUrl") || "/knowledge-hub";
 
   const [email, setEmail] = useState("");
@@ -20,23 +17,15 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Already logged in — send to callbackUrl or hub.
   useEffect(() => {
-    if (!loading && user) {
-      router.replace(callbackUrl);
-    }
+    if (!loading && user) router.replace(callbackUrl);
   }, [user, loading, router, callbackUrl]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
-
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     if (authError) {
       setError(authError.message);
       setSubmitting(false);
@@ -46,89 +35,101 @@ function LoginForm() {
   }
 
   return (
-    <div className="bg-background min-h-screen flex flex-col">
-      <main className="flex-grow flex items-center justify-center px-margin-mobile md:px-margin-desktop py-stack-lg relative overflow-hidden">
-        {/* Atmospheric blobs */}
-        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-40">
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-fixed-dim/20 rounded-full blur-[120px]" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-secondary-fixed/20 rounded-full blur-[120px]" />
+    <div className="bg-background min-h-screen flex flex-col academic-grid-pattern">
+      {/* Minimal nav */}
+      <header className="bg-surface shadow-sm">
+        <div className="flex justify-between items-center w-full px-gutter max-w-[1280px] mx-auto h-20">
+          <Link href="/">
+            <span className="font-display-lg text-display-lg font-bold text-primary cursor-pointer">
+              SDD Navigator
+            </span>
+          </Link>
+          <nav className="hidden md:flex items-center gap-8">
+            <Link href="/knowledge-hub" className="text-on-surface-variant font-medium hover:text-primary-container transition-colors font-body-md text-body-md">
+              Knowledge Hub
+            </Link>
+            <Link href="/navigator" className="text-on-surface-variant font-medium hover:text-primary-container transition-colors font-body-md text-body-md">
+              Navigator
+            </Link>
+          </nav>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/login")}
+              className="text-on-surface-variant font-medium hover:text-primary-container transition-all px-4 py-2 font-label-sm text-label-sm"
+            >
+              Sign In
+            </button>
+            <Link href="/register">
+              <button className="bg-primary text-on-primary px-6 py-2.5 rounded-lg font-semibold hover:bg-primary-container transition-all shadow-sm font-label-sm text-label-sm">
+                Register
+              </button>
+            </Link>
+          </div>
         </div>
+      </header>
 
-        <div className="relative z-10 w-full max-w-[440px] bg-surface-container-lowest border border-outline-variant rounded-lg shadow-sm overflow-hidden flex flex-col">
-          <div className="h-1 bg-primary w-full" />
+      <main className="flex-grow flex items-center justify-center py-xl px-gutter relative overflow-hidden">
+        {/* Decorative blobs */}
+        <div className="absolute top-1/4 -left-20 w-64 h-64 bg-primary opacity-5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-secondary opacity-5 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="p-stack-lg flex flex-col gap-stack-md">
+        <section className="w-full max-w-[440px]">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
             {/* Header */}
-            <div className="flex flex-col items-center gap-base mb-2">
-              <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-on-primary mb-2">
-                <span className="material-symbols-outlined text-[32px]">science</span>
+            <div className="mb-lg text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-secondary-container rounded-full mb-4">
+                <span className="material-symbols-outlined text-primary text-3xl">lock_open</span>
               </div>
-              <h1 className="font-title-lg text-title-lg text-primary tracking-tight font-bold">
-                SDD Navigator
-              </h1>
-              <p className="font-body-sm text-body-sm text-on-surface-variant text-center max-w-[280px]">
-                Secure access for clinical and translational science researchers.
+              <h1 className="font-headline-md text-headline-md text-primary mb-2">Sign In</h1>
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                Access your academic roadmaps and data.
               </p>
             </div>
 
             {error && (
-              <div className="p-3 rounded-lg bg-error-container border border-error/30 text-error font-body-sm text-body-sm flex items-center gap-2">
+              <div className="mb-4 p-3 rounded-lg bg-error-container border border-error/30 text-error font-body-md text-body-md flex items-center gap-2">
                 <span className="material-symbols-outlined text-[16px]">error</span>
                 {error}
               </div>
             )}
 
-            <form className="flex flex-col gap-stack-md" onSubmit={handleSubmit}>
+            <form className="space-y-6" onSubmit={handleSubmit}>
               {/* Email */}
-              <div className="flex flex-col gap-base">
-                <label className="font-label-md text-label-md text-on-surface-variant" htmlFor="email">
-                  EMAIL ADDRESS
-                </label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 group-focus-within:text-primary transition-colors">
-                    mail
-                  </span>
-                  <input
-                    id="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
-                    placeholder="researcher@uab.edu"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label className="font-label-sm text-label-sm text-on-surface-variant">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email@example.edu"
+                  className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
+                />
               </div>
 
               {/* Password */}
-              <div className="flex flex-col gap-base">
+              <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <label className="font-label-md text-label-md text-on-surface-variant" htmlFor="password">
-                    PASSWORD
-                  </label>
-                  <a href="#" className="font-label-md text-label-md text-primary hover:underline">
-                    Forgot Password?
+                  <label className="font-label-sm text-label-sm text-on-surface-variant">Password</label>
+                  <a href="#" className="font-label-sm text-label-sm text-primary hover:underline">
+                    Forgot password?
                   </a>
                 </div>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 group-focus-within:text-primary transition-colors">
-                    lock
-                  </span>
+                <div className="relative">
                   <input
-                    id="password"
                     type={showPassword ? "text" : "password"}
                     required
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-12 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
                     placeholder="••••••••"
+                    className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 pr-12 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 hover:text-on-surface transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-outline cursor-pointer hover:text-primary transition-colors"
                   >
                     <span className="material-symbols-outlined">
                       {showPassword ? "visibility_off" : "visibility"}
@@ -140,45 +141,59 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="mt-2 w-full bg-primary text-on-primary font-title-md text-title-md py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-primary-container transition-all active:scale-[0.98] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full bg-primary text-on-primary font-bold py-4 rounded-lg hover:bg-primary-container active:scale-[0.98] transition-all shadow-md font-body-lg text-body-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
-                    Authenticating…
+                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Signing In…
                   </>
                 ) : (
-                  <>
-                    <span>Sign In</span>
-                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                  </>
+                  "Sign In"
                 )}
               </button>
+
+              {/* Divider */}
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-outline-variant" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-surface-container-lowest px-2 font-label-sm text-label-sm text-on-surface-variant">
+                    OR CONTINUE WITH
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  className="flex items-center justify-center gap-2 border border-outline-variant rounded-lg py-2.5 hover:bg-surface-container-low transition-colors font-label-sm text-label-sm text-on-surface"
+                >
+                  <span className="material-symbols-outlined text-sm">business</span>
+                  Institutional SSO
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center justify-center gap-2 border border-outline-variant rounded-lg py-2.5 hover:bg-surface-container-low transition-colors font-label-sm text-label-sm text-on-surface"
+                >
+                  <span className="material-symbols-outlined text-sm">account_circle</span>
+                  ORCID iD
+                </button>
+              </div>
+
+              <div className="pt-2 text-center">
+                <p className="font-body-md text-body-md text-on-surface-variant">
+                  New to SDD?{" "}
+                  <Link href="/register" className="text-primary font-bold hover:underline">
+                    Create Account
+                  </Link>
+                </p>
+              </div>
             </form>
-
-            <div className="flex items-center gap-stack-md py-stack-sm">
-              <div className="h-[1px] flex-grow bg-outline-variant" />
-              <span className="font-label-md text-label-md text-on-surface-variant/60">OR</span>
-              <div className="h-[1px] flex-grow bg-outline-variant" />
-            </div>
-
-            <p className="text-center font-body-sm text-body-sm text-on-surface-variant">
-              Don&apos;t have an account?{" "}
-              <Link href="/register" className="text-primary font-semibold hover:underline">
-                Register
-              </Link>
-            </p>
           </div>
-
-          <div className="bg-surface-container-low px-stack-lg py-stack-sm flex items-center justify-center gap-2 border-t border-outline-variant">
-            <span className="material-symbols-outlined text-[16px] text-on-surface-variant">verified_user</span>
-            <span className="font-label-md text-label-md text-on-surface-variant">
-              Institutional Single Sign-On Enabled
-            </span>
-          </div>
-        </div>
+        </section>
       </main>
-      <Footer />
     </div>
   );
 }

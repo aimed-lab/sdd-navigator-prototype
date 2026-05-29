@@ -5,14 +5,9 @@ import Footer from "@/components/Footer";
 import CommentsSection from "@/components/CommentsSection";
 import { supabase } from "@/lib/supabase";
 
-// ─────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-type Concept = {
-  title: string;
-  bullets: string[];
-};
+type Concept = { title: string; bullets: string[] };
 
 type WikiPage = {
   id: string;
@@ -27,12 +22,6 @@ type WikiPage = {
   summary: string[];
 };
 
-type RelatedEpisode = {
-  episode_number: number;
-  title: string;
-  slug: string;
-};
-
 type PubMedPaper = {
   id: string;
   title: string;
@@ -41,83 +30,72 @@ type PubMedPaper = {
   date: string;
 };
 
-// ─────────────────────────────────────────────
-// PubMed fetch helpers
-// ─────────────────────────────────────────────
+// ── PubMed ────────────────────────────────────────────────────────────────────
 
 async function fetchPubMedPapers(query: string): Promise<PubMedPaper[]> {
+  const thisYear = new Date().getFullYear();
+  const fromYear = thisYear - 2;
   try {
-    const searchUrl =
+    const searchRes = await fetch(
       `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi` +
-      `?db=pubmed&term=${encodeURIComponent(query)}&retmax=5&retmode=json`;
-
-    const searchRes = await fetch(searchUrl, {
-      next: { revalidate: 3600 },
-    });
+        `?db=pubmed&term=${encodeURIComponent(query)}&retmax=8&retmode=json&sort=date&mindate=${fromYear}`,
+      { next: { revalidate: 3600 } }
+    );
     if (!searchRes.ok) return [];
-
     const searchData = await searchRes.json();
     const ids: string[] = searchData?.esearchresult?.idlist ?? [];
     if (ids.length === 0) return [];
 
-    const summaryUrl =
+    const summaryRes = await fetch(
       `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi` +
-      `?db=pubmed&id=${ids.join(",")}&retmode=json`;
-
-    const summaryRes = await fetch(summaryUrl, {
-      next: { revalidate: 3600 },
-    });
+        `?db=pubmed&id=${ids.join(",")}&retmode=json`,
+      { next: { revalidate: 3600 } }
+    );
     if (!summaryRes.ok) return [];
-
     const summaryData = await summaryRes.json();
-    const papers: PubMedPaper[] = [];
 
-    for (const id of ids) {
-      const doc = summaryData?.result?.[id];
-      if (!doc || doc.error) continue;
-      papers.push({
-        id,
-        title: doc.title ?? "Untitled",
-        authors: ((doc.authors ?? []) as { name: string }[])
-          .slice(0, 3)
-          .map((a) => a.name),
-        journal: doc.source ?? "",
-        date: doc.pubdate ?? "",
-      });
-    }
-    return papers;
+    return ids
+      .map((id) => {
+        const doc = summaryData?.result?.[id];
+        if (!doc || doc.error) return null;
+        return {
+          id,
+          title: doc.title ?? "Untitled",
+          authors: ((doc.authors ?? []) as { name: string }[]).slice(0, 3).map((a) => a.name),
+          journal: doc.source ?? "",
+          date: doc.pubdate ?? "",
+        };
+      })
+      .filter(Boolean) as PubMedPaper[];
   } catch {
     return [];
   }
 }
 
-// ─────────────────────────────────────────────
-// Transcript toggle (client component)
-// ─────────────────────────────────────────────
+// ── Transcript toggle (inline client pattern using <details>) ─────────────────
 
-function TranscriptToggle({ transcript }: { transcript: string }) {
+function TranscriptSection({ transcript }: { transcript: string }) {
   return (
-    <div className="academic-card overflow-hidden">
+    <section className="bg-surface-container-low rounded-xl p-8">
       <details>
-        <summary className="w-full flex items-center justify-between p-stack-md bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer list-none">
-          <span className="font-title-md text-title-md text-on-surface">
-            View Full Transcript
+        <summary className="w-full flex items-center justify-between cursor-pointer list-none group">
+          <h2 className="font-headline-md text-headline-md text-primary flex items-center gap-2">
+            <span className="material-symbols-outlined">description</span>
+            Full Transcript
+          </h2>
+          <span className="material-symbols-outlined text-primary group-open:rotate-180 transition-transform">
+            expand_more
           </span>
-          <span className="material-symbols-outlined">expand_more</span>
         </summary>
-        <div className="p-stack-lg border-t border-outline-variant bg-white">
-          <div className="space-y-stack-md text-body-md text-on-surface-variant max-h-[400px] overflow-y-auto pr-4 custom-scrollbar whitespace-pre-wrap">
-            {transcript}
-          </div>
+        <div className="mt-6 font-mono text-sm leading-relaxed text-on-surface-variant border-t border-outline-variant pt-6 max-h-[400px] overflow-y-auto pr-4 custom-scrollbar whitespace-pre-wrap">
+          {transcript}
         </div>
       </details>
-    </div>
+    </section>
   );
 }
 
-// ─────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function WikiPage({
   params,
@@ -126,180 +104,157 @@ export default async function WikiPage({
 }) {
   const { slug } = await params;
 
-  // ── Fetch main wiki page ──────────────────
-  const { data: pageData, error: pageError } = await supabase
+  const { data: pageData, error } = await supabase
     .from("wiki_pages")
-    .select(
-      "id, slug, title, episode_number, transcript, concepts, tags, episode_url, description, summary"
-    )
+    .select("id,slug,title,episode_number,transcript,concepts,tags,episode_url,description,summary")
     .eq("slug", slug)
     .single();
 
-  if (pageError || !pageData) {
-    notFound();
-  }
+  if (error || !pageData) notFound();
 
   const page = pageData as WikiPage;
 
-  // ── Fetch related episodes + PubMed in parallel ──
   const [relatedResult, papers] = await Promise.all([
     supabase
       .from("wiki_pages")
-      .select("episode_number, title, slug")
+      .select("episode_number,title,slug")
       .neq("slug", slug)
-      .order("episode_number", { ascending: true })
+      .order("episode_number", { ascending: false })
       .limit(3),
     fetchPubMedPapers(page.title),
   ]);
 
-  const relatedEpisodes: RelatedEpisode[] = relatedResult.data ?? [];
+  const relatedEpisodes = relatedResult.data ?? [];
 
-  // ── Helpers ───────────────────────────────
-  const episodeLabel = `EP ${String(page.episode_number).padStart(3, "0")}`;
+  const concepts: Concept[] = (page.concepts ?? []).map((c) =>
+    typeof c === "string" ? { title: c, bullets: [] } : (c as Concept)
+  );
+
+  const summaryBullets: string[] = Array.isArray(page.summary) ? page.summary : [];
+
+  // anchor.fm episode URLs redirect to the specific Spotify episode page for listeners.
+  // Fall back to the show page only when the episode URL is missing.
   const spotifyUrl =
-    page.episode_url || "https://open.spotify.com/show/50grwY6FX198o7BoYlRH6D";
-
-  // Normalise concepts — may be string[] (legacy) or Concept[] (new)
-  const concepts: Concept[] = (page.concepts ?? []).map((c) => {
-    if (typeof c === "string") return { title: c, bullets: [] };
-    return c as Concept;
-  });
-
-  // Summary bullets
-  const summaryBullets: string[] = Array.isArray(page.summary)
-    ? page.summary
-    : [];
+    page.episode_url?.trim() ||
+    "https://open.spotify.com/show/50grwY6FX198o7BoYlRH6D";
 
   return (
-    <div className="bg-background text-on-surface min-h-screen">
+    <div className="bg-background text-on-background font-body-md text-body-md">
       <Navbar />
 
-      <main className="max-w-container-max mx-auto px-margin-desktop py-stack-lg">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-gutter">
-          {/* ── Left Column: Content ─────────────── */}
-          <section className="space-y-stack-lg">
-            {/* Header */}
-            <div className="space-y-stack-md">
-              <div className="flex items-center gap-stack-md flex-wrap">
-                <span className="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-sm text-label-md font-label-md uppercase tracking-wider">
-                  {episodeLabel}
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {page.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-outline text-label-md font-label-md"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
+      <main className="max-w-[1280px] mx-auto px-gutter py-lg">
+        {/* Hero */}
+        <div className="mb-12">
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <span className="bg-primary text-white px-3 py-1 rounded font-label-sm text-label-sm tracking-widest uppercase">
+              Episode #{page.episode_number}
+            </span>
+          </div>
 
-              <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
-                {page.title}
-              </h1>
+          <h1 className="font-display-lg text-[32px] md:text-display-lg text-primary mb-6 leading-tight max-w-4xl">
+            {page.title}
+          </h1>
 
-              {page.description && (
-                <p className="font-body-lg text-body-lg text-on-surface-variant max-w-3xl">
-                  {page.description}
-                </p>
-              )}
-
-              {/* Spotify button */}
-              <div className="pt-2">
-                <a
-                  href={spotifyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+          <div className="flex flex-wrap items-center gap-4 mb-8">
+            {page.tags.map((tag) => (
+              <span
+                key={tag}
+                className="px-4 py-1.5 bg-secondary-container text-on-secondary-container rounded-full font-label-sm text-label-sm"
+              >
+                {tag}
+              </span>
+            ))}
+            <div className="h-6 w-px bg-outline-variant mx-2 hidden sm:block" />
+            <a href={spotifyUrl} target="_blank" rel="noopener noreferrer">
+              <button className="flex items-center gap-2 bg-[#1DB954] text-white px-5 py-2 rounded-full font-bold hover:opacity-90 transition-all shadow-md">
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
                 >
-                  <button className="flex items-center gap-2 border-2 border-primary text-primary px-6 py-2 rounded-lg font-title-md text-title-md hover:bg-primary/5 transition-colors">
-                    <span
-                      className="material-symbols-outlined"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      play_circle
-                    </span>
-                    Listen on Spotify
-                  </button>
-                </a>
-              </div>
-            </div>
+                  play_circle
+                </span>
+                Listen on Spotify
+              </button>
+            </a>
+          </div>
+        </div>
 
-            {/* Episode Summary (bullets) */}
+        {/* 70/30 Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-12">
+          {/* ── Left Column ──────────────────────────────────────── */}
+          <div className="space-y-12">
+            {/* Episode Summary */}
             {summaryBullets.length > 0 && (
-              <article className="academic-card p-stack-lg shadow-sm">
-                <h2 className="font-title-lg text-title-lg text-on-surface mb-stack-md border-b border-outline-variant pb-stack-sm">
+              <section>
+                <h2 className="font-headline-md text-headline-md text-primary border-b border-outline-variant pb-3 mb-6 flex items-center gap-2">
+                  <span className="material-symbols-outlined">summarize</span>
                   Episode Summary
                 </h2>
-                <ul className="space-y-stack-md list-none text-body-md text-on-surface-variant">
-                  {summaryBullets.map((bullet, i) => (
-                    <li key={i} className="flex gap-3">
-                      <span className="material-symbols-outlined text-primary mt-1 shrink-0">
-                        check_circle
-                      </span>
-                      <span>{bullet}</span>
-                    </li>
-                  ))}
-                </ul>
-              </article>
+                <div className="text-on-surface-variant font-body-lg text-body-lg">
+                  <ul className="space-y-4 list-disc pl-5 marker:text-primary">
+                    {summaryBullets.map((bullet, i) => (
+                      <li key={i}>{bullet}</li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+            )}
+
+            {page.description && !summaryBullets.length && (
+              <section>
+                <h2 className="font-headline-md text-headline-md text-primary border-b border-outline-variant pb-3 mb-6 flex items-center gap-2">
+                  <span className="material-symbols-outlined">summarize</span>
+                  Episode Summary
+                </h2>
+                <p className="font-body-lg text-body-lg text-on-surface-variant">{page.description}</p>
+              </section>
             )}
 
             {/* Key Concepts */}
             {concepts.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
-                {concepts.map((concept, idx) => (
-                  <div
-                    key={idx}
-                    className="academic-card p-stack-md border-l-4 border-l-primary"
-                  >
-                    <h3 className="font-title-md text-title-md text-primary mb-2">
-                      {concept.title}
-                    </h3>
-                    {concept.bullets.length > 0 && (
-                      <ul className="mt-stack-sm space-y-1 text-body-sm text-on-surface-variant opacity-80">
-                        {concept.bullets.slice(0, 3).map((b, bi) => (
-                          <li key={bi}>• {b}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Full Transcript */}
-            {page.transcript && (
-              <TranscriptToggle transcript={page.transcript} />
-            )}
-
-            {/* Comments — client component */}
-            <CommentsSection wikiSlug={slug} />
-          </section>
-
-          {/* ── Right Sidebar ─────────────────────── */}
-          <aside className="space-y-stack-lg lg:sticky lg:top-24 self-start">
-            {/* Live Literature */}
-            <div className="academic-card p-stack-md">
-              <div className="flex items-center justify-between mb-stack-md">
-                <div className="flex items-center gap-2">
-                  <span className="pulse-dot" />
-                  <h3 className="font-title-md text-title-md text-on-surface">
-                    Live Literature
-                  </h3>
+              <section>
+                <h2 className="font-headline-md text-headline-md text-primary mb-6">Key Concepts</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {concepts.map((concept, idx) => (
+                    <div key={idx} className="green-border-card p-6">
+                      <h3 className="font-bold text-primary mb-2">{concept.title}</h3>
+                      {concept.bullets.length > 0 && (
+                        <p className="text-on-surface-variant font-body-md text-body-md">
+                          {concept.bullets.slice(0, 2).join(" • ")}
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                <span className="text-label-md font-label-md text-outline uppercase tracking-tight">
-                  Real-time
-                </span>
+              </section>
+            )}
+
+            {/* Transcript */}
+            {page.transcript && <TranscriptSection transcript={page.transcript} />}
+
+            {/* Comments */}
+            <CommentsSection wikiSlug={slug} />
+          </div>
+
+          {/* ── Right Sidebar ────────────────────────────────────── */}
+          <aside className="space-y-10">
+            {/* Live Literature */}
+            <div className="bg-white rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.05)] p-6 border border-outline-variant">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-bold text-primary uppercase tracking-wider font-label-sm text-label-sm">
+                  Live Literature
+                </h3>
+                <div className="flex items-center gap-2 bg-primary/10 px-2 py-1 rounded">
+                  <span className="pulse-dot" />
+                  <span className="text-[10px] font-bold text-primary">LIVE</span>
+                </div>
               </div>
 
-              <div className="space-y-stack-md">
-                {papers.length === 0 ? (
-                  <p className="text-[12px] text-on-surface-variant">
-                    No recent papers found.
-                  </p>
-                ) : (
-                  papers.map((paper) => (
+              {papers.length === 0 ? (
+                <p className="text-on-surface-variant text-sm">No recent papers found.</p>
+              ) : (
+                <div className="space-y-6">
+                  {papers.map((paper) => (
                     <a
                       key={paper.id}
                       href={`https://pubmed.ncbi.nlm.nih.gov/${paper.id}`}
@@ -307,91 +262,75 @@ export default async function WikiPage({
                       rel="noopener noreferrer"
                       className="group block cursor-pointer"
                     >
-                      <h4 className="text-body-sm font-title-md text-on-surface group-hover:text-primary transition-colors line-clamp-2">
+                      {paper.journal && (
+                        <div className="text-outline font-label-sm text-label-sm mb-1 uppercase">
+                          {paper.journal}
+                        </div>
+                      )}
+                      <h4 className="font-bold text-on-surface leading-tight group-hover:text-primary transition-colors line-clamp-2">
                         {paper.title}
                       </h4>
-                      {paper.authors.length > 0 && (
-                        <p className="text-[12px] text-outline mt-1">
-                          {paper.authors.join(", ")}
-                          {paper.authors.length === 3 ? " et al." : ""} •{" "}
-                          {paper.journal}
-                          {paper.date ? ` • ${paper.date}` : ""}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-1 mt-2 text-primary font-label-sm text-label-sm">
+                        <span className="material-symbols-outlined text-[14px]">description</span>
+                        View Paper
+                        {paper.date && (
+                          <span className="text-outline ml-1">· {paper.date}</span>
+                        )}
+                      </div>
                     </a>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
 
-              <button className="w-full mt-stack-md py-2 text-label-md font-label-md text-primary border border-primary/20 hover:bg-primary/5 transition-all rounded">
-                View Research Hub
+              <button className="w-full mt-6 py-2 text-center border-t border-outline-variant text-primary font-bold font-label-sm text-label-sm hover:bg-surface-container-low transition-colors">
+                View All Stream
               </button>
             </div>
 
+            {/* Knowledge Graph CTA */}
+            <Link href="/knowledge-hub?tab=graph">
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary-fixed to-secondary-fixed p-6 group cursor-pointer">
+                <div className="relative z-10">
+                  <h3 className="font-bold text-primary-fixed-variant mb-2">Explore the Knowledge Graph</h3>
+                  <p className="text-on-primary-fixed-variant text-xs mb-4">
+                    Visualize the relationships between concepts, target proteins, and clinical markers.
+                  </p>
+                  <div className="flex items-center gap-2 font-bold text-primary-fixed-variant text-sm">
+                    Open Interactive Map
+                    <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform text-[18px]">
+                      arrow_forward
+                    </span>
+                  </div>
+                </div>
+                <div className="absolute -right-4 -bottom-4 opacity-10">
+                  <span className="material-symbols-outlined text-[120px]">hub</span>
+                </div>
+              </div>
+            </Link>
+
             {/* Related Episodes */}
             {relatedEpisodes.length > 0 && (
-              <div className="academic-card p-stack-md">
-                <h3 className="font-title-md text-title-md text-on-surface mb-stack-md">
+              <div className="space-y-4">
+                <h3 className="font-bold text-on-surface-variant uppercase tracking-widest font-label-sm text-label-sm">
                   Related Episodes
                 </h3>
-                <div className="space-y-stack-md">
+                <div className="space-y-3">
                   {relatedEpisodes.map((ep) => (
-                    <Link
-                      key={ep.slug}
-                      href={`/topics/${ep.slug}`}
-                      className="flex gap-3 group"
-                    >
-                      <div className="w-16 h-16 bg-surface-container-high rounded shrink-0 flex items-center justify-center overflow-hidden border border-outline-variant">
-                        <span className="material-symbols-outlined text-primary/40 text-3xl group-hover:text-primary transition-colors">
-                          science
-                        </span>
+                    <Link key={ep.slug} href={`/topics/${ep.slug}`} className="flex gap-4 group">
+                      <div className="w-16 h-16 rounded-lg bg-surface-container-high flex-shrink-0 flex items-center justify-center text-primary/30 group-hover:text-primary transition-colors">
+                        <span className="material-symbols-outlined text-2xl">science</span>
                       </div>
                       <div>
-                        <h4 className="text-body-sm font-title-md text-on-surface group-hover:text-primary transition-colors line-clamp-2">
-                          EP #{String(ep.episode_number).padStart(2, "0")}:{" "}
+                        <h4 className="font-bold text-sm leading-snug group-hover:text-primary transition-colors line-clamp-2">
                           {ep.title}
                         </h4>
+                        <p className="text-outline text-xs mt-1">Episode #{ep.episode_number}</p>
                       </div>
                     </Link>
                   ))}
                 </div>
               </div>
             )}
-
-            {/* Knowledge Graph CTA */}
-            <div className="academic-card bg-on-surface text-on-primary p-stack-md overflow-hidden relative">
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="material-symbols-outlined text-secondary-fixed">
-                    hub
-                  </span>
-                  <h3 className="font-title-md text-title-md">
-                    Knowledge Graph
-                  </h3>
-                </div>
-                <p className="text-body-sm text-on-primary/70 mb-stack-md">
-                  Visualizing 12,000+ connections between concepts and clinical
-                  markers.
-                </p>
-                <div className="relative h-20 w-full flex items-center justify-center opacity-40 select-none mb-2">
-                  <svg
-                    className="absolute inset-0 w-full h-full fill-none"
-                    style={{ stroke: "rgba(255,255,255,0.2)" }}
-                  >
-                    <line x1="50%" y1="50%" x2="70%" y2="70%" />
-                    <line x1="50%" y1="50%" x2="35%" y2="35%" />
-                    <circle cx="50%" cy="50%" r="20" style={{ stroke: "rgba(255,255,255,0.1)" }} />
-                  </svg>
-                  <div className="absolute w-3 h-3 bg-secondary-container rounded-full" />
-                </div>
-                <Link href="/register" className="block">
-                  <button className="w-full py-2 bg-secondary-container text-on-secondary-container rounded font-label-md text-label-md font-bold">
-                    Open Interactive View
-                  </button>
-                </Link>
-              </div>
-              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]" />
-            </div>
           </aside>
         </div>
       </main>

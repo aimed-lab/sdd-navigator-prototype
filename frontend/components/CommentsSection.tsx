@@ -5,6 +5,14 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 
+// Required Supabase RLS policies for the comments table:
+//   -- Allow authenticated users to read all comments
+//   CREATE POLICY "Anyone can view comments" ON comments FOR SELECT USING (true);
+//
+//   -- Allow authenticated users to insert their own comments
+//   CREATE POLICY "Authenticated users can insert comments" ON comments
+//     FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
 type Comment = {
   id: string;
   author_name: string;
@@ -20,8 +28,7 @@ function timeAgo(dateString: string): string {
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
 function initials(name: string): string {
@@ -33,22 +40,29 @@ function initials(name: string): string {
 }
 
 export default function CommentsSection({ wikiSlug }: { wikiSlug: string }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComments, setLoadingComments] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const loadComments = useCallback(async () => {
     setLoadingComments(true);
-    const { data, error: fetchError } = await supabase
+    setFetchError(null);
+
+    const { data, error } = await supabase
       .from("comments")
       .select("id, author_name, affiliation, content, created_at")
       .eq("wiki_page_slug", wikiSlug)
       .order("created_at", { ascending: false });
 
-    if (fetchError) console.error("Comments fetch error:", fetchError.message);
+    if (error) {
+      console.error("Comments fetch error:", error);
+      setFetchError(`Could not load comments: ${error.message}`);
+    }
     setComments(data ?? []);
     setLoadingComments(false);
   }, [wikiSlug]);
@@ -60,8 +74,10 @@ export default function CommentsSection({ wikiSlug }: { wikiSlug: string }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!user || !content.trim()) return;
+
     setSubmitting(true);
-    setError(null);
+    setSubmitError(null);
+    setSubmitSuccess(false);
 
     const authorName =
       user.user_metadata?.full_name ||
@@ -69,7 +85,13 @@ export default function CommentsSection({ wikiSlug }: { wikiSlug: string }) {
       user.email?.split("@")[0] ||
       "Anonymous";
 
-    const { error: insertError } = await supabase.from("comments").insert({
+    console.log("Inserting comment:", {
+      wiki_page_slug: wikiSlug,
+      user_id: user.id,
+      author_name: authorName,
+    });
+
+    const { error } = await supabase.from("comments").insert({
       wiki_page_slug: wikiSlug,
       user_id: user.id,
       author_name: authorName,
@@ -77,120 +99,133 @@ export default function CommentsSection({ wikiSlug }: { wikiSlug: string }) {
       content: content.trim(),
     });
 
-    if (insertError) {
-      setError("Failed to post comment. Please try again.");
-      console.error("Comment insert error:", insertError.message);
+    if (error) {
+      console.error("Comment insert error:", error);
+      setSubmitError(`Failed to post: ${error.message}`);
     } else {
       setContent("");
+      setSubmitSuccess(true);
+      // Refresh list then clear success message after 2 s
       await loadComments();
+      setTimeout(() => setSubmitSuccess(false), 2000);
     }
     setSubmitting(false);
   }
 
   return (
-    <div className="space-y-stack-md">
-      <h2 className="font-title-lg text-title-lg text-on-surface">
+    <section className="space-y-md">
+      <h2 className="font-headline-md text-headline-md text-primary flex items-center gap-2">
+        <span className="material-symbols-outlined">forum</span>
         Researcher Discussion
       </h2>
 
-      {/* Comment input / login gate */}
-      {user ? (
+      {/* ── Input area / login gate ────────────────────────────── */}
+      {authLoading ? null : user ? (
         <form
           onSubmit={handleSubmit}
-          className="academic-card p-stack-md flex flex-col gap-4"
+          className="bg-white rounded-xl border border-outline-variant p-md flex flex-col gap-4"
         >
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-xs uppercase shrink-0">
-              {initials(
-                user.user_metadata?.name || user.email?.split("@")[0] || "U"
-              )}
+          {/* Author row */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs uppercase shrink-0">
+              {initials(user.user_metadata?.name || user.email?.split("@")[0] || "U")}
             </div>
-            <span className="font-label-md text-label-md text-primary truncate">
-              {user.email}
+            <span className="font-label-sm text-label-sm text-primary truncate">
+              {user.user_metadata?.name || user.email}
             </span>
           </div>
+
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Share your research insights or questions…"
-            rows={4}
-            className="bg-surface border border-outline-variant p-4 rounded-lg text-on-surface placeholder:text-on-surface-variant/50 font-body-md resize-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-colors"
+            rows={3}
+            className="w-full rounded-xl border border-outline-variant bg-surface p-4 font-body-md text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none placeholder:text-on-surface-variant"
           />
-          {error && (
-            <p className="font-label-md text-label-md text-error">{error}</p>
+
+          {/* Error */}
+          {submitError && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-error-container border border-error/30 text-error font-body-md text-body-md">
+              <span className="material-symbols-outlined text-[16px] mt-0.5 shrink-0">error</span>
+              <span>{submitError}</span>
+            </div>
           )}
+
+          {/* Success */}
+          {submitSuccess && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary font-body-md text-body-md">
+              <span className="material-symbols-outlined text-[16px]">check_circle</span>
+              Comment posted successfully.
+            </div>
+          )}
+
           <div className="flex justify-end">
             <button
               type="submit"
               disabled={submitting || !content.trim()}
-              className="px-6 py-2 bg-primary text-on-primary font-label-md text-label-md font-bold rounded-lg hover:bg-primary-container transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-primary text-on-primary rounded-full font-bold font-label-sm text-label-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {submitting ? "Posting…" : "Post Comment"}
+              {submitting && (
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              )}
+              {submitting ? "Posting…" : "Post Insight"}
             </button>
           </div>
         </form>
       ) : (
-        <div className="academic-card p-stack-lg flex flex-col items-center justify-center gap-4 text-center bg-surface-container-low border-dashed border-2">
-          <span className="material-symbols-outlined text-outline text-4xl">
-            lock
-          </span>
-          <p className="font-title-md text-title-md text-on-surface">
-            Join the Discussion
-          </p>
-          <p className="font-body-sm text-body-sm text-outline text-center">
+        <div className="bg-white rounded-xl border-2 border-dashed border-outline-variant p-lg flex flex-col items-center justify-center gap-4 text-center">
+          <span className="material-symbols-outlined text-outline text-4xl">lock</span>
+          <p className="font-headline-md text-headline-md text-on-surface">Join the Discussion</p>
+          <p className="font-body-md text-body-md text-on-surface-variant">
             Please{" "}
             <Link href="/login" className="text-primary font-semibold hover:underline">
-              log in
+              sign in
             </Link>{" "}
             to contribute to this research thread.
           </p>
         </div>
       )}
 
-      {/* Comments list */}
+      {/* ── Comments list ──────────────────────────────────────── */}
       {loadingComments ? (
         <div className="flex justify-center py-8">
           <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
         </div>
+      ) : fetchError ? (
+        <div className="flex items-start gap-2 p-4 rounded-xl bg-error-container/30 border border-error/20 text-error font-body-md text-body-md">
+          <span className="material-symbols-outlined text-[16px] mt-0.5 shrink-0">warning</span>
+          <span>{fetchError}</span>
+        </div>
       ) : (
-        <div className="flex flex-col gap-stack-md">
+        <div className="space-y-sm">
           {comments.length === 0 ? (
-            <p className="text-on-surface-variant text-center py-4 font-body-md">
+            <p className="text-on-surface-variant text-center py-8 font-body-md text-body-md">
               No comments yet — be the first to share your insights.
             </p>
           ) : (
-            comments.map((c) => (
-              <div key={c.id} className="academic-card p-stack-md">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-xs uppercase shrink-0">
-                      {initials(c.author_name)}
-                    </div>
-                    <div>
-                      <p className="font-title-md text-title-md text-on-surface leading-tight">
-                        {c.author_name}
-                      </p>
-                      {c.affiliation && (
-                        <p className="font-label-md text-label-md text-outline">
-                          {c.affiliation} • {timeAgo(c.created_at)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  {!c.affiliation && (
-                    <span className="font-label-md text-label-md text-outline">
-                      {timeAgo(c.created_at)}
-                    </span>
-                  )}
+            comments.map((c, i) => (
+              <div
+                key={c.id}
+                className={`flex gap-4 p-md ${i < comments.length - 1 ? "border-b border-outline-variant" : ""}`}
+              >
+                <div className="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                  {initials(c.author_name)}
                 </div>
-                <p className="font-body-md text-body-md text-on-surface-variant">
-                  {c.content}
-                </p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="font-bold text-on-surface text-sm">{c.author_name}</span>
+                    {c.affiliation && (
+                      <span className="text-outline text-xs">· {c.affiliation}</span>
+                    )}
+                    <span className="text-outline text-xs ml-auto">{timeAgo(c.created_at)}</span>
+                  </div>
+                  <p className="font-body-md text-body-md text-on-surface-variant">{c.content}</p>
+                </div>
               </div>
             ))
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 }
