@@ -72,11 +72,20 @@ const DEFAULT_FORM: FormData = {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+// ── Pin positions in the 900×200 SVG coordinate space ────────────────────────
+// Road runs from x=80 to x=820 at y=100. 5 pins evenly spaced.
+const PIN_X = [80, 265, 450, 635, 820] as const;
+// Duration badges sit between adjacent pins ON the road
+const BADGE_X = [172, 357, 542, 727] as const;
+const ROAD_Y = 100;
+
 export default function NavigatorPage() {
   const [view, setView] = useState<"form" | "roadmap">("form");
   const [form, setForm] = useState<FormData>(DEFAULT_FORM);
   const [loading, setLoading] = useState(false);
   const [selectedStage, setSelectedStage] = useState(3);
+  // Fade animation when switching stages
+  const [panelVisible, setPanelVisible] = useState(true);
 
   function handleGenerate() {
     if (!form.assetDesc.trim() || !form.goalDesc.trim()) return;
@@ -91,6 +100,15 @@ export default function NavigatorPage() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
+  function selectStage(id: number) {
+    if (id === selectedStage) return;
+    setPanelVisible(false);
+    setTimeout(() => {
+      setSelectedStage(id);
+      setPanelVisible(true);
+    }, 140);
+  }
+
   const activeStage = STAGES[selectedStage - 1];
 
   return (
@@ -100,8 +118,8 @@ export default function NavigatorPage() {
       <main className="flex-1 flex flex-col">
         {/* ── Form State ─────────────────────────────────────────── */}
         {view === "form" && (
-          <div className="max-w-[1280px] mx-auto px-gutter py-lg w-full">
-            <div className="mb-10 text-center">
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-gutter py-6 md:py-lg w-full">
+            <div className="mb-8 md:mb-10 text-center">
               <h2 className="font-headline-md text-headline-md text-primary mb-2">
                 Configure Your Research Roadmap
               </h2>
@@ -110,7 +128,7 @@ export default function NavigatorPage() {
               </p>
             </div>
 
-            <div className="bg-white p-lg rounded-xl shadow-md border border-outline-variant max-w-3xl mx-auto">
+            <div className="bg-white p-5 md:p-lg rounded-xl shadow-md border border-outline-variant max-w-3xl mx-auto">
               <form className="space-y-8">
                 {/* What do you have */}
                 <div className="space-y-4">
@@ -216,26 +234,26 @@ export default function NavigatorPage() {
 
         {/* ── Roadmap State ──────────────────────────────────────── */}
         {view === "roadmap" && (
-          <div className="flex-1 flex flex-col h-[calc(100vh-80px)]">
+          <div className="flex-1 flex flex-col">
             {/* Top bar */}
-            <div className="bg-white border-b border-outline-variant px-gutter py-4 shrink-0">
-              <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="bg-white border-b border-outline-variant px-4 sm:px-gutter py-3 md:py-4 shrink-0">
+              <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div className="flex flex-col gap-1">
-                  <h2 className="font-headline-md text-2xl text-uab-deep-green">Your Research Roadmap</h2>
-                  <div className="flex items-center gap-2 text-on-surface-variant font-medium text-sm">
+                  <h2 className="font-bold text-lg md:text-2xl text-uab-deep-green">Your Research Roadmap</h2>
+                  <div className="flex items-center gap-2 text-on-surface-variant font-medium text-sm flex-wrap">
                     <span>{form.assetType}</span>
                     <span className="material-symbols-outlined text-xs">arrow_forward</span>
                     <span className="text-uab-green">{form.goal}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
                   <button
                     onClick={() => setView("form")}
                     className="text-on-surface-variant text-sm font-medium hover:text-uab-green transition-colors"
                   >
                     Start Over
                   </button>
-                  <button className="px-6 py-2.5 border-2 border-uab-green text-uab-green font-bold rounded-lg flex items-center gap-2 hover:bg-uab-green hover:text-white transition-all text-sm">
+                  <button className="flex-1 sm:flex-none px-4 py-2.5 min-h-[44px] border-2 border-uab-green text-uab-green font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-uab-green hover:text-white transition-all text-sm">
                     <span className="material-symbols-outlined text-lg">download</span>
                     Download PDF
                   </button>
@@ -243,168 +261,252 @@ export default function NavigatorPage() {
               </div>
             </div>
 
-            <div className="flex flex-1 overflow-hidden">
-              {/* Map panel */}
-              <div className="flex-1 bg-map-bg relative overflow-hidden flex flex-col border-r border-outline-variant">
-                <div className="absolute inset-0 map-grid opacity-50" />
+            {/* Map + Panel: column on mobile, row on md+ */}
+            <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
 
-                {/* Zoom controls */}
-                <div className="absolute top-6 right-6 z-20 flex flex-col gap-2">
-                  <button className="bg-white w-10 h-10 rounded-lg shadow-md border border-outline-variant flex items-center justify-center hover:bg-surface-container transition-all">
-                    <span className="material-symbols-outlined">add</span>
-                  </button>
-                  <button className="bg-white w-10 h-10 rounded-lg shadow-md border border-outline-variant flex items-center justify-center hover:bg-surface-container transition-all">
-                    <span className="material-symbols-outlined">remove</span>
-                  </button>
-                </div>
+              {/* ── Map panel ─────────────────────────────────────── */}
+              <div className="flex-1 bg-map-bg relative flex flex-col border-b md:border-b-0 md:border-r border-outline-variant">
+                {/* Dot-grid background */}
+                <div className="absolute inset-0 map-grid opacity-40 pointer-events-none" />
 
-                {/* Road + Pins */}
-                <div className="flex-1 flex items-center justify-center relative p-12">
-                  <div className="w-full h-full relative flex items-center justify-center">
-                    {/* Road line */}
-                    <svg className="absolute w-[90%] h-4 overflow-visible roadmap-path-shadow" preserveAspectRatio="none" viewBox="0 0 1000 20">
-                      <circle cx="0" cy="10" fill="#1E6B52" r="8" />
-                      <line stroke="#1E6B52" strokeLinecap="round" strokeWidth="12" x1="0" x2="1000" y1="10" y2="10" />
-                      <circle cx="1000" cy="10" fill="#1E6B52" r="8" />
-                    </svg>
+                {/*
+                  SVG map — single coordinate space so road, pins, badges and labels
+                  all align perfectly. Fixed 900×200px, wrapper scrolls horizontally
+                  on narrow screens (min-width: 560px prevents pins from overlapping).
+                */}
+                <div className="flex-1 overflow-x-auto flex items-center justify-center py-4 relative z-10">
+                  <svg
+                    width="900"
+                    height="200"
+                    viewBox="0 0 900 200"
+                    style={{ minWidth: "560px", display: "block" }}
+                    aria-label="Research roadmap"
+                  >
+                    {/* ── Road ── */}
+                    {/* End caps */}
+                    <circle cx={PIN_X[0]}  cy={ROAD_Y} r={6} fill="#1E6B52" />
+                    <circle cx={PIN_X[4]} cy={ROAD_Y} r={6} fill="#1E6B52" />
+                    {/* Road line — sits behind pins */}
+                    <line
+                      x1={PIN_X[0]} y1={ROAD_Y}
+                      x2={PIN_X[4]} y2={ROAD_Y}
+                      stroke="#1E6B52"
+                      strokeWidth={8}
+                      strokeLinecap="round"
+                    />
 
-                    {/* Pins */}
-                    <div className="absolute w-[90%] inset-0 flex items-center justify-between pointer-events-none">
-                      {STAGES.map((stage) => (
-                        <div
-                          key={stage.id}
-                          className="relative flex flex-col items-center pointer-events-auto cursor-pointer"
-                          style={{ transform: "translateY(-24px)" }}
-                          onClick={() => setSelectedStage(stage.id)}
+                    {/* ── Duration badges ON the road ── */}
+                    {STAGES.slice(0, -1).map((stage, i) => (
+                      <g key={`badge-${i}`} pointerEvents="none">
+                        <rect
+                          x={BADGE_X[i] - 22}
+                          y={ROAD_Y - 9}
+                          width={44}
+                          height={18}
+                          rx={4}
+                          fill="#144B39"
+                        />
+                        <text
+                          x={BADGE_X[i]}
+                          y={ROAD_Y + 1}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill="white"
+                          fontSize={9}
+                          fontWeight="700"
+                          fontFamily="Inter, sans-serif"
                         >
-                          <div
-                            className={`flex flex-col items-center transition-transform hover:-translate-y-1 ${
-                              selectedStage === stage.id ? "scale-125 -translate-y-2" : ""
-                            }`}
+                          {stage.duration}
+                        </text>
+                      </g>
+                    ))}
+
+                    {/* ── Pins ── */}
+                    {STAGES.map((stage, i) => {
+                      const x = PIN_X[i];
+                      const isSelected = selectedStage === stage.id;
+                      const r = isSelected ? 26 : 20;
+                      const fill = isSelected ? "#FFD602" : "#1E6B52";
+                      const numColor = isSelected ? "#144B39" : "#ffffff";
+
+                      return (
+                        <g
+                          key={stage.id}
+                          onClick={() => selectStage(stage.id)}
+                          style={{ cursor: "pointer" }}
+                          role="button"
+                          aria-label={`Stage ${stage.id}: ${stage.label}`}
+                        >
+                          {/* Touch-friendly invisible hit area (≥44px) */}
+                          <rect
+                            x={x - 26}
+                            y={ROAD_Y - 44}
+                            width={52}
+                            height={68}
+                            fill="transparent"
+                          />
+
+                          {/* Outer glow ring when selected */}
+                          {isSelected && (
+                            <circle
+                              cx={x}
+                              cy={ROAD_Y}
+                              r={r + 7}
+                              fill="none"
+                              stroke="#FFD602"
+                              strokeWidth={2}
+                              opacity={0.35}
+                            />
+                          )}
+
+                          {/* Pin circle */}
+                          <circle
+                            cx={x}
+                            cy={ROAD_Y}
+                            r={r}
+                            fill={fill}
+                            style={{
+                              filter: `drop-shadow(0 0 ${isSelected ? 10 : 4}px ${fill}99)`,
+                              transition: "r 0.25s ease, fill 0.25s ease, filter 0.25s ease",
+                            }}
+                          />
+
+                          {/* Stage number — centered in circle */}
+                          <text
+                            x={x}
+                            y={ROAD_Y}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fill={numColor}
+                            fontSize={isSelected ? 14 : 12}
+                            fontWeight="700"
+                            fontFamily="Inter, sans-serif"
+                            style={{ transition: "fill 0.25s ease, font-size 0.25s ease" }}
+                            pointerEvents="none"
                           >
-                            <div className="relative">
-                              <span
-                                className="material-symbols-outlined text-[48px] pin-shadow"
-                                style={{
-                                  color: stage.highlight ? "#FFD602" : "#1E6B52",
-                                  fontVariationSettings: "'FILL' 1",
-                                }}
-                              >
-                                location_on
-                              </span>
-                              <span
-                                className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 font-bold text-sm"
-                                style={{ color: stage.highlight ? "#144B39" : "white" }}
-                              >
-                                {stage.id}
-                              </span>
-                            </div>
-                            <span
-                              className={`mt-1 font-bold text-[10px] uppercase text-uab-deep-green whitespace-nowrap px-2 rounded ${
-                                selectedStage === stage.id
-                                  ? "bg-white shadow-sm border border-uab-gold"
-                                  : "bg-white/80"
-                              }`}
-                            >
-                              {stage.label}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                            {stage.id}
+                          </text>
 
-                    {/* Duration badges */}
-                    <div className="absolute w-[90%] h-full pointer-events-none">
-                      {STAGES.slice(0, -1).map((stage, i) => (
-                        <div
-                          key={stage.id}
-                          className="absolute"
-                          style={{
-                            left: `${12.5 + i * 25}%`,
-                            top: "50%",
-                            transform: "translate(-50%, -50%)",
-                          }}
-                        >
-                          <span className="text-[10px] font-bold bg-uab-deep-green text-white px-2 py-0.5 rounded shadow-sm">
-                            {stage.duration}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                          {/* Stage label — below road, min 11px */}
+                          <text
+                            x={x}
+                            y={ROAD_Y + 44}
+                            textAnchor="middle"
+                            dominantBaseline="auto"
+                            fill={isSelected ? "#144B39" : "#3f4944"}
+                            fontSize={11}
+                            fontWeight={isSelected ? "700" : "500"}
+                            fontFamily="Inter, sans-serif"
+                            pointerEvents="none"
+                          >
+                            {stage.label}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
                 </div>
 
-                {/* Stage chips */}
-                <div className="bg-white border-t border-outline-variant p-4 shrink-0">
-                  <div className="flex justify-center gap-3 overflow-x-auto py-2">
+                {/* Stage chips — horizontally scrollable, ≥44px touch targets */}
+                <div className="bg-white border-t border-outline-variant px-3 py-2 shrink-0 relative z-10">
+                  <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
                     {STAGES.map((stage) => (
                       <button
                         key={stage.id}
-                        onClick={() => setSelectedStage(stage.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+                        onClick={() => selectStage(stage.id)}
+                        className={`flex items-center gap-1 px-3 py-2 min-h-[44px] rounded-full text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                           selectedStage === stage.id
                             ? "bg-uab-green text-white shadow-md"
-                            : "border border-outline-variant hover:bg-surface-container"
+                            : "border border-outline-variant text-on-surface-variant hover:bg-surface-container"
                         }`}
                       >
-                        {stage.id} • {stage.label} • {stage.duration}
+                        <span>{stage.id}</span>
+                        <span className="opacity-60">·</span>
+                        <span>{stage.label}</span>
+                        <span className="opacity-60">·</span>
+                        <span>{stage.duration}</span>
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* Detail side panel */}
-              <div className="w-80 bg-white overflow-y-auto flex flex-col shrink-0">
-                {/* Stage header */}
-                <div className="bg-uab-green p-6 text-white">
+              {/* ── Detail panel ──────────────────────────────────── */}
+              {/* Full width below map on mobile; fixed 320px column on desktop */}
+              <div className="w-full md:w-80 bg-white overflow-y-auto flex flex-col shrink-0 max-h-[48vh] md:max-h-none">
+                {/* Stage header — animated colour change */}
+                <div
+                  className="p-5 md:p-6 text-white shrink-0"
+                  style={{
+                    background: "#1E6B52",
+                    transition: "background 0.25s ease",
+                  }}
+                >
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm">
+                    <span
+                      className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
+                      style={{ background: "rgba(255,255,255,0.2)" }}
+                    >
                       {activeStage.id}
                     </span>
-                    <span className="font-label-sm text-label-sm uppercase tracking-widest opacity-80">
+                    <span className="font-label-sm text-label-sm uppercase tracking-widest opacity-75">
                       {activeStage.duration}
                     </span>
                   </div>
-                  <h3 className="font-headline-md text-headline-md">{activeStage.title}</h3>
+                  <h3 className="font-bold text-base md:text-lg leading-snug">
+                    {activeStage.title}
+                  </h3>
                 </div>
 
-                <div className="p-6 flex-1 space-y-6">
-                  <p className="text-on-surface-variant font-body-md text-body-md">{activeStage.desc}</p>
+                {/* Panel body — fades when switching stages */}
+                <div
+                  className="p-5 md:p-6 flex-1 space-y-5 md:space-y-6"
+                  style={{
+                    opacity: panelVisible ? 1 : 0,
+                    transition: "opacity 0.15s ease",
+                  }}
+                >
+                  <p className="text-on-surface-variant text-sm md:font-body-md md:text-body-md leading-relaxed">
+                    {activeStage.desc}
+                  </p>
 
                   <div>
-                    <h4 className="font-label-sm text-label-sm text-outline mb-4 uppercase">
-                      Recommended Service Providers
+                    <h4 className="font-label-sm text-label-sm text-outline mb-3 uppercase">
+                      Recommended Providers
                     </h4>
-                    <div className="space-y-3">
+                    <div className="space-y-2 md:space-y-3">
                       {activeStage.providers.map((provider) => (
                         <div
                           key={provider}
-                          className="p-4 border border-outline-variant rounded-lg flex items-center justify-between hover:bg-surface-container-low transition-colors"
+                          className="p-3 border border-outline-variant rounded-lg flex items-center justify-between hover:bg-surface-container-low transition-colors"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-primary/10 rounded flex items-center justify-center">
-                              <span className="material-symbols-outlined text-primary">biotech</span>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 bg-primary/10 rounded flex items-center justify-center shrink-0">
+                              <span className="material-symbols-outlined text-primary text-sm">biotech</span>
                             </div>
-                            <div>
-                              <p className="font-bold text-on-surface text-sm">{provider}</p>
+                            <div className="min-w-0">
+                              <p className="font-bold text-on-surface text-sm truncate">{provider}</p>
                               <span className="text-[10px] uppercase font-bold text-outline">
                                 Institutional Partner
                               </span>
                             </div>
                           </div>
-                          <button className="text-primary font-bold text-sm hover:underline">Connect</button>
+                          <button className="text-primary font-bold text-xs hover:underline shrink-0 ml-2 min-h-[44px] px-2">
+                            Connect
+                          </button>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-outline-variant">
-                    <p className="font-label-sm text-label-sm text-outline uppercase mb-3">Stage Resources</p>
+                  <div className="border-t border-outline-variant pt-4">
+                    <p className="font-label-sm text-label-sm text-outline uppercase mb-2">
+                      Stage Resources
+                    </p>
                     {["Regulatory Guidance", "Protocol Templates", "Funding Database"].map((r) => (
                       <div
                         key={r}
-                        className="flex items-center justify-between py-2 border-b border-outline-variant/50 last:border-0"
+                        className="flex items-center justify-between py-2 min-h-[44px] border-b border-outline-variant/40 last:border-0"
                       >
                         <span className="text-sm text-on-surface">{r}</span>
                         <span className="material-symbols-outlined text-primary text-sm">open_in_new</span>

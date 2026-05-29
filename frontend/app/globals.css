@@ -12,7 +12,18 @@
     overflow-x: hidden;
     font-family: "Inter", sans-serif;
     -webkit-font-smoothing: antialiased;
+    scroll-behavior: smooth;
   }
+
+  /* Prevent horizontal overflow on all elements */
+  * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Hide scrollbar for filter pills on mobile while keeping scroll */
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
 @layer components {

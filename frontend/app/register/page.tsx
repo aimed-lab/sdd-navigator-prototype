@@ -109,8 +109,8 @@ export default function RegisterPage() {
         <div className="absolute top-1/4 -left-20 w-64 h-64 bg-primary opacity-5 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-secondary opacity-5 rounded-full blur-3xl pointer-events-none" />
 
-        <section className="w-full max-w-[560px]">
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
+        <section className="w-full max-w-[560px] mx-4 sm:mx-0">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 sm:p-lg shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
             {/* Header */}
             <div className="mb-lg text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-secondary-container rounded-full mb-4">

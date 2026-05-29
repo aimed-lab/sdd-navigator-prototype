@@ -423,7 +423,8 @@ function GraphTab({ user }: { user: unknown }) {
     const svg = d3.select(container)
       .append("svg")
       .attr("width", "100%").attr("height", "100%")
-      .style("background", "#111").style("cursor", "grab");
+      .style("background", "#111").style("cursor", "grab")
+      .style("touch-action", "none"); // allow D3 pinch-zoom on mobile
     svgRef.current = svg;
 
     const defs   = svg.append("defs");
@@ -619,7 +620,7 @@ function GraphTab({ user }: { user: unknown }) {
     <>
       <NodePopup modal={modal} onClose={() => setModal(null)} />
 
-      <div className="h-[700px] knowledge-graph-canvas rounded-xl overflow-hidden relative border border-outline-variant">
+      <div className="h-[450px] md:h-[700px] knowledge-graph-canvas rounded-xl overflow-hidden relative border border-outline-variant">
         <div ref={containerRef} className="absolute inset-0" />
 
         {/* Loading */}
@@ -754,10 +755,10 @@ function KnowledgeHubInner() {
 
       <main className="min-h-screen">
         {/* Hero Header */}
-        <section className="py-xl px-gutter max-w-[1280px] mx-auto">
+        <section className="py-8 md:py-xl px-gutter max-w-[1280px] mx-auto">
           <div className="max-w-3xl">
-            <h1 className="font-display-lg text-display-lg mb-4 text-primary">Knowledge Hub</h1>
-            <p className="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+            <h1 className="text-[28px] md:font-display-lg md:text-display-lg mb-3 md:mb-4 text-primary font-bold">Knowledge Hub</h1>
+            <p className="text-base md:font-body-lg md:text-body-lg text-on-surface-variant leading-relaxed">
               Explore the frontier of pharmaceutical innovation. Dive into deep-dive conversations on{" "}
               <span className="font-semibold text-on-surface">Jake Chen&apos;s Drug Discovery AI Talk</span> podcast,
               featuring global leaders in AI-driven medicine.
@@ -765,29 +766,22 @@ function KnowledgeHubInner() {
           </div>
         </section>
 
-        {/* Tabs */}
-        <section className="px-gutter max-w-[1280px] mx-auto mb-10">
+        {/* Tabs — full width, equal size on mobile */}
+        <section className="px-gutter max-w-[1280px] mx-auto mb-6 md:mb-10">
           <div className="flex border-b border-outline-variant">
-            <button
-              onClick={() => setActiveTab("episodes")}
-              className={`px-8 py-4 font-semibold transition-all ${
-                activeTab === "episodes"
-                  ? "text-primary border-b-2 border-primary"
-                  : "text-on-surface-variant font-medium hover:text-primary"
-              }`}
-            >
-              Episodes
-            </button>
-            <button
-              onClick={() => setActiveTab("graph")}
-              className={`px-8 py-4 font-semibold transition-all ${
-                activeTab === "graph"
-                  ? "text-primary border-b-2 border-primary"
-                  : "text-on-surface-variant font-medium hover:text-primary"
-              }`}
-            >
-              Knowledge Graph
-            </button>
+            {(["episodes", "graph"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 md:flex-none md:px-8 py-4 min-h-[48px] font-semibold transition-all capitalize text-sm md:text-base ${
+                  activeTab === tab
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-on-surface-variant font-medium hover:text-primary"
+                }`}
+              >
+                {tab === "graph" ? "Knowledge Graph" : "Episodes"}
+              </button>
+            ))}
           </div>
         </section>
 
@@ -795,9 +789,41 @@ function KnowledgeHubInner() {
         {activeTab === "episodes" && (
           <div className="block">
             {/* Filters */}
-            <section className="px-gutter max-w-[1280px] mx-auto mb-12">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="relative w-full md:w-96">
+            <section className="px-gutter max-w-[1280px] mx-auto mb-8 md:mb-12">
+              {/* Search — full width on mobile */}
+              <div className="relative mb-4 md:mb-0 md:hidden">
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">
+                  search
+                </span>
+                <input
+                  className="w-full pl-12 pr-4 py-3 min-h-[48px] bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                  placeholder="Search episodes..."
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+
+              {/* Filter pills — horizontal scroll on mobile */}
+              <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-hide md:hidden">
+                {FILTER_CHIPS.map((chip) => (
+                  <button
+                    key={chip}
+                    onClick={() => setActiveFilter(chip)}
+                    className={`px-4 py-2 min-h-[40px] rounded-full font-medium font-label-sm text-label-sm transition-all whitespace-nowrap shrink-0 ${
+                      activeFilter === chip
+                        ? "bg-primary text-white shadow-sm"
+                        : "bg-surface-container-high text-on-surface-variant"
+                    }`}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+
+              {/* Desktop layout */}
+              <div className="hidden md:flex md:items-center justify-between gap-6">
+                <div className="relative w-96">
                   <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">
                     search
                   </span>
@@ -852,7 +878,7 @@ function KnowledgeHubInner() {
               )}
 
               {!loading && filtered.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
                   {filtered.map((ep) => (
                     <Link key={ep.id} href={`/topics/${ep.slug}`}>
                       <div className="group bg-white rounded-xl border border-surface-container-high overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer h-full flex flex-col">
