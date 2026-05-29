@@ -1,106 +1,99 @@
 <!DOCTYPE html>
 
-<html lang="en"><head>
+<html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Strategic Research Roadmap - SDD Navigator</title>
+<title>SDD Navigator | Research Roadmap</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
 <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
             theme: {
                 extend: {
                     "colors": {
-                        "on-surface": "#191c1d",
-                        "tertiary-container": "#476900",
-                        "on-error-container": "#93000a",
-                        "primary": "#00523c",
-                        "surface-container-low": "#f3f4f5",
-                        "surface-container-lowest": "#ffffff",
-                        "on-tertiary-container": "#aded3e",
-                        "outline": "#6f7974",
+                        "tertiary-fixed": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#904b46",
+                        "inverse-surface": "#2d312f",
+                        "inverse-on-surface": "#eff1ed",
+                        "primary-container": "#1e6b52",
                         "secondary-container": "#b4ecd3",
-                        "on-primary-fixed-variant": "#00513b",
+                        "secondary-fixed-dim": "#9cd2ba",
+                        "primary": "#00523c",
+                        "surface-container-high": "#e6e9e5",
+                        "on-tertiary-fixed": "#3a0908",
+                        "on-surface": "#181c1a",
+                        "on-secondary-fixed": "#002116",
+                        "tertiary": "#733430",
+                        "background": "#f7faf6",
+                        "primary-fixed-dim": "#8cd5b7",
+                        "surface-dim": "#d8dbd7",
+                        "surface-container-highest": "#e0e3df",
+                        "outline": "#6f7974",
                         "surface-tint": "#1d6a51",
+                        "inverse-primary": "#8cd5b7",
+                        "on-primary-container": "#9ee9c9",
+                        "on-primary-fixed": "#002116",
+                        "on-tertiary-fixed-variant": "#723430",
+                        "on-background": "#181c1a",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#1a503d",
+                        "on-tertiary-container": "#ffcec9",
+                        "surface-variant": "#e0e3df",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed-variant": "#00513b",
+                        "outline-variant": "#bfc9c2",
+                        "secondary": "#346854",
+                        "surface-container-low": "#f1f4f0",
+                        "primary-fixed": "#a7f2d2",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#b7eed5",
+                        "surface": "#f7faf6",
+                        "on-surface-variant": "#3f4944",
                         "on-secondary": "#ffffff",
                         "error": "#ba1a1a",
-                        "on-tertiary-fixed": "#121f00",
-                        "on-secondary-fixed": "#002116",
-                        "surface-container-highest": "#e1e3e4",
-                        "tertiary-fixed-dim": "#9bd929",
-                        "outline-variant": "#bfc9c2",
-                        "on-tertiary-fixed-variant": "#344e00",
+                        "surface-container": "#ecefeb",
                         "on-error": "#ffffff",
-                        "background": "#f8f9fa",
-                        "on-primary-fixed": "#002116",
-                        "tertiary": "#344f00",
-                        "surface-container": "#edeeef",
-                        "on-surface-variant": "#3f4944",
-                        "error-container": "#ffdad6",
-                        "on-primary-container": "#9ee9c9",
-                        "primary-fixed-dim": "#8cd5b7",
-                        "on-background": "#191c1d",
-                        "on-primary": "#ffffff",
-                        "on-secondary-fixed-variant": "#1a503d",
-                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb3ad",
+                        "surface-bright": "#f7faf6",
                         "on-secondary-container": "#386c58",
-                        "surface-container-high": "#e7e8e9",
-                        "surface": "#f8f9fa",
-                        "secondary": "#346854",
-                        "inverse-surface": "#2e3132",
-                        "secondary-fixed-dim": "#9cd2ba",
-                        "primary-fixed": "#a7f2d2",
-                        "surface-variant": "#e1e3e4",
-                        "surface-bright": "#f8f9fa",
-                        "primary-container": "#1e6b52",
-                        "inverse-on-surface": "#f0f1f2",
-                        "surface-dim": "#d9dadb",
-                        "secondary-fixed": "#b7eed5",
-                        "inverse-primary": "#8cd5b7",
-                        "tertiary-fixed": "#b6f647"
+                        "surface-container-lowest": "#ffffff",
+                        "uab-gold": "#FFD602",
+                        "map-bg": "#F8F9FA",
+                        "uab-deep-green": "#144B39",
+                        "uab-green": "#1E6B52"
                     },
                     "borderRadius": {
-                        "DEFAULT": "0.125rem",
-                        "lg": "0.25rem",
-                        "xl": "0.5rem",
-                        "full": "0.75rem"
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
                     },
                     "spacing": {
                         "base": "8px",
-                        "stack-lg": "32px",
-                        "stack-sm": "4px",
-                        "margin-desktop": "64px",
-                        "margin-mobile": "16px",
                         "gutter": "24px",
-                        "stack-md": "16px",
-                        "container-max": "1280px"
+                        "md": "24px",
+                        "sm": "12px",
+                        "xl": "64px",
+                        "xs": "4px",
+                        "lg": "40px",
+                        "margin": "32px"
                     },
                     "fontFamily": {
-                        "body-md": ["Inter"],
-                        "title-md": ["Inter"],
-                        "label-md": ["Inter"],
-                        "display-lg": ["Inter"],
-                        "title-lg": ["Inter"],
-                        "body-sm": ["Inter"],
-                        "headline-lg": ["Inter"],
-                        "body-lg": ["Inter"],
-                        "headline-lg-mobile": ["Inter"],
-                        "headline-md": ["Inter"]
+                        "display-lg": ["Inter", "sans-serif"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "body-lg": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "label-sm": ["Inter", "sans-serif"]
                     },
                     "fontSize": {
-                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
-                        "title-md": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
-                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
                         "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
-                        "title-lg": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
-                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
-                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
                         "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
-                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
-                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}]
                     }
                 }
             }
@@ -109,300 +102,461 @@
 <style>
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-            vertical-align: middle;
         }
-        .roadmap-line {
-            background-image: linear-gradient(to right, #00523c 50%, rgba(255, 255, 255, 0) 0%);
-            background-position: bottom;
-            background-size: 12px 2px;
-            background-repeat: repeat-x;
+        .material-symbols-outlined.fill-icon {
+            font-variation-settings: 'FILL' 1;
         }
-        .academic-card {
-            transition: all 0.2s ease-in-out;
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #ffffff;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
         }
-        .academic-card:hover {
-            box-shadow: 0px 4px 12px rgba(0,0,0,0.05);
-            transform: translateY(-2px);
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .pin-shadow {
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+        }
+        .map-grid {
+            background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .roadmap-path-shadow {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
         }
     </style>
 </head>
-<body class="bg-surface font-body-md text-on-surface antialiased">
-<!-- TopNavBar -->
-<header class="bg-primary dark:bg-on-surface shadow-sm sticky top-0 z-50">
-<div class="flex justify-between items-center w-full px-margin-desktop py-4 max-w-container-max mx-auto">
-<div class="flex items-center gap-6">
-<span class="font-title-lg text-title-lg font-bold text-on-primary tracking-tight">SDD Navigator</span>
-<nav class="hidden md:flex gap-6 items-center">
-<a class="text-on-primary/80 hover:text-on-primary transition-colors font-medium font-label-md text-label-md" href="#">Knowledge Hub</a>
-<a class="text-on-primary/80 hover:text-on-primary transition-colors font-medium font-label-md text-label-md" href="#">Wiki</a>
-<a class="text-on-primary border-b-2 border-secondary-container pb-1 font-semibold font-label-md text-label-md" href="#">Navigator</a>
-<a class="text-on-primary/80 hover:text-on-primary transition-colors font-medium font-label-md text-label-md" href="#">Research</a>
-</nav>
+<body class="bg-background text-on-background font-body-md overflow-x-hidden">
+<!-- Top Navigation Bar -->
+<header class="bg-surface shadow-sm sticky top-0 z-50">
+<nav class="flex justify-between items-center w-full px-gutter max-w-[1440px] mx-auto h-20">
+<div class="flex items-center gap-8">
+<img alt="SDD Navigator" class="h-12 w-auto" src="https://lh3.googleusercontent.com/aida/ADBb0uiOY0raSTH93XuMumwqL5CnIgL0kx9ifc2YZO0eXnftFw6ro_RxfKoSniOEE06NTKs8jX3Gnk8R4yccu3WZgfBDAO_zSXKO2v8Zad9ZJlFr1EaczjauU9hawwbvFqupv5znxE28H3GW9sTReDOgLpWaXGfQuTpN4oJQOfLHk_JBLRaVLVmK0z6NGqZJyD_Juk7sHhRjzXO6suEoG-sPgXkEnpkYwa0kXxdkhflX6Rg6wqgGrn7P4NowTTgG"/>
+<div class="hidden md:flex gap-6">
+<a class="text-on-surface-variant font-medium hover:text-primary-container transition-colors duration-200" href="#">Knowledge Hub</a>
+<a class="text-primary font-bold border-b-2 border-primary pb-1" href="#">Navigator</a>
+</div>
 </div>
 <div class="flex items-center gap-4">
-<button class="text-on-primary/90 font-label-md text-label-md hover:bg-primary-container/10 px-4 py-2 rounded transition-all">Sign In</button>
-<button class="bg-secondary-container text-on-secondary-container font-label-md text-label-md px-4 py-2 rounded-lg font-semibold active:scale-95 transition-transform">Register</button>
+<button class="px-6 py-2 rounded-full border border-outline text-primary font-semibold hover:bg-surface-container transition-all">Sign In</button>
+<button class="px-6 py-2 rounded-full bg-primary text-on-primary font-semibold shadow-md hover:opacity-90 transition-all">Register</button>
 </div>
-</div>
+</nav>
 </header>
-<main class="max-w-container-max mx-auto px-margin-desktop py-stack-lg">
-<!-- Header Section -->
-<section class="mb-stack-lg">
-<h1 class="font-headline-lg text-headline-lg text-primary mb-2">Your Strategic Research Roadmap</h1>
-<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
-                A personalized, evidence-based trajectory designed to accelerate your therapeutic discovery from concept to clinical trial.
-            </p>
+<main class="min-h-screen">
+<!-- STATE 1: Input Form -->
+<section class="block max-w-[1280px] mx-auto px-gutter py-lg" id="input-form">
+<div class="mb-10 text-center">
+<h2 class="font-headline-md text-headline-md text-primary mb-2">Configure Your Research Roadmap</h2>
+<p class="text-on-surface-variant">Fill in your asset details to generate an optimized development timeline.</p>
+</div>
+<div class="bg-white p-lg rounded-xl shadow-md border border-outline-variant max-w-3xl mx-auto">
+<form class="space-y-8" id="roadmap-form">
+<!-- Section 1 -->
+<div class="space-y-4">
+<label class="block font-semibold text-on-surface">What do you have?</label>
+<select class="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+<option>Protein Target</option>
+<option>Gene/Genomic Data</option>
+<option>Small Molecule Hit</option>
+<option>Dataset/Biomarker</option>
+<option>Cell Line</option>
+<option>Animal Model</option>
+<option>Other</option>
+</select>
+<textarea class="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="Describe your asset's current validation status, available data, and any unique characteristics..." rows="4"></textarea>
+</div>
+<!-- Section 2 -->
+<div class="space-y-4">
+<label class="block font-semibold text-on-surface">What do you want to achieve?</label>
+<select class="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+<option>Hit Identification</option>
+<option>Lead Optimization</option>
+<option>IND Filing</option>
+<option>Clinical Trial Design</option>
+<option>Publication/Patent</option>
+<option>Biomarker Validation</option>
+</select>
+<textarea class="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="Outline your primary objectives and key success metrics for this phase..." rows="3"></textarea>
+</div>
+<!-- Section 3 -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block font-semibold text-on-surface">Timeline</label>
+<select class="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+<option>Accelerated (12-18 months)</option>
+<option>Standard (24-36 months)</option>
+<option>Extended (36+ months)</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="block font-semibold text-on-surface">Budget Range</label>
+<select class="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+<option>$500k - $1M</option>
+<option>$1M - $5M</option>
+<option>$5M - $10M</option>
+<option>$10M+</option>
+</select>
+</div>
+</div>
+<div class="pt-6">
+<button class="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-lg shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3" id="generate-btn" onclick="startGeneration()" type="button">
+<span class="material-symbols-outlined" id="btn-icon">map</span>
+<span id="btn-text">Generate My Roadmap</span>
+<div class="loading-spinner hidden" id="btn-loader"></div>
+</button>
+</div>
+</form>
+</div>
 </section>
-<!-- Route Visualization -->
-<section class="mb-stack-lg relative py-12 px-6 bg-surface-container-low rounded-xl border border-outline-variant">
-<div class="absolute top-1/2 left-12 right-12 h-0.5 roadmap-line -translate-y-1/2 z-0"></div>
-<div class="relative z-10 flex justify-between items-center w-full">
-<!-- Pin A -->
-<div class="flex flex-col items-center gap-2 group">
-<div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold shadow-md transition-transform group-hover:scale-110">A</div>
-<span class="font-label-md text-label-md text-primary bg-surface-container-highest px-2 py-0.5 rounded">Discovery</span>
-</div>
-<!-- Pin B -->
-<div class="flex flex-col items-center gap-2 group">
-<div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold shadow-md transition-transform group-hover:scale-110">B</div>
-<span class="font-label-md text-label-md text-primary bg-surface-container-highest px-2 py-0.5 rounded">Pre-Clinical</span>
-</div>
-<!-- Pin C -->
-<div class="flex flex-col items-center gap-2 group">
-<div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold shadow-md transition-transform group-hover:scale-110">C</div>
-<span class="font-label-md text-label-md text-primary bg-surface-container-highest px-2 py-0.5 rounded">IND Filing</span>
-</div>
-<!-- Pin D -->
-<div class="flex flex-col items-center gap-2 group">
-<div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold shadow-md transition-transform group-hover:scale-110">D</div>
-<span class="font-label-md text-label-md text-primary bg-surface-container-highest px-2 py-0.5 rounded">Phase I</span>
-</div>
-<!-- Pin E -->
-<div class="flex flex-col items-center gap-2 group">
-<div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold shadow-md transition-transform group-hover:scale-110">E</div>
-<span class="font-label-md text-label-md text-primary bg-surface-container-highest px-2 py-0.5 rounded">Expansion</span>
+<!-- STATE 2: Roadmap Output -->
+<section class="hidden animate-in fade-in duration-700 h-screen flex flex-col" id="roadmap-output">
+<!-- TOP BAR -->
+<div class="bg-white border-b border-outline-variant px-gutter py-4 shrink-0">
+<div class="max-w-[1440px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="flex flex-col gap-1">
+<h2 class="font-headline-md text-2xl text-uab-deep-green">Your Research Roadmap</h2>
+<div class="flex items-center gap-2 text-on-surface-variant font-medium text-sm">
+<span>Protein Target</span>
+<span class="material-symbols-outlined text-xs">arrow_forward</span>
+<span class="text-uab-green">IND Filing</span>
 </div>
 </div>
-</section>
-<!-- Stage Cards Grid -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-gutter">
-<!-- Stage A -->
-<div class="academic-card bg-surface-container-lowest border border-outline-variant rounded-lg border-t-4 border-t-primary p-stack-md flex flex-col h-full">
-<div class="flex justify-between items-start mb-2">
-<span class="font-label-md text-label-md text-primary uppercase tracking-widest">Stage A</span>
-<span class="material-symbols-outlined text-primary-container">biotech</span>
-</div>
-<h3 class="font-title-md text-title-md mb-1">Discovery Phase</h3>
-<p class="font-body-sm text-body-sm text-on-surface-variant mb-4 flex items-center gap-1">
-<span class="material-symbols-outlined text-[16px]">schedule</span> 3-6 Months
-                </p>
-<div class="mb-4">
-<p class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase text-[10px]">Primary Tools</p>
-<div class="flex flex-wrap gap-1">
-<span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-medium">AI Target Prediction</span>
-<span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-medium">Library Screening</span>
-</div>
-</div>
-<div class="mb-auto">
-<div class="flex items-center gap-2 bg-error-container/20 border border-error/20 p-2 rounded text-error mb-4">
-<span class="material-symbols-outlined text-[18px]">warning</span>
-<span class="font-label-md text-label-md">Regulatory Delay Potential</span>
-</div>
-</div>
-<!-- Provider Card -->
-<div class="mt-4 p-3 bg-surface-container-low rounded border border-outline-variant/30 flex items-center justify-between">
-<div class="flex items-center gap-2">
-<div class="w-8 h-8 bg-white border border-outline-variant rounded-full flex items-center justify-center overflow-hidden">
-<img alt="UAB Hub" class="w-full h-full object-cover" data-alt="A professional, minimalist logo for a medical research laboratory, featuring clean geometric shapes in deep green and silver. The lighting is crisp and studio-like, reflecting a sterile, advanced clinical environment. The aesthetic is authoritative and modern, emphasizing academic precision and high-tier scientific inquiry." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_cpQRLJLTTZmYVAmpgMYdWx39U_zeYCzptzMLpd4Ndy8Qz9vnj5Z7D8rI04eFAaabumOqoFPe2tRMTFPTFsz66RDrB4mIThoCU8XcVpao4azrlN3NrKJs7GN95K1mTZnDHPXL1Zdby6BKpRxC5cDY8cVy1s17EPb8bqRYrm2PfM3Dr-2Vx2hP4IKHkg7h_Qt7IzlrpTbACNmm6sbATR15nCwx8THoREuLVt8GmrOLXKpON5lc6H7gHXfiZZ6z5RC_V-Z8qaPPkwY0"/>
-</div>
-<span class="font-label-md text-label-md font-bold truncate max-w-[60px]">UAB Hub</span>
-</div>
-<button class="bg-primary text-on-primary text-[10px] px-2 py-1 rounded font-bold hover:bg-primary-container transition-colors">Connect</button>
-</div>
-</div>
-<!-- Stage B -->
-<div class="academic-card bg-surface-container-lowest border border-outline-variant rounded-lg border-t-4 border-t-primary p-stack-md flex flex-col h-full">
-<div class="flex justify-between items-start mb-2">
-<span class="font-label-md text-label-md text-primary uppercase tracking-widest">Stage B</span>
-<span class="material-symbols-outlined text-primary-container">science</span>
-</div>
-<h3 class="font-title-md text-title-md mb-1">Pre-Clinical</h3>
-<p class="font-body-sm text-body-sm text-on-surface-variant mb-4 flex items-center gap-1">
-<span class="material-symbols-outlined text-[16px]">schedule</span> 12-18 Months
-                </p>
-<div class="mb-4">
-<p class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase text-[10px]">Primary Tools</p>
-<div class="flex flex-wrap gap-1">
-<span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-medium">PK/PD Profiling</span>
-<span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-medium">In Vivo Efficacy</span>
-</div>
-</div>
-<div class="mb-auto">
-<div class="flex items-center gap-2 bg-error-container/20 border border-error/20 p-2 rounded text-error mb-4">
-<span class="material-symbols-outlined text-[18px]">warning</span>
-<span class="font-label-md text-label-md">Animal Model Shortage</span>
-</div>
-</div>
-<div class="mt-4 p-3 bg-surface-container-low rounded border border-outline-variant/30 flex items-center justify-between">
-<div class="flex items-center gap-2">
-<div class="w-8 h-8 bg-white border border-outline-variant rounded-full flex items-center justify-center overflow-hidden">
-<img alt="InVivoX" class="w-full h-full object-cover" data-alt="A sleek corporate emblem for a preclinical research organization, utilizing a color palette of emerald green and slate gray. The design is structured and professional, set against a soft bokeh background of a high-tech laboratory. The lighting is cool and professional, suggesting a meticulous and advanced scientific methodology." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8zl8EvAc0y5LYavn0gl3bk47U2YoI_NlCQ5-gDvdUfCudOfDXq8FW-vGuscrHvo8btNh7iVtL2ViEHY5DW4wAtGFjH2C3n3a_qFZ-beMjfxz8z0dbEHa6bz5rzygTQR4CthzeM3bJkpQH6jJ8XwBX-mttA4Xw4YEK1PI56kDG0QVZBGhNLNvTFSXB-eWqGPVSmiLCkkepNtdEjMn8jnLMkzvgBXaMYEOVbicBHE7eqxbPaPm-rt0CUhhu3aAnE_mbeDVtewYFNJI9"/>
-</div>
-<span class="font-label-md text-label-md font-bold truncate max-w-[60px]">InVivoX</span>
-</div>
-<button class="bg-primary text-on-primary text-[10px] px-2 py-1 rounded font-bold hover:bg-primary-container transition-colors">Connect</button>
-</div>
-</div>
-<!-- Stage C -->
-<div class="academic-card bg-surface-container-lowest border border-outline-variant rounded-lg border-t-4 border-t-primary p-stack-md flex flex-col h-full">
-<div class="flex justify-between items-start mb-2">
-<span class="font-label-md text-label-md text-primary uppercase tracking-widest">Stage C</span>
-<span class="material-symbols-outlined text-primary-container">description</span>
-</div>
-<h3 class="font-title-md text-title-md mb-1">IND Filing</h3>
-<p class="font-body-sm text-body-sm text-on-surface-variant mb-4 flex items-center gap-1">
-<span class="material-symbols-outlined text-[16px]">schedule</span> 3-4 Months
-                </p>
-<div class="mb-4">
-<p class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase text-[10px]">Primary Tools</p>
-<div class="flex flex-wrap gap-1">
-<span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-medium">GLP Compliance</span>
-<span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-medium">CMC Readiness</span>
-</div>
-</div>
-<div class="mb-auto">
-<div class="flex items-center gap-2 bg-error-container/20 border border-error/20 p-2 rounded text-error mb-4">
-<span class="material-symbols-outlined text-[18px]">warning</span>
-<span class="font-label-md text-label-md">Audit Readiness Gap</span>
-</div>
-</div>
-<div class="mt-4 p-3 bg-surface-container-low rounded border border-outline-variant/30 flex items-center justify-between">
-<div class="flex items-center gap-2">
-<div class="w-8 h-8 bg-white border border-outline-variant rounded-full flex items-center justify-center overflow-hidden">
-<img alt="ReguLab" class="w-full h-full object-cover" data-alt="A minimalist and authoritative brand logo for a regulatory consulting firm, featuring sharp typography in forest green. The background is a clean, bright white with subtle geometric overlays. The lighting is flat and editorial, reminiscent of a high-end academic publication or medical journal frontispiece." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfdHk46rlEZzgLxz5djqwWd2-lBsgjXQFb2pqWKzsMcdm7vYR7bkrfEqS7Lvchpgkm-xB3xAhFbBE-OJLxD6vlo6MYuHn5kgvOYmeqhdMM5K14GZjYmZUrIvuZJXF2ssXDbynkMBokUmH8VqmX37qAf3eyBeBGJYJvfVwP8xpURrW638-Fc6Ds-7U6M6jhOJq8waHpqC2i3O-D3NbLd83sZ9d2Ifr1A702M1crbObwY8AkXQTKpiAF6-Se1g33LaPY5SBpXJuh68R7"/>
-</div>
-<span class="font-label-md text-label-md font-bold truncate max-w-[60px]">ReguLab</span>
-</div>
-<button class="bg-primary text-on-primary text-[10px] px-2 py-1 rounded font-bold hover:bg-primary-container transition-colors">Connect</button>
-</div>
-</div>
-<!-- Stage D -->
-<div class="academic-card bg-surface-container-lowest border border-outline-variant rounded-lg border-t-4 border-t-primary p-stack-md flex flex-col h-full">
-<div class="flex justify-between items-start mb-2">
-<span class="font-label-md text-label-md text-primary uppercase tracking-widest">Stage D</span>
-<span class="material-symbols-outlined text-primary-container">clinical_notes</span>
-</div>
-<h3 class="font-title-md text-title-md mb-1">Phase I Trials</h3>
-<p class="font-body-sm text-body-sm text-on-surface-variant mb-4 flex items-center gap-1">
-<span class="material-symbols-outlined text-[16px]">schedule</span> 12-24 Months
-                </p>
-<div class="mb-4">
-<p class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase text-[10px]">Primary Tools</p>
-<div class="flex flex-wrap gap-1">
-<span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-medium">SAD/MAD Studies</span>
-<span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-medium">First-in-Human</span>
-</div>
-</div>
-<div class="mb-auto">
-<div class="flex items-center gap-2 bg-error-container/20 border border-error/20 p-2 rounded text-error mb-4">
-<span class="material-symbols-outlined text-[18px]">warning</span>
-<span class="font-label-md text-label-md">Recruitment Latency</span>
-</div>
-</div>
-<div class="mt-4 p-3 bg-surface-container-low rounded border border-outline-variant/30 flex items-center justify-between">
-<div class="flex items-center gap-2">
-<div class="w-8 h-8 bg-white border border-outline-variant rounded-full flex items-center justify-center overflow-hidden">
-<img alt="ClinicA" class="w-full h-full object-cover" data-alt="A modern and professional clinic logo designed for a Phase I trial facility, using shades of primary green and clinical white. The design is airy and spacious, suggesting transparency and meticulous care. The lighting is bright and optimistic, suitable for a leading medical research institution." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvl4rtCa5CB_0glRWIdz41lgjCXL7C-i8FGDimWtrHynjQWm6CJ5H-GAE1O6-NI9KXIWxvpDFTJh86cjjwQiZ4QQMFobRYHOmIIAbE01q6YFPLfD85-RI1MFIii2gLKB-wvN2KJ-fnxtu7AQCMw6cwpxTkLxz5gCv-ONmIs1fyoO_YrWEHYQvPawBqqO_ZO8xcIRQGlxQn6mXXHMfXMXOCsuhNwo0sIJdP4YnE-lA31neIleuXXJqAdkvsMXwIz5M-GwBRoZo2GIDs"/>
-</div>
-<span class="font-label-md text-label-md font-bold truncate max-w-[60px]">ClinicA</span>
-</div>
-<button class="bg-primary text-on-primary text-[10px] px-2 py-1 rounded font-bold hover:bg-primary-container transition-colors">Connect</button>
-</div>
-</div>
-<!-- Stage E -->
-<div class="academic-card bg-surface-container-lowest border border-outline-variant rounded-lg border-t-4 border-t-primary p-stack-md flex flex-col h-full">
-<div class="flex justify-between items-start mb-2">
-<span class="font-label-md text-label-md text-primary uppercase tracking-widest">Stage E</span>
-<span class="material-symbols-outlined text-primary-container">rocket_launch</span>
-</div>
-<h3 class="font-title-md text-title-md mb-1">Expansion</h3>
-<p class="font-body-sm text-body-sm text-on-surface-variant mb-4 flex items-center gap-1">
-<span class="material-symbols-outlined text-[16px]">schedule</span> 2-5 Years
-                </p>
-<div class="mb-4">
-<p class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase text-[10px]">Primary Tools</p>
-<div class="flex flex-wrap gap-1">
-<span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-medium">Phase II/III Multi-Site</span>
-<span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-medium">NDA Submission</span>
-</div>
-</div>
-<div class="mb-auto">
-<div class="flex items-center gap-2 bg-error-container/20 border border-error/20 p-2 rounded text-error mb-4">
-<span class="material-symbols-outlined text-[18px]">warning</span>
-<span class="font-label-md text-label-md">Capital Requirement High</span>
-</div>
-</div>
-<div class="mt-4 p-3 bg-surface-container-low rounded border border-outline-variant/30 flex items-center justify-between">
-<div class="flex items-center gap-2">
-<div class="w-8 h-8 bg-white border border-outline-variant rounded-full flex items-center justify-center overflow-hidden">
-<img alt="GlobalRD" class="w-full h-full object-cover" data-alt="A sophisticated global research and development firm logo, featuring an abstract globe motif in varying tones of green and blue. The visual style is established and corporate, with high-key lighting that highlights its institutional prestige. The design conveys a sense of worldwide connectivity and advanced scientific collaboration." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7JFLsTNmtC2uPXaUD9CmR-du10FPId3jdwoAEp2l73rD4VTXW_YBE6T6Izctx9VufstE1KQrxqT5P3HWzqy7T8D2-s8JcIMlbWP3Np_VLXqDmLSBBZ51IELynAdOstrCaM9ITcNOuJ_C5PdNa7ChErEmIUC2pqJC1Ig8CApM-DOBmVYSrECjA70pxNyT5jCCg82kkAtp6Mb2kgGRWVSbroN_mGi684vtoZCsfKJSCtDiptqcBD55OJVArTYiII_O7joKpfKWW_DwD"/>
-</div>
-<span class="font-label-md text-label-md font-bold truncate max-w-[60px]">GlobalRD</span>
-</div>
-<button class="bg-primary text-on-primary text-[10px] px-2 py-1 rounded font-bold hover:bg-primary-container transition-colors">Connect</button>
+<div class="flex items-center gap-6">
+<button class="text-on-surface-variant text-sm font-medium hover:text-uab-green transition-colors" onclick="location.reload()">Start Over</button>
+<button class="px-6 py-2.5 border-2 border-uab-green text-uab-green font-bold rounded-lg flex items-center gap-2 hover:bg-uab-green hover:text-white transition-all text-sm">
+<span class="material-symbols-outlined text-lg">download</span>
+                        Download PDF
+                    </button>
 </div>
 </div>
 </div>
-<!-- Action Section -->
-<section class="mt-stack-lg p-stack-lg bg-primary-container text-on-primary rounded-xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+<div class="flex flex-1 overflow-hidden">
+<!-- LEFT PANEL: The Map -->
+<div class="w-[65%] bg-map-bg relative overflow-hidden flex flex-col border-r border-outline-variant">
+<div class="absolute inset-0 map-grid opacity-50"></div>
+<!-- Map UI Elements -->
+<div class="absolute top-6 left-6 z-20 pointer-events-none">
+<div class="bg-white p-2 rounded-lg shadow-md border border-outline-variant">
+<svg class="w-8 h-8 text-uab-deep-green" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="10" stroke-width="1.5"></circle>
+<path d="M12 7V17M7 12H17" stroke-linecap="round" stroke-width="1.5"></path>
+<path d="M12 7L10 10M12 7L14 10M12 17L10 14M12 17L14 14" stroke-linecap="round" stroke-width="1.5"></path>
+<text fill="currentColor" font-size="3" font-weight="bold" x="11" y="6">N</text>
+</svg>
+</div>
+</div>
+<div class="absolute top-6 right-6 z-20 flex flex-col gap-2">
+<button class="bg-white w-10 h-10 rounded-lg shadow-md border border-outline-variant flex items-center justify-center hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined">add</span>
+</button>
+<button class="bg-white w-10 h-10 rounded-lg shadow-md border border-outline-variant flex items-center justify-center hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined">remove</span>
+</button>
+</div>
+<!-- Roadmap Visualization Area -->
+<div class="flex-1 flex items-center justify-center relative p-12">
+<div class="w-full h-full relative flex items-center justify-center overflow-visible"><svg class="absolute w-[90%] h-4 overflow-visible roadmap-path-shadow" preserveaspectratio="none" viewbox="0 0 1000 20">
+<circle cx="0" cy="10" fill="#1E6B52" r="8"></circle>
+<line stroke="#1E6B52" stroke-linecap="round" stroke-width="12" x1="0" x2="1000" y1="10" y2="10"></line>
+<circle cx="1000" cy="10" fill="#1E6B52" r="8"></circle>
+</svg>
+<div class="absolute w-[90%] inset-0 flex items-center justify-between pointer-events-none">
+<div class="relative flex flex-col items-center pointer-events-auto cursor-pointer" onclick="selectStage(1)" style="left: 0%; transform: translateY(-24px);">
+<div class="pin-container flex flex-col items-center transition-transform hover:-translate-y-1" id="pin-container-1">
+<div class="relative">
+<span class="material-symbols-outlined text-[48px] text-uab-green fill-icon pin-shadow">location_on</span>
+<span class="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-white font-bold text-sm">1</span>
+</div>
+<span class="mt-1 font-bold text-[10px] uppercase text-uab-deep-green whitespace-nowrap bg-white/80 px-2 rounded">Validation</span>
+</div>
+</div>
+<div class="relative flex flex-col items-center pointer-events-auto cursor-pointer" onclick="selectStage(2)" style="left: 0%; transform: translateY(-24px);">
+<div class="pin-container flex flex-col items-center transition-transform hover:-translate-y-1" id="pin-container-2">
+<div class="relative">
+<span class="material-symbols-outlined text-[48px] text-uab-green fill-icon pin-shadow">location_on</span>
+<span class="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-white font-bold text-sm">2</span>
+</div>
+<span class="mt-1 font-bold text-[10px] uppercase text-uab-deep-green whitespace-nowrap bg-white/80 px-2 rounded">Discovery</span>
+</div>
+</div>
+<div class="relative flex flex-col items-center pointer-events-auto cursor-pointer" onclick="selectStage(3)" style="left: 0%; transform: translateY(-24px);">
+<div class="pin-container flex flex-col items-center scale-125 -translate-y-2" id="pin-container-3">
+<div class="relative">
+<span class="material-symbols-outlined text-[48px] text-uab-gold fill-icon pin-shadow">location_on</span>
+<span class="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-uab-deep-green font-bold text-sm">3</span>
+</div>
+<span class="mt-1 font-bold text-[10px] uppercase text-uab-deep-green whitespace-nowrap bg-white px-2 rounded shadow-sm border border-uab-gold">Optimization</span>
+</div>
+</div>
+<div class="relative flex flex-col items-center pointer-events-auto cursor-pointer" onclick="selectStage(4)" style="left: 0%; transform: translateY(-24px);">
+<div class="pin-container flex flex-col items-center transition-transform hover:-translate-y-1" id="pin-container-4">
+<div class="relative">
+<span class="material-symbols-outlined text-[48px] text-uab-green fill-icon pin-shadow">location_on</span>
+<span class="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-white font-bold text-sm">4</span>
+</div>
+<span class="mt-1 font-bold text-[10px] uppercase text-uab-deep-green whitespace-nowrap bg-white/80 px-2 rounded">IND Studies</span>
+</div>
+</div>
+<div class="relative flex flex-col items-center pointer-events-auto cursor-pointer" onclick="selectStage(5)" style="left: 0%; transform: translateY(-24px);">
+<div class="pin-container flex flex-col items-center transition-transform hover:-translate-y-1" id="pin-container-5">
+<div class="relative">
+<span class="material-symbols-outlined text-[48px] text-uab-green fill-icon pin-shadow">location_on</span>
+<span class="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-white font-bold text-sm">5</span>
+</div>
+<span class="mt-1 font-bold text-[10px] uppercase text-uab-deep-green whitespace-nowrap bg-white/80 px-2 rounded">Clinical I</span>
+</div>
+</div>
+<!-- Duration Badges positioned between pins -->
+<div class="absolute w-full h-full pointer-events-none">
+<div class="absolute" style="left: 12.5%; top: 50%; transform: translate(-50%, -50%);">
+<span class="text-[10px] font-bold bg-uab-deep-green text-white px-2 py-0.5 rounded shadow-sm border border-white/20">3-4 Mo</span>
+</div>
+<div class="absolute" style="left: 37.5%; top: 50%; transform: translate(-50%, -50%);">
+<span class="text-[10px] font-bold bg-uab-deep-green text-white px-2 py-0.5 rounded shadow-sm border border-white/20">4-6 Mo</span>
+</div>
+<div class="absolute" style="left: 62.5%; top: 50%; transform: translate(-50%, -50%);">
+<span class="text-[10px] font-bold bg-uab-deep-green text-white px-2 py-0.5 rounded shadow-sm border border-white/20">6-9 Mo</span>
+</div>
+<div class="absolute" style="left: 87.5%; top: 50%; transform: translate(-50%, -50%);">
+<span class="text-[10px] font-bold bg-uab-deep-green text-white px-2 py-0.5 rounded shadow-sm border border-white/20">12-18 Mo</span>
+</div>
+</div>
+</div></div>
+</div>
+<!-- BOTTOM BAR: Stage Summary Chips -->
+<div class="bg-white border-t border-outline-variant p-4 shrink-0">
+<div class="flex justify-center gap-3 overflow-x-auto no-scrollbar py-2">
+<button class="summary-chip flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-full text-xs font-bold transition-all whitespace-nowrap hover:bg-surface-container" id="chip-1" onclick="selectStage(1)">1 • Target Validation • 3-4 Mo</button>
+<button class="summary-chip flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-full text-xs font-bold transition-all whitespace-nowrap hover:bg-surface-container" id="chip-2" onclick="selectStage(2)">2 • Hit Discovery • 4-6 Mo</button>
+<button class="summary-chip flex items-center gap-2 px-4 py-2 bg-uab-green text-white rounded-full text-xs font-bold transition-all whitespace-nowrap shadow-md" id="chip-3" onclick="selectStage(3)">3 • Lead Optimization • 6-9 Mo</button>
+<button class="summary-chip flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-full text-xs font-bold transition-all whitespace-nowrap hover:bg-surface-container" id="chip-4" onclick="selectStage(4)">4 • IND-Enabling • 12-18 Mo</button>
+<button class="summary-chip flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-full text-xs font-bold transition-all whitespace-nowrap hover:bg-surface-container" id="chip-5" onclick="selectStage(5)">5 • Clinical Phase I • 24+ Mo</button>
+</div>
+</div>
+</div>
+<!-- RIGHT PANEL: Stage Details -->
+<div class="w-[35%] bg-white p-8 overflow-y-auto h-full shadow-2xl z-10">
+<div class="space-y-8 animate-in slide-in-from-right-4 duration-300" id="stage-content">
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<span class="flex items-center justify-center w-8 h-8 bg-uab-deep-green text-white rounded-full font-bold text-sm" id="detail-num">3</span>
+<span class="px-3 py-1 bg-uab-green text-white rounded-full text-[10px] font-bold uppercase tracking-wider" id="detail-duration">6-9 Months</span>
+</div>
+<h3 class="text-3xl font-bold text-uab-deep-green leading-tight" id="detail-title">Lead Optimization</h3>
+<p class="text-on-surface-variant leading-relaxed text-sm" id="detail-desc">
+                            Refining hit compounds to improve potency, selectivity, and pharmacokinetic properties. This stage bridge discovery and preclinical safety testing to identify a clinical candidate.
+                        </p>
+</div>
+<div class="space-y-6">
+<h4 class="text-sm font-bold text-uab-deep-green uppercase tracking-wide border-b pb-2">Recommended Service Providers</h4>
+<div class="space-y-4" id="provider-cards-container">
+<!-- Card 1 -->
+<div class="bg-white border border-outline-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow group">
+<div class="flex justify-between items-start mb-4">
 <div>
-<h2 class="font-headline-md text-headline-md mb-2">Ready to initiate Stage A?</h2>
-<p class="font-body-md text-body-md text-on-primary/80">Connect with the SDD Hub coordinator to finalize your initial screening protocols.</p>
+<p class="font-bold text-uab-deep-green group-hover:text-uab-green transition-colors">UAB High-Throughput Screening</p>
+<p class="text-xs text-on-surface-variant mt-1">Med-Chem &amp; Compound Profiling</p>
 </div>
-<div class="flex gap-4">
-<button class="bg-white text-primary px-6 py-3 rounded-lg font-bold font-title-md text-title-md hover:bg-surface transition-all active:scale-95">Initiate Project</button>
-<button class="border border-white text-white px-6 py-3 rounded-lg font-bold font-title-md text-title-md hover:bg-white/10 transition-all">Download PDF</button>
+<span class="text-[9px] bg-surface-container-high px-2 py-0.5 rounded font-bold border border-outline-variant">USA</span>
+</div>
+<div class="flex gap-2">
+<button class="flex-1 py-2 text-xs font-bold bg-uab-green text-white rounded-lg hover:bg-uab-deep-green transition-all">Connect</button>
+<button class="flex-1 py-2 text-xs font-bold border border-uab-green text-uab-green rounded-lg hover:bg-surface-container transition-all">Learn More</button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-white border border-outline-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow group">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="font-bold text-uab-deep-green group-hover:text-uab-green transition-colors">Southern Research Center</p>
+<p class="text-xs text-on-surface-variant mt-1">Institutional Lead Development</p>
+</div>
+<span class="text-[9px] bg-surface-container-high px-2 py-0.5 rounded font-bold border border-outline-variant">USA</span>
+</div>
+<div class="flex gap-2">
+<button class="flex-1 py-2 text-xs font-bold bg-uab-green text-white rounded-lg hover:bg-uab-deep-green transition-all">Connect</button>
+<button class="flex-1 py-2 text-xs font-bold border border-uab-green text-uab-green rounded-lg hover:bg-surface-container transition-all">Learn More</button>
+</div>
+</div>
+</div>
+<!-- Empty State -->
+<div class="hidden bg-uab-green/5 border-2 border-dashed border-uab-green/30 rounded-xl p-6 text-center" id="empty-state">
+<div class="w-12 h-12 bg-uab-green text-white rounded-full flex items-center justify-center mx-auto mb-4">
+<span class="material-symbols-outlined">contact_support</span>
+</div>
+<p class="text-sm font-bold text-uab-deep-green mb-1">Expert Matching Required</p>
+<p class="text-xs text-on-surface-variant mb-4">No automated providers found for this specific stage and asset combination.</p>
+<button class="w-full py-2.5 bg-uab-green text-white rounded-lg font-bold text-xs hover:bg-uab-deep-green transition-all">Contact SPARC Specialist</button>
+</div>
+</div>
+</div>
+</div>
 </div>
 </section>
 </main>
-<!-- Footer -->
-<footer class="bg-surface-container-highest dark:bg-on-surface border-t border-outline-variant dark:border-outline mt-stack-lg">
-<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-lg w-full px-margin-desktop py-stack-lg max-w-container-max mx-auto">
-<div>
-<span class="font-title-md text-title-md font-bold text-primary dark:text-primary-fixed block mb-2">SDD Navigator</span>
-<p class="font-body-sm text-body-sm text-on-surface-variant max-w-sm">
-                    Empowering researchers with institutional precision and editorial clarity in therapeutic discovery.
-                </p>
+<!-- Footer (Only on State 1) -->
+<footer class="bg-surface-container-low border-t border-outline-variant mt-20" id="main-footer">
+<div class="flex flex-col md:flex-row justify-between items-center w-full px-gutter py-lg max-w-[1440px] mx-auto">
+<div class="mb-6 md:mb-0 text-center md:text-left">
+<span class="font-headline-md text-headline-md font-semibold text-on-surface">SDD Navigator</span>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-2">Copyright 2024 University of Alabama at Birmingham</p>
 </div>
-<div class="grid grid-cols-2 gap-4">
-<div class="flex flex-col gap-2">
-<a class="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant hover:text-primary transition-all hover:underline" href="#">Privacy Policy</a>
-<a class="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant hover:text-primary transition-all hover:underline" href="#">Terms of Service</a>
+<div class="flex gap-8">
+<a class="text-on-surface-variant hover:underline decoration-primary-container" href="#">Knowledge Hub</a>
+<a class="text-primary font-bold" href="#">Navigator</a>
+<a class="text-on-surface-variant hover:underline decoration-primary-container" href="#">About</a>
 </div>
-<div class="flex flex-col gap-2">
-<a class="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant hover:text-primary transition-all hover:underline" href="#">Institutional Review Board</a>
-<a class="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant hover:text-primary transition-all hover:underline" href="#">Contact Support</a>
-</div>
-</div>
-</div>
-<div class="w-full px-margin-desktop py-4 max-w-container-max mx-auto border-t border-outline-variant/30 text-center">
-<p class="font-body-sm text-body-sm text-on-surface-variant/70">
-                © 2024 UAB SPARC - Center for Clinical and Translational Science. All rights reserved.
-            </p>
 </div>
 </footer>
 <script>
-        // Simple micro-interaction for pins
-        const pins = document.querySelectorAll('.flex.flex-col.items-center.gap-2.group');
-        pins.forEach((pin, index) => {
-            pin.addEventListener('click', () => {
-                const cards = document.querySelectorAll('.academic-card');
-                cards[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                cards[index].classList.add('ring-2', 'ring-primary', 'ring-offset-2');
-                setTimeout(() => {
-                    cards[index].classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
-                }, 2000);
-            });
+    const stages = {
+        1: {
+            title: "Target Validation",
+            duration: "3-4 Months",
+            desc: "Comprehensive verification of the biological target and its relevance to the disease mechanism. Includes genetic and chemical validation in relevant models.",
+            providers: [
+                { name: "UAB Omics Core", spec: "Genomic Validation", country: "USA" },
+                { name: "TargetID Global", spec: "Computational Biology", country: "GER" }
+            ]
+        },
+        2: {
+            title: "Hit Discovery",
+            duration: "4-6 Months",
+            desc: "Identifying initial active compounds or biologics that interact with the validated target. High-throughput screening of library assets.",
+            providers: [
+                { name: "SDD High-Throughput", spec: "Library Screening", country: "USA" },
+                { name: "ChemQuest Discovery", spec: "Asset Profiling", country: "USA" }
+            ]
+        },
+        3: {
+            title: "Lead Optimization",
+            duration: "6-9 Months",
+            desc: "Refining hit compounds to improve potency, selectivity, and pharmacokinetic properties. This stage bridge discovery and preclinical safety testing to identify a clinical candidate.",
+            providers: [
+                { name: "UAB High-Throughput Screening", spec: "Med-Chem & Compound Profiling", country: "USA" },
+                { name: "Southern Research Center", spec: "Institutional Lead Development", country: "USA" }
+            ]
+        },
+        4: {
+            title: "IND-Enabling Studies",
+            duration: "12-18 Months",
+            desc: "Completing preclinical safety and efficacy studies required for regulatory submission. GLP toxicology and formulation development.",
+            providers: [
+                { name: "Preclinical Safety Corp", spec: "GLP Toxicology", country: "USA" },
+                { name: "Regulatory Experts Ltd", spec: "IND Submission Support", country: "UK" }
+            ]
+        },
+        5: {
+            title: "Clinical Phase I",
+            duration: "24+ Months",
+            desc: "Initial safety testing of the clinical candidate in a small group of human volunteers. Assessment of pharmacokinetics and side effects.",
+            providers: [] // Empty to trigger state
+        }
+    };
+
+    function startGeneration() {
+        const btn = document.getElementById('generate-btn');
+        const icon = document.getElementById('btn-icon');
+        const text = document.getElementById('btn-text');
+        const loader = document.getElementById('btn-loader');
+
+        btn.disabled = true;
+        icon.classList.add('hidden');
+        text.innerText = 'Analyzing Data...';
+        loader.classList.remove('hidden');
+
+        setTimeout(() => {
+            document.getElementById('input-form').classList.add('hidden');
+            document.getElementById('main-footer').classList.add('hidden');
+            document.getElementById('roadmap-output').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 1800);
+    }
+
+    function selectStage(id) {
+        const stage = stages[id];
+        
+        // Update Panel Content
+        document.getElementById('detail-num').innerText = id;
+        document.getElementById('detail-title').innerText = stage.title;
+        document.getElementById('detail-desc').innerText = stage.desc;
+        document.getElementById('detail-duration').innerText = stage.duration;
+
+        // Reset Animation
+        const content = document.getElementById('stage-content');
+        content.classList.remove('animate-in', 'slide-in-from-right-4');
+        void content.offsetWidth; // trigger reflow
+        content.classList.add('animate-in', 'slide-in-from-right-4');
+
+        // Update Providers
+        const container = document.getElementById('provider-cards-container');
+        const emptyState = document.getElementById('empty-state');
+        
+        if (stage.providers.length === 0) {
+            container.innerHTML = '';
+            emptyState.classList.remove('hidden');
+        } else {
+            emptyState.classList.add('hidden');
+            container.innerHTML = stage.providers.map(p => `
+                <div class="bg-white border border-outline-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="font-bold text-uab-deep-green group-hover:text-uab-green transition-colors">${p.name}</p>
+                            <p class="text-xs text-on-surface-variant mt-1">${p.spec}</p>
+                        </div>
+                        <span class="text-[9px] bg-surface-container-high px-2 py-0.5 rounded font-bold border border-outline-variant">${p.country}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="flex-1 py-2 text-xs font-bold bg-uab-green text-white rounded-lg hover:bg-uab-deep-green transition-all">Connect</button>
+                        <button class="flex-1 py-2 text-xs font-bold border border-uab-green text-uab-green rounded-lg hover:bg-surface-container transition-all">Learn More</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Update Pins Visuals
+        document.querySelectorAll('.pin-container').forEach((pin, index) => {
+            const idx = index + 1;
+            const span = pin.querySelector('.material-symbols-outlined');
+            const num = pin.querySelector('.absolute.text-white, .absolute.text-uab-deep-green');
+            const label = pin.querySelector('.mt-1');
+
+            if (idx === id) {
+                pin.classList.add('scale-125', '-translate-y-2');
+                span.classList.remove('text-uab-green');
+                span.classList.add('text-uab-gold');
+                num.classList.remove('text-white');
+                num.classList.add('text-uab-deep-green');
+                label.classList.add('shadow-sm', 'border', 'border-uab-gold');
+                label.classList.remove('bg-white/80');
+                label.classList.add('bg-white');
+            } else {
+                pin.classList.remove('scale-125', '-translate-y-2');
+                span.classList.add('text-uab-green');
+                span.classList.remove('text-uab-gold');
+                num.classList.add('text-white');
+                num.classList.remove('text-uab-deep-green');
+                label.classList.remove('shadow-sm', 'border', 'border-uab-gold', 'bg-white');
+                label.classList.add('bg-white/80');
+            }
         });
-    </script>
+
+        // Update Bottom Chips
+        document.querySelectorAll('.summary-chip').forEach((chip, index) => {
+            const idx = index + 1;
+            if (idx === id) {
+                chip.classList.add('bg-uab-green', 'text-white', 'shadow-md');
+                chip.classList.remove('border-outline-variant', 'hover:bg-surface-container');
+            } else {
+                chip.classList.remove('bg-uab-green', 'text-white', 'shadow-md');
+                chip.classList.add('border-outline-variant', 'hover:bg-surface-container');
+            }
+        });
+    }
+</script>
 </body></html>
