@@ -132,11 +132,7 @@ export default async function WikiPage({
 
   const summaryBullets: string[] = Array.isArray(page.summary) ? page.summary : [];
 
-  // anchor.fm episode URLs redirect to the specific Spotify episode page for listeners.
-  // Fall back to the show page only when the episode URL is missing.
-  const spotifyUrl =
-    page.episode_url?.trim() ||
-    "https://open.spotify.com/show/50grwY6FX198o7BoYlRH6D";
+  const spotifyUrl = "https://open.spotify.com/show/50grwY6FX198o7BoYlRH6D";
 
   return (
     <div className="bg-background text-on-background font-body-md text-body-md">
@@ -335,7 +331,7 @@ export default async function WikiPage({
 
           {/* ── Comments — auto-placed into col 1 row 2 on desktop, after sidebar on mobile ── */}
           <div className="lg:col-start-1">
-            <CommentsSection wikiSlug={slug} />
+            <CommentsSection wikiPageId={page.id} />
           </div>
         </div>
       </main>

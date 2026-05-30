@@ -59,20 +59,27 @@ type NodeModal = {
 // ── Node popup ────────────────────────────────────────────────────────────────
 
 function NodePopup({ modal, onClose }: { modal: NodeModal; onClose: () => void }) {
-  // Track client-side mount so createPortal has access to document.body.
   const [mounted, setMounted] = useState(false);
+  const [portalTarget, setPortalTarget] = useState<Element | null>(null);
+
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    const update = () => setPortalTarget(document.fullscreenElement ?? null);
+    document.addEventListener("fullscreenchange", update);
+    return () => document.removeEventListener("fullscreenchange", update);
+  }, []);
 
   if (!modal || !mounted) return null;
   const { node, wikiPage } = modal;
 
   const accentColor = NODE_COLOR[node.type] || "#888";
+  const target = (portalTarget) ? portalTarget : document.body;
 
-  // Render into document.body so the popup escapes any fullscreen container.
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)" }}
+      className="fixed inset-0 flex items-center justify-center p-4"
+      style={{ zIndex: 999999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)" }}
       onClick={onClose}
     >
       <div
@@ -246,7 +253,7 @@ function NodePopup({ modal, onClose }: { modal: NodeModal; onClose: () => void }
         </div>
       </div>
     </div>,
-    document.body
+    target
   );
 }
 
@@ -882,9 +889,14 @@ function KnowledgeHubInner() {
                   {filtered.map((ep) => (
                     <Link key={ep.id} href={`/topics/${ep.slug}`}>
                       <div className="group bg-white rounded-xl border border-surface-container-high overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer h-full flex flex-col">
-                        {/* Card image placeholder */}
-                        <div className="aspect-video relative overflow-hidden bg-surface-container flex items-center justify-center">
-                          <span className="material-symbols-outlined text-6xl text-primary/20">biotech</span>
+                        {/* Card image */}
+                        <div className="relative overflow-hidden bg-surface-container" style={{ height: "160px" }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src="https://d3t3ozftmdmh3i.cloudfront.net/staging/podcast_uploaded_nologo/103fb6090/103fb6090-1719239456074-f5dcb61e7a11e.jpg"
+                            alt={ep.title}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
                           <div className="absolute top-4 left-4 bg-primary-container text-white px-3 py-1 rounded-full font-label-sm text-label-sm font-bold">
                             EP #{ep.episode_number}
                           </div>

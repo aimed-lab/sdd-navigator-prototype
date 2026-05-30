@@ -118,7 +118,7 @@ def _mark_failed(prog: dict, ep_num: int) -> None:
 
 # ── Supabase save helpers ──────────────────────────────────────────────────────
 
-def _save_wiki_page(metadata: dict, transcript: str, extracted: dict) -> str:
+def _save_wiki_page(metadata: dict, transcript: str, extracted: dict, image_url: str = "") -> str:
     """Insert one episode into wiki_pages. Returns the new UUID."""
     ep_num = metadata["episode_number"]
     slug   = extracted.get("slug") or f"episode-{ep_num}"
@@ -142,6 +142,7 @@ def _save_wiki_page(metadata: dict, transcript: str, extracted: dict) -> str:
         # Run this SQL once in Supabase if the column is missing:
         #   ALTER TABLE wiki_pages ADD COLUMN IF NOT EXISTS entities JSONB DEFAULT '{}';
         "entities":       extracted.get("entities", {}),
+        "image_url":      image_url or metadata.get("image_url", ""),
     }
 
     result = _sb_post("wiki_pages", row)
@@ -196,7 +197,7 @@ def _process_one(episode: dict, prog: dict, whisper_model) -> bool:
     # ── Step 4: Save to Supabase ──────────────────────────────────────────
     print(f"\n  💾 STEP 4 / 4 — Save to Supabase")
     try:
-        wiki_id = _save_wiki_page(metadata, transcript, extracted)
+        wiki_id = _save_wiki_page(metadata, transcript, extracted, image_url=episode.get("image_url", ""))
         print(f"   ✅ wiki_page saved  id={wiki_id}  slug={extracted.get('slug')}")
     except Exception as exc:
         print(f"   ❌ Supabase save failed: {exc}")

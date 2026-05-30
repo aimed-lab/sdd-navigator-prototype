@@ -105,6 +105,12 @@ def parse_rss(rss_url: str) -> list[dict]:
                     episode_url = href
                     break
 
+        image_url = (
+            entry.get("image", {}).get("href")
+            or entry.get("itunes_image", {}).get("href")
+            or PODCAST_COVER_URL
+        )
+
         episodes.append({
             "episode_number": _episode_number(entry, i, total),
             "title":          entry.get("title", f"Episode {total - i}").strip(),
@@ -112,6 +118,7 @@ def parse_rss(rss_url: str) -> list[dict]:
             "episode_url":    episode_url,
             "description":    entry.get("summary", ""),
             "published":      entry.get("published", ""),
+            "image_url":      image_url,
         })
 
     episodes.sort(key=lambda e: e["episode_number"])
@@ -143,7 +150,8 @@ def _transcribe_audio(path: str, model) -> str:
 
 # ── URL helpers ───────────────────────────────────────────────────────────────
 
-SPOTIFY_SHOW_URL = "https://open.spotify.com/show/50grwY6FX198o7BoYlRH6D"
+SPOTIFY_SHOW_URL   = "https://open.spotify.com/show/50grwY6FX198o7BoYlRH6D"
+PODCAST_COVER_URL  = "https://d3t3ozftmdmh3i.cloudfront.net/staging/podcast_uploaded_nologo/103fb6090/103fb6090-1719239456074-f5dcb61e7a11e.jpg"
 
 
 def _normalize_episode_url(url: str) -> str:
@@ -202,6 +210,7 @@ def transcribe_episode(episode: dict, output_dir: str, model) -> str:
             "episode_url":    episode.get("episode_url", ""),
             "description":    episode["description"],
             "published":      episode.get("published", ""),
+            "image_url":      episode.get("image_url", ""),
         },
         "transcript": transcript,
     }

@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/context/AuthContext";
@@ -89,6 +90,7 @@ export default function GraphPage() {
   const graphContainerRef = useRef<HTMLDivElement>(null);
 
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [fsTarget, setFsTarget] = useState<Element | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<Set<NodeType>>(
     new Set(["episode", "concept", "resource"])
@@ -102,6 +104,12 @@ export default function GraphPage() {
   const d3ZoomInRef = useRef<(() => void) | null>(null);
   const d3ZoomOutRef = useRef<(() => void) | null>(null);
   const d3ResetRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    const update = () => setFsTarget(document.fullscreenElement ?? null);
+    document.addEventListener("fullscreenchange", update);
+    return () => document.removeEventListener("fullscreenchange", update);
+  }, []);
 
   const closeModal = useCallback(() => setModal(null), []);
 
@@ -749,10 +757,11 @@ export default function GraphPage() {
         )}
 
         {/* Modal overlay */}
-        {modal && (
+        {modal && createPortal(
           <div
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            className="fixed inset-0 flex items-center justify-center p-4"
             style={{
+              zIndex: 999999,
               background: "rgba(0,0,0,0.78)",
               backdropFilter: "blur(10px)",
             }}
@@ -1026,7 +1035,8 @@ export default function GraphPage() {
                 </div>
               )}
             </div>
-          </div>
+          </div>,
+          fsTarget ?? document.body
         )}
       </main>
     </div>

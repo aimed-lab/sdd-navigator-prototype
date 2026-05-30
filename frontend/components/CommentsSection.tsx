@@ -5,20 +5,21 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 
-// Required Supabase RLS policies for the comments table:
-//   -- Allow authenticated users to read all comments
-//   CREATE POLICY "Anyone can view comments" ON comments FOR SELECT USING (true);
+// Real comments table schema: id, user_id, wiki_id, content, created_at
+// Joined with users table for: name, affiliation
 //
-//   -- Allow authenticated users to insert their own comments
-//   CREATE POLICY "Authenticated users can insert comments" ON comments
+// Required RLS policies:
+//   CREATE POLICY "Anyone can view comments" ON comments FOR SELECT USING (true);
+//   CREATE POLICY "Authenticated users can insert" ON comments
 //     FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
+type UserData = { name: string; affiliation: string | null };
 
 type Comment = {
   id: string;
-  author_name: string;
-  affiliation: string;
   content: string;
   created_at: string;
+  users: UserData | UserData[] | null;
 };
 
 function timeAgo(dateString: string): string {
@@ -39,7 +40,11 @@ function initials(name: string): string {
     .join("");
 }
 
-export default function CommentsSection({ wikiSlug }: { wikiSlug: string }) {
+export default function CommentsSection({
+  wikiPageId,
+}: {
+  wikiPageId?: string;
+}) {
   const { user, loading: authLoading } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComments, setLoadingComments] = useState(true);
@@ -50,22 +55,27 @@ export default function CommentsSection({ wikiSlug }: { wikiSlug: string }) {
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const loadComments = useCallback(async () => {
+    if (!wikiPageId) {
+      setLoadingComments(false);
+      return;
+    }
     setLoadingComments(true);
     setFetchError(null);
 
     const { data, error } = await supabase
       .from("comments")
-      .select("id, author_name, affiliation, content, created_at")
-      .eq("wiki_page_slug", wikiSlug)
+      .select("id, content, created_at, users(name, affiliation)")
+      .eq("wiki_id", wikiPageId)
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Comments fetch error:", error);
       setFetchError(`Could not load comments: ${error.message}`);
     }
-    setComments(data ?? []);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setComments((data as any as Comment[]) ?? []);
     setLoadingComments(false);
-  }, [wikiSlug]);
+  }, [wikiPageId]);
 
   useEffect(() => {
     loadComments();
@@ -73,29 +83,15 @@ export default function CommentsSection({ wikiSlug }: { wikiSlug: string }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !content.trim()) return;
+    if (!user || !content.trim() || !wikiPageId) return;
 
     setSubmitting(true);
     setSubmitError(null);
     setSubmitSuccess(false);
 
-    const authorName =
-      user.user_metadata?.full_name ||
-      user.user_metadata?.name ||
-      user.email?.split("@")[0] ||
-      "Anonymous";
-
-    console.log("Inserting comment:", {
-      wiki_page_slug: wikiSlug,
-      user_id: user.id,
-      author_name: authorName,
-    });
-
     const { error } = await supabase.from("comments").insert({
-      wiki_page_slug: wikiSlug,
+      wiki_id: wikiPageId,
       user_id: user.id,
-      author_name: authorName,
-      affiliation: user.user_metadata?.affiliation ?? "",
       content: content.trim(),
     });
 
@@ -105,7 +101,6 @@ export default function CommentsSection({ wikiSlug }: { wikiSlug: string }) {
     } else {
       setContent("");
       setSubmitSuccess(true);
-      // Refresh list then clear success message after 2 s
       await loadComments();
       setTimeout(() => setSubmitSuccess(false), 2000);
     }
@@ -203,26 +198,31 @@ export default function CommentsSection({ wikiSlug }: { wikiSlug: string }) {
               No comments yet — be the first to share your insights.
             </p>
           ) : (
-            comments.map((c, i) => (
-              <div
-                key={c.id}
-                className={`flex gap-4 p-md ${i < comments.length - 1 ? "border-b border-outline-variant" : ""}`}
-              >
-                <div className="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs uppercase shrink-0">
-                  {initials(c.author_name)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-bold text-on-surface text-sm">{c.author_name}</span>
-                    {c.affiliation && (
-                      <span className="text-outline text-xs">· {c.affiliation}</span>
-                    )}
-                    <span className="text-outline text-xs ml-auto">{timeAgo(c.created_at)}</span>
+            comments.map((c, i) => {
+              const userInfo = Array.isArray(c.users) ? c.users[0] : c.users;
+              const name = userInfo?.name ?? "Anonymous";
+              const affiliation = userInfo?.affiliation;
+              return (
+                <div
+                  key={c.id}
+                  className={`flex gap-4 p-md ${i < comments.length - 1 ? "border-b border-outline-variant" : ""}`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                    {initials(name)}
                   </div>
-                  <p className="font-body-md text-body-md text-on-surface-variant">{c.content}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-bold text-on-surface text-sm">{name}</span>
+                      {affiliation && (
+                        <span className="text-outline text-xs">· {affiliation}</span>
+                      )}
+                      <span className="text-outline text-xs ml-auto">{timeAgo(c.created_at)}</span>
+                    </div>
+                    <p className="font-body-md text-body-md text-on-surface-variant">{c.content}</p>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
