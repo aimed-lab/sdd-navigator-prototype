@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import FeedbackButton from "@/components/FeedbackButton";
 
 export const metadata: Metadata = {
   title: "SDD Navigator | Precision Research Roadmapping",
@@ -26,7 +27,10 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body-md text-body-md bg-background text-on-surface selection:bg-secondary-container selection:text-on-secondary-container">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <FeedbackButton />
+        </AuthProvider>
       </body>
     </html>
   );
