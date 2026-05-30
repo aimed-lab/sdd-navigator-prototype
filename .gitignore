@@ -7,4 +7,24 @@ venv/
 frontend/node_modules/
 frontend/.next/
 frontend/out/
+
+# Output files
+backend/output/
+
+# Design files
+design/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+backend/.env
+
+# Environment
+frontend/.env.local
+
+# Editor
 CLAUDE.md
+
+# Next.js
+.next/
