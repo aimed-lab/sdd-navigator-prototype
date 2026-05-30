@@ -23,7 +23,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";   -- gen_random_uuid() on older PG ve
 
 CREATE TABLE IF NOT EXISTS public.users (
     id          UUID        PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
-    name        TEXT        NOT NULL DEFAULT '',
+    name        TEXT,
     email       TEXT        NOT NULL DEFAULT '',
     affiliation TEXT,                               -- "Researcher" | "Laboratory Head" | etc.
     institution TEXT,
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.wiki_pages (
     episode_url    TEXT,                                 -- Spotify/Anchor episode link
     image_url      TEXT,                                 -- RSS feed artwork URL
     description    TEXT,                                 -- one-sentence summary from LLM
-    summary        JSONB       DEFAULT '[]',             -- string[]
+    summary        TEXT[]      DEFAULT '{}',             -- string[]
     concepts       JSONB       DEFAULT '[]',             -- {title: string, bullets: string[]}[]
     tags           TEXT[]      DEFAULT '{}',
     entities       JSONB       DEFAULT '{}',             -- {drugs, proteins, targets, tools}
@@ -214,16 +214,3 @@ CREATE INDEX IF NOT EXISTS idx_comments_wiki_id          ON public.comments (wik
 CREATE INDEX IF NOT EXISTS idx_comments_user_id          ON public.comments (user_id);
 
 
--- =============================================================================
--- ALTER TABLE MIGRATIONS
--- =============================================================================
--- Applied incrementally to an existing database.
--- Safe to re-run (IF NOT EXISTS / IF EXISTS guards throughout).
-
--- entities column: added after initial schema to support graph_agent entity extraction
-ALTER TABLE public.wiki_pages
-    ADD COLUMN IF NOT EXISTS entities JSONB DEFAULT '{}';
-
--- image_url column: added to display RSS feed episode artwork on Knowledge Hub cards
-ALTER TABLE public.wiki_pages
-    ADD COLUMN IF NOT EXISTS image_url TEXT;
