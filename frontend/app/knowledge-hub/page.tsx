@@ -19,6 +19,7 @@ type WikiPage = {
   tags: string[];
   description: string;
   slug: string;
+  image_url: string | null;
 };
 
 type GraphNode = d3.SimulationNodeDatum & {
@@ -735,9 +736,10 @@ function KnowledgeHubInner() {
     async function load() {
       const { data, error } = await supabase
         .from("wiki_pages")
-        .select("id, episode_number, title, tags, description, slug")
+        .select("id, slug, title, episode_number, description, tags, image_url")
         .order("episode_number", { ascending: false });
       if (error) console.error(error.message);
+      console.log("Episodes image_url values:", (data ?? []).map((ep) => ({ episode: ep.episode_number, image_url: ep.image_url })));
       setEpisodes(data ?? []);
       setLoading(false);
     }
@@ -890,13 +892,23 @@ function KnowledgeHubInner() {
                     <Link key={ep.id} href={`/topics/${ep.slug}`}>
                       <div className="group bg-white rounded-xl border border-surface-container-high overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer h-full flex flex-col">
                         {/* Card image */}
-                        <div className="relative overflow-hidden bg-surface-container" style={{ height: "160px" }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src="https://d3t3ozftmdmh3i.cloudfront.net/staging/podcast_uploaded_nologo/103fb6090/103fb6090-1719239456074-f5dcb61e7a11e.jpg"
-                            alt={ep.title}
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          />
+                        <div
+                          className="relative overflow-hidden flex items-center justify-center"
+                          style={{
+                            height: "160px",
+                            background: "linear-gradient(135deg, #00523c 0%, #1e6b52 60%, #0d9488 100%)",
+                          }}
+                        >
+                          <span className="material-symbols-outlined text-white/20 text-8xl">science</span>
+                          {ep.image_url && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={ep.image_url}
+                              alt={ep.title}
+                              className="absolute inset-0 w-full h-full object-cover"
+                              onError={(e) => { e.currentTarget.style.display = "none"; }}
+                            />
+                          )}
                           <div className="absolute top-4 left-4 bg-primary-container text-white px-3 py-1 rounded-full font-label-sm text-label-sm font-bold">
                             EP #{ep.episode_number}
                           </div>
