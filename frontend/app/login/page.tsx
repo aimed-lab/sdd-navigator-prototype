@@ -25,11 +25,28 @@ function LoginForm() {
     e.preventDefault();
     setError("");
     setSubmitting(true);
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
     if (authError) {
       setError(authError.message);
       setSubmitting(false);
     } else {
+      if (data.user) {
+        const { data: existingUser } = await supabase
+          .from("users")
+          .select("id")
+          .eq("id", data.user.id)
+          .single();
+        if (!existingUser) {
+          await supabase.from("users").insert({
+            id: data.user.id,
+            name: data.user.user_metadata?.name ?? email.split("@")[0],
+            email: data.user.email ?? email,
+            affiliation: data.user.user_metadata?.affiliation ?? "",
+            institution: data.user.user_metadata?.institution ?? "",
+            country: data.user.user_metadata?.country ?? "",
+          });
+        }
+      }
       router.push(callbackUrl);
     }
   }
