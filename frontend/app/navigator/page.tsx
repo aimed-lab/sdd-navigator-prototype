@@ -4,51 +4,31 @@ import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-// ── Roadmap data ──────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-const STAGES = [
-  {
-    id: 1,
-    label: "Validation",
-    duration: "3-4 Mo",
-    title: "Stage 1: Target Validation",
-    desc: "Confirm the biological relevance of your target using existing datasets and preliminary assays.",
-    providers: ["UAB Structural Biology Core", "UAB Genomics Core"],
-  },
-  {
-    id: 2,
-    label: "Discovery",
-    duration: "4-6 Mo",
-    title: "Stage 2: Hit Discovery",
-    desc: "Screen compound libraries to identify early-stage hits against your validated target.",
-    providers: ["UAB High-Throughput Screening", "Southern Research Center"],
-  },
-  {
-    id: 3,
-    label: "Optimization",
-    duration: "6-9 Mo",
-    title: "Stage 3: Lead Optimization",
-    desc: "Refine hit compounds to improve potency, selectivity, and pharmacokinetic properties for clinical candidacy.",
-    providers: ["UAB High-Throughput Screening", "Southern Research Center"],
-    highlight: true,
-  },
-  {
-    id: 4,
-    label: "IND Studies",
-    duration: "12-18 Mo",
-    title: "Stage 4: IND-Enabling Studies",
-    desc: "Complete the preclinical safety and toxicology studies required to file an Investigational New Drug application.",
-    providers: ["UAB Animal Resources Program", "Charles River Labs"],
-  },
-  {
-    id: 5,
-    label: "Clinical I",
-    duration: "24+ Mo",
-    title: "Stage 5: Phase I Clinical Trial",
-    desc: "First-in-human safety studies to establish the safety profile, tolerability, and optimal dose range.",
-    providers: ["UAB Cancer Center", "UAB Clinical Research Unit"],
-  },
-];
+type Provider = {
+  name: string;
+  type: string;
+  description: string;
+  website: string;
+  free: boolean;
+};
+
+type Stage = {
+  id: number;
+  name: string;
+  duration: string;
+  description: string;
+  tools: string[];
+  bottleneck: string;
+  providers: Provider[];
+};
+
+type RoadmapData = {
+  title: string;
+  summary: string;
+  stages: Stage[];
+};
 
 // ── Form state ────────────────────────────────────────────────────────────────
 
@@ -70,33 +50,70 @@ const DEFAULT_FORM: FormData = {
   budget: "$1M - $5M",
 };
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── SVG helpers ───────────────────────────────────────────────────────────────
 
-// ── Pin positions in the 900×200 SVG coordinate space ────────────────────────
-// Road runs from x=80 to x=820 at y=100. 5 pins evenly spaced.
-const PIN_X = [80, 265, 450, 635, 820] as const;
-// Duration badges sit between adjacent pins ON the road
-const BADGE_X = [172, 357, 542, 727] as const;
+const SVG_WIDTH = 900;
+const SVG_HEIGHT = 200;
 const ROAD_Y = 100;
+const PADDING = 80;
+
+function pinPositions(count: number): number[] {
+  if (count <= 1) return [SVG_WIDTH / 2];
+  const usable = SVG_WIDTH - 2 * PADDING;
+  return Array.from({ length: count }, (_, i) =>
+    Math.round(PADDING + (i / (count - 1)) * usable)
+  );
+}
+
+function badgePositions(pins: number[]): number[] {
+  return pins.slice(0, -1).map((x, i) => Math.round((x + pins[i + 1]) / 2));
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function NavigatorPage() {
   const [view, setView] = useState<"form" | "roadmap">("form");
   const [form, setForm] = useState<FormData>(DEFAULT_FORM);
   const [loading, setLoading] = useState(false);
-  const [selectedStage, setSelectedStage] = useState(3);
-  // Fade animation when switching stages
+  const [error, setError] = useState<string | null>(null);
+  const [roadmapData, setRoadmapData] = useState<RoadmapData | null>(null);
+  const [selectedStage, setSelectedStage] = useState(1);
   const [panelVisible, setPanelVisible] = useState(true);
 
-  function handleGenerate() {
+  async function handleGenerate() {
     if (!form.assetDesc.trim() || !form.goalDesc.trim()) return;
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    setError(null);
+    try {
+      const res = await fetch("/api/generate-roadmap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          what_have: form.assetType,
+          have_description: form.assetDesc,
+          what_want: `${form.goal}: ${form.goalDesc}`,
+          timeline: form.timeline,
+          budget: form.budget,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to generate roadmap. Please try again.");
+        return;
+      }
+      setRoadmapData(data as RoadmapData);
+      setSelectedStage((data as RoadmapData).stages?.[0]?.id ?? 1);
       setView("roadmap");
-    }, 2000);
+    } catch {
+      setError("Network error. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLSelectElement | HTMLTextAreaElement>) {
+  function handleChange(
+    e: React.ChangeEvent<HTMLSelectElement | HTMLTextAreaElement>
+  ) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
@@ -109,14 +126,155 @@ export default function NavigatorPage() {
     }, 140);
   }
 
-  const activeStage = STAGES[selectedStage - 1];
+  async function handleDownloadPDF() {
+    if (!roadmapData) return;
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const usableW = pageW - 2 * margin;
+    let y = margin;
+
+    // Header
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 82, 60);
+    doc.text("SDD Navigator — UAB SPARC", margin, y);
+    y += 8;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, y);
+    y += 12;
+
+    // Researcher inputs
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
+    doc.text("Researcher Inputs", margin, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(60, 60, 60);
+    const inputs = [
+      `Starting Point: ${form.assetType} — ${form.assetDesc}`,
+      `Goal: ${form.goal} — ${form.goalDesc}`,
+      `Timeline: ${form.timeline}`,
+      `Budget: ${form.budget}`,
+    ];
+    for (const line of inputs) {
+      const wrapped = doc.splitTextToSize(line, usableW);
+      doc.text(wrapped, margin, y);
+      y += (wrapped as string[]).length * 5 + 2;
+    }
+    y += 4;
+
+    // Divider
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, y, pageW - margin, y);
+    y += 8;
+
+    // Title + summary
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 82, 60);
+    const titleWrapped = doc.splitTextToSize(roadmapData.title, usableW) as string[];
+    doc.text(titleWrapped, margin, y);
+    y += titleWrapped.length * 7 + 4;
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60, 60, 60);
+    const summaryWrapped = doc.splitTextToSize(roadmapData.summary, usableW) as string[];
+    doc.text(summaryWrapped, margin, y);
+    y += summaryWrapped.length * 5 + 10;
+
+    // Stages
+    for (const stage of roadmapData.stages) {
+      if (y > 240) {
+        doc.addPage();
+        y = margin;
+      }
+
+      // Stage heading
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 82, 60);
+      doc.text(`Stage ${stage.id}: ${stage.name}  (${stage.duration})`, margin, y);
+      y += 6;
+
+      // Description
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(40, 40, 40);
+      const descWrapped = doc.splitTextToSize(stage.description, usableW) as string[];
+      doc.text(descWrapped, margin, y);
+      y += descWrapped.length * 5 + 3;
+
+      // Tools
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.text("Tools: ", margin, y);
+      doc.setFont("helvetica", "normal");
+      const toolsWrapped = doc.splitTextToSize(stage.tools.join(", "), usableW - 16) as string[];
+      doc.text(toolsWrapped, margin + 16, y);
+      y += toolsWrapped.length * 5 + 3;
+
+      // Bottleneck
+      doc.setFont("helvetica", "bold");
+      doc.text("Bottleneck: ", margin, y);
+      doc.setFont("helvetica", "normal");
+      const bnWrapped = doc.splitTextToSize(stage.bottleneck, usableW - 24) as string[];
+      doc.text(bnWrapped, margin + 24, y);
+      y += bnWrapped.length * 5 + 3;
+
+      // Providers
+      doc.setFont("helvetica", "bold");
+      doc.text("Providers:", margin, y);
+      y += 5;
+      for (const p of stage.providers) {
+        if (y > 270) {
+          doc.addPage();
+          y = margin;
+        }
+        doc.setFont("helvetica", "normal");
+        const tag = p.free ? " [FREE]" : "";
+        const pLine = `  • ${p.name} (${p.type})${tag} — ${p.website}`;
+        const pWrapped = doc.splitTextToSize(pLine, usableW) as string[];
+        doc.text(pWrapped, margin, y);
+        y += pWrapped.length * 5 + 1;
+      }
+      y += 7;
+    }
+
+    // Footer on every page
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(
+        "sdd-navigator-six.vercel.app",
+        margin,
+        doc.internal.pageSize.getHeight() - 10
+      );
+    }
+
+    doc.save("sdd-navigator-roadmap.pdf");
+  }
+
+  const stages = roadmapData?.stages ?? [];
+  const activeStage = stages.find((s) => s.id === selectedStage) ?? stages[0];
+  const pins = pinPositions(stages.length);
+  const badges = badgePositions(pins);
 
   return (
     <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col">
       <Navbar />
 
       <main className="flex-1 flex flex-col">
-        {/* ── Form State ─────────────────────────────────────────── */}
+
+        {/* ── Form view ─────────────────────────────────────────── */}
         {view === "form" && (
           <div className="max-w-[1280px] mx-auto px-4 sm:px-gutter py-6 md:py-lg w-full">
             <div className="mb-8 md:mb-10 text-center">
@@ -130,16 +288,27 @@ export default function NavigatorPage() {
 
             <div className="bg-white p-5 md:p-lg rounded-xl shadow-md border border-outline-variant max-w-3xl mx-auto">
               <form className="space-y-8">
+
                 {/* What do you have */}
                 <div className="space-y-4">
-                  <label className="block font-semibold text-on-surface">What do you have?</label>
+                  <label className="block font-semibold text-on-surface">
+                    What do you have?
+                  </label>
                   <select
                     name="assetType"
                     value={form.assetType}
                     onChange={handleChange}
                     className="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md"
                   >
-                    {["Protein Target", "Gene/Genomic Data", "Small Molecule Hit", "Dataset/Biomarker", "Cell Line", "Animal Model", "Other"].map((o) => (
+                    {[
+                      "Protein Target",
+                      "Gene/Genomic Data",
+                      "Small Molecule Hit",
+                      "Dataset/Biomarker",
+                      "Cell Line",
+                      "Animal Model",
+                      "Other",
+                    ].map((o) => (
                       <option key={o}>{o}</option>
                     ))}
                   </select>
@@ -155,14 +324,23 @@ export default function NavigatorPage() {
 
                 {/* What do you want */}
                 <div className="space-y-4">
-                  <label className="block font-semibold text-on-surface">What do you want to achieve?</label>
+                  <label className="block font-semibold text-on-surface">
+                    What do you want to achieve?
+                  </label>
                   <select
                     name="goal"
                     value={form.goal}
                     onChange={handleChange}
                     className="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md"
                   >
-                    {["Hit Identification", "Lead Optimization", "IND Filing", "Clinical Trial Design", "Publication/Patent", "Biomarker Validation"].map((o) => (
+                    {[
+                      "Hit Identification",
+                      "Lead Optimization",
+                      "IND Filing",
+                      "Clinical Trial Design",
+                      "Publication/Patent",
+                      "Biomarker Validation",
+                    ].map((o) => (
                       <option key={o}>{o}</option>
                     ))}
                   </select>
@@ -186,7 +364,11 @@ export default function NavigatorPage() {
                       onChange={handleChange}
                       className="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md"
                     >
-                      {["Accelerated (12-18 months)", "Standard (24-36 months)", "Extended (36+ months)"].map((o) => (
+                      {[
+                        "Accelerated (12-18 months)",
+                        "Standard (24-36 months)",
+                        "Extended (36+ months)",
+                      ].map((o) => (
                         <option key={o}>{o}</option>
                       ))}
                     </select>
@@ -206,18 +388,30 @@ export default function NavigatorPage() {
                   </div>
                 </div>
 
+                {/* Error message */}
+                {error && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
+                    <span className="material-symbols-outlined text-red-500 text-lg shrink-0">error</span>
+                    <span>{error}</span>
+                  </div>
+                )}
+
                 {/* Submit */}
                 <div className="pt-6">
                   <button
                     type="button"
                     onClick={handleGenerate}
-                    disabled={loading || !form.assetDesc.trim() || !form.goalDesc.trim()}
+                    disabled={
+                      loading ||
+                      !form.assetDesc.trim() ||
+                      !form.goalDesc.trim()
+                    }
                     className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-lg shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                   >
                     {loading ? (
                       <>
-                        <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin border-[3px]" />
-                        Generating Roadmap…
+                        <div className="w-6 h-6 border-[3px] border-white/30 border-t-white rounded-full animate-spin" />
+                        Generating…
                       </>
                     ) : (
                       <>
@@ -232,28 +426,32 @@ export default function NavigatorPage() {
           </div>
         )}
 
-        {/* ── Roadmap State ──────────────────────────────────────── */}
-        {view === "roadmap" && (
+        {/* ── Roadmap view ───────────────────────────────────────── */}
+        {view === "roadmap" && roadmapData && (
           <div className="flex-1 flex flex-col">
+
             {/* Top bar */}
-            <div className="bg-white border-b border-outline-variant px-4 sm:px-gutter py-3 md:py-4 shrink-0">
+            <div className="bg-white border-b border-outline-variant px-4 sm:px-gutter py-4 shrink-0">
               <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <h2 className="font-bold text-lg md:text-2xl text-uab-deep-green">Your Research Roadmap</h2>
-                  <div className="flex items-center gap-2 text-on-surface-variant font-medium text-sm flex-wrap">
-                    <span>{form.assetType}</span>
-                    <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                    <span className="text-uab-green">{form.goal}</span>
-                  </div>
+                <div className="flex flex-col gap-1 max-w-2xl">
+                  <h2 className="font-bold text-lg md:text-2xl text-primary leading-snug">
+                    {roadmapData.title}
+                  </h2>
+                  <p className="text-on-surface-variant text-sm leading-relaxed line-clamp-2">
+                    {roadmapData.summary}
+                  </p>
                 </div>
-                <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
                   <button
                     onClick={() => setView("form")}
-                    className="text-on-surface-variant text-sm font-medium hover:text-uab-green transition-colors"
+                    className="text-on-surface-variant text-sm font-medium hover:text-primary transition-colors"
                   >
-                    Start Over
+                    ← Start Over
                   </button>
-                  <button className="flex-1 sm:flex-none px-4 py-2.5 min-h-[44px] border-2 border-uab-green text-uab-green font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-uab-green hover:text-white transition-all text-sm">
+                  <button
+                    onClick={handleDownloadPDF}
+                    className="flex-1 sm:flex-none px-4 py-2.5 min-h-[44px] border-2 border-primary text-primary font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition-all text-sm"
+                  >
                     <span className="material-symbols-outlined text-lg">download</span>
                     Download PDF
                   </button>
@@ -261,45 +459,45 @@ export default function NavigatorPage() {
               </div>
             </div>
 
-            {/* Map + Panel: column on mobile, row on md+ */}
+            {/* Map + Panel */}
             <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
 
               {/* ── Map panel ─────────────────────────────────────── */}
               <div className="flex-1 bg-map-bg relative flex flex-col border-b md:border-b-0 md:border-r border-outline-variant">
-                {/* Dot-grid background */}
                 <div className="absolute inset-0 map-grid opacity-40 pointer-events-none" />
 
-                {/*
-                  SVG map — single coordinate space so road, pins, badges and labels
-                  all align perfectly. Fixed 900×200px, wrapper scrolls horizontally
-                  on narrow screens (min-width: 560px prevents pins from overlapping).
-                */}
                 <div className="flex-1 overflow-x-auto flex items-center justify-center py-4 relative z-10">
                   <svg
-                    width="900"
-                    height="200"
-                    viewBox="0 0 900 200"
+                    width={SVG_WIDTH}
+                    height={SVG_HEIGHT}
+                    viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
                     style={{ minWidth: "560px", display: "block" }}
                     aria-label="Research roadmap"
                   >
-                    {/* ── Road ── */}
-                    {/* End caps */}
-                    <circle cx={PIN_X[0]}  cy={ROAD_Y} r={6} fill="#1E6B52" />
-                    <circle cx={PIN_X[4]} cy={ROAD_Y} r={6} fill="#1E6B52" />
-                    {/* Road line — sits behind pins */}
-                    <line
-                      x1={PIN_X[0]} y1={ROAD_Y}
-                      x2={PIN_X[4]} y2={ROAD_Y}
-                      stroke="#1E6B52"
-                      strokeWidth={8}
-                      strokeLinecap="round"
-                    />
+                    {/* End caps + road line */}
+                    {pins.length > 0 && (
+                      <>
+                        <circle cx={pins[0]} cy={ROAD_Y} r={6} fill="#1E6B52" />
+                        <circle cx={pins[pins.length - 1]} cy={ROAD_Y} r={6} fill="#1E6B52" />
+                      </>
+                    )}
+                    {pins.length > 1 && (
+                      <line
+                        x1={pins[0]}
+                        y1={ROAD_Y}
+                        x2={pins[pins.length - 1]}
+                        y2={ROAD_Y}
+                        stroke="#1E6B52"
+                        strokeWidth={8}
+                        strokeLinecap="round"
+                      />
+                    )}
 
-                    {/* ── Duration badges ON the road ── */}
-                    {STAGES.slice(0, -1).map((stage, i) => (
+                    {/* Duration badges between pins */}
+                    {badges.map((bx, i) => (
                       <g key={`badge-${i}`} pointerEvents="none">
                         <rect
-                          x={BADGE_X[i] - 22}
+                          x={bx - 22}
                           y={ROAD_Y - 9}
                           width={44}
                           height={18}
@@ -307,7 +505,7 @@ export default function NavigatorPage() {
                           fill="#144B39"
                         />
                         <text
-                          x={BADGE_X[i]}
+                          x={bx}
                           y={ROAD_Y + 1}
                           textAnchor="middle"
                           dominantBaseline="middle"
@@ -316,18 +514,22 @@ export default function NavigatorPage() {
                           fontWeight="700"
                           fontFamily="Inter, sans-serif"
                         >
-                          {stage.duration}
+                          {stages[i]?.duration ?? ""}
                         </text>
                       </g>
                     ))}
 
-                    {/* ── Pins ── */}
-                    {STAGES.map((stage, i) => {
-                      const x = PIN_X[i];
+                    {/* Stage pins */}
+                    {stages.map((stage, i) => {
+                      const x = pins[i];
                       const isSelected = selectedStage === stage.id;
                       const r = isSelected ? 26 : 20;
                       const fill = isSelected ? "#FFD602" : "#1E6B52";
                       const numColor = isSelected ? "#144B39" : "#ffffff";
+                      const labelText =
+                        stage.name.length > 12
+                          ? stage.name.slice(0, 11) + "…"
+                          : stage.name;
 
                       return (
                         <g
@@ -335,9 +537,9 @@ export default function NavigatorPage() {
                           onClick={() => selectStage(stage.id)}
                           style={{ cursor: "pointer" }}
                           role="button"
-                          aria-label={`Stage ${stage.id}: ${stage.label}`}
+                          aria-label={`Stage ${stage.id}: ${stage.name}`}
                         >
-                          {/* Touch-friendly invisible hit area (≥44px) */}
+                          {/* Touch-friendly hit area */}
                           <rect
                             x={x - 26}
                             y={ROAD_Y - 44}
@@ -346,7 +548,6 @@ export default function NavigatorPage() {
                             fill="transparent"
                           />
 
-                          {/* Outer glow ring when selected */}
                           {isSelected && (
                             <circle
                               cx={x}
@@ -359,7 +560,6 @@ export default function NavigatorPage() {
                             />
                           )}
 
-                          {/* Pin circle */}
                           <circle
                             cx={x}
                             cy={ROAD_Y}
@@ -371,7 +571,6 @@ export default function NavigatorPage() {
                             }}
                           />
 
-                          {/* Stage number — centered in circle */}
                           <text
                             x={x}
                             y={ROAD_Y}
@@ -381,13 +580,14 @@ export default function NavigatorPage() {
                             fontSize={isSelected ? 14 : 12}
                             fontWeight="700"
                             fontFamily="Inter, sans-serif"
-                            style={{ transition: "fill 0.25s ease, font-size 0.25s ease" }}
+                            style={{
+                              transition: "fill 0.25s ease, font-size 0.25s ease",
+                            }}
                             pointerEvents="none"
                           >
                             {stage.id}
                           </text>
 
-                          {/* Stage label — below road, min 11px */}
                           <text
                             x={x}
                             y={ROAD_Y + 44}
@@ -399,7 +599,7 @@ export default function NavigatorPage() {
                             fontFamily="Inter, sans-serif"
                             pointerEvents="none"
                           >
-                            {stage.label}
+                            {labelText}
                           </text>
                         </g>
                       );
@@ -407,10 +607,10 @@ export default function NavigatorPage() {
                   </svg>
                 </div>
 
-                {/* Stage chips — horizontally scrollable, ≥44px touch targets */}
+                {/* Stage chips */}
                 <div className="bg-white border-t border-outline-variant px-3 py-2 shrink-0 relative z-10">
                   <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
-                    {STAGES.map((stage) => (
+                    {stages.map((stage) => (
                       <button
                         key={stage.id}
                         onClick={() => selectStage(stage.id)}
@@ -422,7 +622,7 @@ export default function NavigatorPage() {
                       >
                         <span>{stage.id}</span>
                         <span className="opacity-60">·</span>
-                        <span>{stage.label}</span>
+                        <span>{stage.name}</span>
                         <span className="opacity-60">·</span>
                         <span>{stage.duration}</span>
                       </button>
@@ -432,88 +632,125 @@ export default function NavigatorPage() {
               </div>
 
               {/* ── Detail panel ──────────────────────────────────── */}
-              {/* Full width below map on mobile; fixed 320px column on desktop */}
-              <div className="w-full md:w-80 bg-white overflow-y-auto flex flex-col shrink-0 max-h-[48vh] md:max-h-none">
-                {/* Stage header — animated colour change */}
-                <div
-                  className="p-5 md:p-6 text-white shrink-0"
-                  style={{
-                    background: "#1E6B52",
-                    transition: "background 0.25s ease",
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span
-                      className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
-                      style={{ background: "rgba(255,255,255,0.2)" }}
+              <div className="w-full md:w-80 bg-white overflow-y-auto flex flex-col shrink-0 max-h-[60vh] md:max-h-none">
+                {activeStage && (
+                  <>
+                    {/* Stage header */}
+                    <div
+                      className="p-5 md:p-6 text-white shrink-0"
+                      style={{
+                        background: "#1E6B52",
+                        transition: "background 0.25s ease",
+                      }}
                     >
-                      {activeStage.id}
-                    </span>
-                    <span className="font-label-sm text-label-sm uppercase tracking-widest opacity-75">
-                      {activeStage.duration}
-                    </span>
-                  </div>
-                  <h3 className="font-bold text-base md:text-lg leading-snug">
-                    {activeStage.title}
-                  </h3>
-                </div>
-
-                {/* Panel body — fades when switching stages */}
-                <div
-                  className="p-5 md:p-6 flex-1 space-y-5 md:space-y-6"
-                  style={{
-                    opacity: panelVisible ? 1 : 0,
-                    transition: "opacity 0.15s ease",
-                  }}
-                >
-                  <p className="text-on-surface-variant text-sm md:font-body-md md:text-body-md leading-relaxed">
-                    {activeStage.desc}
-                  </p>
-
-                  <div>
-                    <h4 className="font-label-sm text-label-sm text-outline mb-3 uppercase">
-                      Recommended Providers
-                    </h4>
-                    <div className="space-y-2 md:space-y-3">
-                      {activeStage.providers.map((provider) => (
-                        <div
-                          key={provider}
-                          className="p-3 border border-outline-variant rounded-lg flex items-center justify-between hover:bg-surface-container-low transition-colors"
+                      <div className="flex items-center gap-2 mb-2">
+                        <span
+                          className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
+                          style={{ background: "rgba(255,255,255,0.2)" }}
                         >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 bg-primary/10 rounded flex items-center justify-center shrink-0">
-                              <span className="material-symbols-outlined text-primary text-sm">biotech</span>
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-bold text-on-surface text-sm truncate">{provider}</p>
-                              <span className="text-[10px] uppercase font-bold text-outline">
-                                Institutional Partner
-                              </span>
-                            </div>
-                          </div>
-                          <button className="text-primary font-bold text-xs hover:underline shrink-0 ml-2 min-h-[44px] px-2">
-                            Connect
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="border-t border-outline-variant pt-4">
-                    <p className="font-label-sm text-label-sm text-outline uppercase mb-2">
-                      Stage Resources
-                    </p>
-                    {["Regulatory Guidance", "Protocol Templates", "Funding Database"].map((r) => (
-                      <div
-                        key={r}
-                        className="flex items-center justify-between py-2 min-h-[44px] border-b border-outline-variant/40 last:border-0"
-                      >
-                        <span className="text-sm text-on-surface">{r}</span>
-                        <span className="material-symbols-outlined text-primary text-sm">open_in_new</span>
+                          {activeStage.id}
+                        </span>
+                        <span className="font-label-sm text-label-sm uppercase tracking-widest opacity-75">
+                          {activeStage.duration}
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                      <h3 className="font-bold text-base md:text-lg leading-snug">
+                        {activeStage.name}
+                      </h3>
+                    </div>
+
+                    {/* Panel body */}
+                    <div
+                      className="p-5 md:p-6 flex-1 space-y-5 md:space-y-6"
+                      style={{
+                        opacity: panelVisible ? 1 : 0,
+                        transition: "opacity 0.15s ease",
+                      }}
+                    >
+                      <p className="text-on-surface-variant text-sm leading-relaxed">
+                        {activeStage.description}
+                      </p>
+
+                      {/* Tools */}
+                      {activeStage.tools.length > 0 && (
+                        <div>
+                          <h4 className="font-label-sm text-label-sm text-outline mb-3 uppercase">
+                            Tools
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {activeStage.tools.map((tool) => (
+                              <span
+                                key={tool}
+                                className="px-3 py-1 rounded-full text-xs font-bold bg-secondary-container text-primary border border-primary/20"
+                              >
+                                {tool}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bottleneck */}
+                      {activeStage.bottleneck && (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-2">
+                          <span className="material-symbols-outlined text-amber-600 text-lg shrink-0">
+                            warning
+                          </span>
+                          <div>
+                            <p className="font-bold text-amber-800 text-xs uppercase mb-1">
+                              Bottleneck
+                            </p>
+                            <p className="text-amber-700 text-sm leading-relaxed">
+                              {activeStage.bottleneck}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Service Providers */}
+                      {activeStage.providers.length > 0 && (
+                        <div>
+                          <h4 className="font-label-sm text-label-sm text-outline mb-3 uppercase">
+                            Service Providers
+                          </h4>
+                          <div className="space-y-3">
+                            {activeStage.providers.map((provider) => (
+                              <div
+                                key={provider.name}
+                                className="p-3 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors"
+                              >
+                                <div className="flex items-start flex-wrap gap-1.5 mb-1.5">
+                                  <span className="font-bold text-on-surface text-sm">
+                                    {provider.name}
+                                  </span>
+                                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-surface-container text-on-surface-variant">
+                                    {provider.type}
+                                  </span>
+                                  {provider.free && (
+                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-green-100 text-green-700">
+                                      FREE
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-on-surface-variant text-xs mb-2 leading-relaxed">
+                                  {provider.description}
+                                </p>
+                                <button
+                                  onClick={() =>
+                                    window.open(provider.website, "_blank", "noopener,noreferrer")
+                                  }
+                                  className="text-primary font-bold text-xs hover:underline"
+                                >
+                                  Connect →
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
