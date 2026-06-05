@@ -1,10 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { supabase } from "@/lib/supabase";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+type ResearcherMini = {
+  id: string;
+  name: string;
+  email: string;
+  research_focus: string | null;
+  interests: string[] | null;
+  profile_slug: string | null;
+};
 
 type Provider = {
   name: string;
@@ -79,6 +90,18 @@ export default function NavigatorPage() {
   const [roadmapData, setRoadmapData] = useState<RoadmapData | null>(null);
   const [selectedStage, setSelectedStage] = useState(1);
   const [panelVisible, setPanelVisible] = useState(true);
+  const [allResearchers, setAllResearchers] = useState<ResearcherMini[]>([]);
+
+  // Fetch public researchers once when roadmap is shown
+  useEffect(() => {
+    if (view !== "roadmap") return;
+    supabase
+      .from("users")
+      .select("id, name, email, research_focus, interests, profile_slug")
+      .eq("is_public", true)
+      .limit(50)
+      .then(({ data }) => setAllResearchers(data ?? []));
+  }, [view]);
 
   async function handleGenerate() {
     if (!form.assetDesc.trim() || !form.goalDesc.trim()) return;
@@ -267,6 +290,25 @@ export default function NavigatorPage() {
   const activeStage = stages.find((s) => s.id === selectedStage) ?? stages[0];
   const pins = pinPositions(stages.length);
   const badges = badgePositions(pins);
+
+  function matchedResearchers(stage: Stage | undefined): ResearcherMini[] {
+    if (!stage || allResearchers.length === 0) return [];
+    const keywords = [stage.name, ...stage.tools]
+      .join(" ")
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((w) => w.length > 3);
+    const scored = allResearchers
+      .map((r) => {
+        const interestStr = (r.interests ?? []).join(" ").toLowerCase();
+        const score = keywords.filter((k) => interestStr.includes(k)).length;
+        return { r, score };
+      })
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score);
+    // Fall back to first 3 researchers if no keyword match
+    return (scored.length > 0 ? scored.map(({ r }) => r) : allResearchers).slice(0, 3);
+  }
 
   return (
     <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col">
@@ -748,6 +790,65 @@ export default function NavigatorPage() {
                           </div>
                         </div>
                       )}
+
+                      {/* Researchers who can help */}
+                      {(() => {
+                        const matched = matchedResearchers(activeStage);
+                        if (matched.length === 0) return null;
+                        return (
+                          <div>
+                            <h4 className="font-label-sm text-label-sm text-outline mb-3 uppercase">
+                              Researchers Who Can Help
+                            </h4>
+                            <div className="space-y-2">
+                              {matched.map((r) => {
+                                const initials = r.name
+                                  .split(" ")
+                                  .map((n) => n[0] ?? "")
+                                  .join("")
+                                  .toUpperCase()
+                                  .slice(0, 2);
+                                return (
+                                  <div
+                                    key={r.id}
+                                    className="p-2.5 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors"
+                                  >
+                                    <div className="flex items-start gap-2.5">
+                                      <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs shrink-0">
+                                        {initials}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-on-surface text-xs leading-tight truncate">
+                                          {r.name}
+                                        </p>
+                                        {r.research_focus && (
+                                          <p className="text-[10px] text-on-surface-variant line-clamp-1">
+                                            {r.research_focus}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2 mt-2">
+                                      {r.profile_slug && (
+                                        <Link href={`/researchers/${r.profile_slug}`}>
+                                          <button className="text-[10px] font-bold text-primary border border-primary/30 px-2 py-0.5 rounded hover:bg-primary/5 transition-colors">
+                                            View
+                                          </button>
+                                        </Link>
+                                      )}
+                                      <a href={`mailto:${r.email}`}>
+                                        <button className="text-[10px] font-bold text-white bg-primary px-2 py-0.5 rounded hover:opacity-90 transition-opacity">
+                                          Connect
+                                        </button>
+                                      </a>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </>
                 )}
