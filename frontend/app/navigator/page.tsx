@@ -63,10 +63,10 @@ const DEFAULT_FORM: FormData = {
 
 // ── SVG helpers ───────────────────────────────────────────────────────────────
 
-const SVG_WIDTH = 900;
-const SVG_HEIGHT = 200;
-const ROAD_Y = 100;
-const PADDING = 80;
+const SVG_WIDTH = 1000;
+const SVG_HEIGHT = 300;
+const ROAD_Y = 150;
+const PADDING = 60;
 
 function pinPositions(count: number): number[] {
   if (count <= 1) return [SVG_WIDTH / 2];
@@ -508,12 +508,12 @@ export default function NavigatorPage() {
               <div className="flex-1 bg-map-bg relative flex flex-col border-b md:border-b-0 md:border-r border-outline-variant">
                 <div className="absolute inset-0 map-grid opacity-40 pointer-events-none" />
 
-                <div className="flex-1 overflow-x-auto flex items-center justify-center py-4 relative z-10">
+                <div className="flex-1 relative z-10">
+                  <div className="absolute inset-0 overflow-x-auto">
                   <svg
-                    width={SVG_WIDTH}
-                    height={SVG_HEIGHT}
                     viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
-                    style={{ minWidth: "560px", display: "block" }}
+                    style={{ minWidth: "560px", width: "100%", height: "100%", display: "block" }}
+                    preserveAspectRatio="xMidYMid meet"
                     aria-label="Research roadmap"
                   >
                     {/* End caps + road line */}
@@ -568,11 +568,6 @@ export default function NavigatorPage() {
                       const r = isSelected ? 26 : 20;
                       const fill = isSelected ? "#FFD602" : "#1E6B52";
                       const numColor = isSelected ? "#144B39" : "#ffffff";
-                      const labelText =
-                        stage.name.length > 12
-                          ? stage.name.slice(0, 11) + "…"
-                          : stage.name;
-
                       return (
                         <g
                           key={stage.id}
@@ -581,12 +576,13 @@ export default function NavigatorPage() {
                           role="button"
                           aria-label={`Stage ${stage.id}: ${stage.name}`}
                         >
+                          <title>{stage.name}</title>
                           {/* Touch-friendly hit area */}
                           <rect
-                            x={x - 26}
-                            y={ROAD_Y - 44}
-                            width={52}
-                            height={68}
+                            x={x - 36}
+                            y={ROAD_Y - 50}
+                            width={72}
+                            height={120}
                             fill="transparent"
                           />
 
@@ -632,21 +628,30 @@ export default function NavigatorPage() {
 
                           <text
                             x={x}
-                            y={ROAD_Y + 44}
+                            y={ROAD_Y + 40}
                             textAnchor="middle"
                             dominantBaseline="auto"
                             fill={isSelected ? "#144B39" : "#3f4944"}
-                            fontSize={11}
+                            fontSize={9}
                             fontWeight={isSelected ? "700" : "500"}
                             fontFamily="Inter, sans-serif"
                             pointerEvents="none"
                           >
-                            {labelText}
+                            <tspan x={x} dy="0">
+                              {stage.name.slice(0, 15)}
+                            </tspan>
+                            {stage.name.length > 15 && (
+                              <tspan x={x} dy="1.3em">
+                                {stage.name.slice(15, 29)}
+                                {stage.name.length > 29 ? "…" : ""}
+                              </tspan>
+                            )}
                           </text>
                         </g>
                       );
                     })}
                   </svg>
+                  </div>
                 </div>
 
                 {/* Stage chips */}
@@ -778,9 +783,16 @@ export default function NavigatorPage() {
                                   {provider.description}
                                 </p>
                                 <button
-                                  onClick={() =>
-                                    window.open(provider.website, "_blank", "noopener,noreferrer")
-                                  }
+                                  onClick={() => {
+                                    if (!provider.website) {
+                                      window.open("mailto:sparc@uab.edu");
+                                      return;
+                                    }
+                                    const url = /^https?:\/\//i.test(provider.website)
+                                      ? provider.website
+                                      : "https://" + provider.website;
+                                    window.open(url, "_blank", "noopener,noreferrer");
+                                  }}
                                   className="text-primary font-bold text-xs hover:underline"
                                 >
                                   Connect →
@@ -822,7 +834,10 @@ export default function NavigatorPage() {
                                           {r.name}
                                         </p>
                                         {r.research_focus && (
-                                          <p className="text-[10px] text-on-surface-variant line-clamp-1">
+                                          <p
+                                            className="text-[10px] text-on-surface-variant line-clamp-2"
+                                            title={r.research_focus}
+                                          >
                                             {r.research_focus}
                                           </p>
                                         )}
@@ -836,11 +851,14 @@ export default function NavigatorPage() {
                                           </button>
                                         </Link>
                                       )}
-                                      <a href={`mailto:${r.email}`}>
-                                        <button className="text-[10px] font-bold text-white bg-primary px-2 py-0.5 rounded hover:opacity-90 transition-opacity">
+                                      {r.email && (
+                                        <button
+                                          onClick={() => window.open("mailto:" + r.email)}
+                                          className="text-[10px] font-bold text-white bg-primary px-2 py-0.5 rounded hover:opacity-90 transition-opacity"
+                                        >
                                           Connect
                                         </button>
-                                      </a>
+                                      )}
                                     </div>
                                   </div>
                                 );

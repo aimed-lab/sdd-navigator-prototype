@@ -239,12 +239,13 @@ export default function ResearcherProfilePage() {
 
                 {/* CTAs */}
                 <div className="flex flex-col w-full gap-3 pt-md">
-                  <a href={`mailto:${researcher.email}`}>
-                    <button className="flex items-center justify-center gap-2 w-full py-3 bg-primary-container text-on-primary-container rounded-lg font-semibold hover:opacity-90 transition-all">
-                      <span className="material-symbols-outlined">mail</span>
-                      Connect via Email
-                    </button>
-                  </a>
+                  <button
+                    onClick={() => window.open("mailto:" + researcher.email)}
+                    className="flex items-center justify-center gap-2 w-full py-3 bg-primary-container text-on-primary-container rounded-lg font-semibold hover:opacity-90 transition-all"
+                  >
+                    <span className="material-symbols-outlined">mail</span>
+                    Connect via Email
+                  </button>
                   {researcher.linkedin_url && (
                     <a
                       href={researcher.linkedin_url}

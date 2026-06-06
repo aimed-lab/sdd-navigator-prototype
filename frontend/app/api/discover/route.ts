@@ -198,18 +198,24 @@ async function fetchClinicalTrials(): Promise<DiscoverItem[]> {
 }
 
 async function fetchPatents(): Promise<DiscoverItem[]> {
-  const url = "https://patents.google.com/rss/query=drug+discovery+AI";
+  const url = "https://patents.google.com/rss/query=drug+discovery+AI&num=10";
   const res = await fetch(url, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (compatible; SDD-Navigator/1.0; +https://sdd-navigator-six.vercel.app)",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "application/rss+xml, application/xml, text/xml, */*",
     },
-    signal: AbortSignal.timeout(8000),
+    redirect: "follow",
+    signal: AbortSignal.timeout(12000),
     next: { revalidate: 3600 },
   });
   if (!res.ok) throw new Error(`Patents RSS ${res.status}`);
   const xml = await res.text();
-  const items = parseRSSItems(xml).slice(0, 5).filter((i) => i.title);
+  // Bail out if bot-detection served HTML instead of XML
+  if (!xml.includes("<channel") && !xml.includes("<item")) {
+    throw new Error("Patents RSS returned non-XML response");
+  }
+  const items = parseRSSItems(xml).slice(0, 10).filter((i) => i.title);
 
   return items.map((item, i) => {
     const isoDate = toISO(item.pubDate);
@@ -232,30 +238,41 @@ async function fetchPatents(): Promise<DiscoverItem[]> {
 
 async function fetchBioRxiv(): Promise<DiscoverItem[]> {
   const url =
-    "https://biorxiv.org/rss/subject_collection/pharmacology_and_toxicology";
+    "https://api.biorxiv.org/details/biorxiv/2024-01-01/2026-06-05/0";
   const res = await fetch(url, {
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(10000),
     next: { revalidate: 3600 },
   });
-  if (!res.ok) throw new Error(`bioRxiv RSS ${res.status}`);
-  const xml = await res.text();
-  const items = parseRSSItems(xml).slice(0, 5).filter((i) => i.title);
+  if (!res.ok) throw new Error(`bioRxiv API ${res.status}`);
+  const data = await res.json() as {
+    collection?: {
+      doi?: string;
+      title?: string;
+      authors?: string;
+      date?: string;
+      category?: string;
+      abstract?: string;
+    }[];
+  };
+  const items = (data.collection ?? []).slice(0, 10).filter((i) => i.title);
 
   return items.map((item, i) => {
-    const isoDate = toISO(item.pubDate);
-    const titleHash = item.title
-      .split("")
-      .reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+    const isoDate = toISO(item.date ?? "");
+    const doi = item.doi ?? "";
+    const abstract = (item.abstract ?? "").replace(/<[^>]+>/g, " ").trim();
+    const authorStr = (item.authors ?? "").split(";").slice(0, 2).join(", ").trim();
     return {
-      id: `biorxiv-${Math.abs(titleHash)}-${i}`,
+      id: `biorxiv-${doi.replace(/\//g, "-") || i}`,
       type: "preprint" as const,
-      title: item.title,
-      description: item.description.slice(0, 220) || "Pharmacology preprint.",
+      title: item.title ?? "Untitled Preprint",
+      description:
+        (abstract.slice(0, 220) ||
+          (authorStr ? `Authors: ${authorStr}` : "bioRxiv preprint.")),
       source: "bioRxiv",
       date: fmtDate(isoDate),
       dateISO: isoDate,
-      url: item.link || url,
-      tags: ["Preprint", "Pharmacology"],
+      url: doi ? `https://doi.org/${doi}` : "https://www.biorxiv.org",
+      tags: ["Preprint", item.category ?? "Biology"],
     };
   });
 }

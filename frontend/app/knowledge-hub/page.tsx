@@ -1189,7 +1189,10 @@ function ResearchersTab() {
                       <p className="font-label-sm text-label-sm text-primary uppercase tracking-wider mb-xs">
                         Research Focus
                       </p>
-                      <p className="font-body-md text-body-md text-on-surface font-medium line-clamp-1">
+                      <p
+                        className="font-body-md text-body-md text-on-surface font-medium line-clamp-2"
+                        title={r.research_focus ?? undefined}
+                      >
                         {r.research_focus}
                       </p>
                     </div>
@@ -1239,11 +1242,12 @@ function ResearchersTab() {
                         View Profile
                       </button>
                     </Link>
-                    <a href={`mailto:${r.email}`}>
-                      <button className="w-full py-2 bg-primary text-on-primary rounded-lg font-bold font-label-sm text-label-sm shadow-sm hover:opacity-90 transition-opacity">
-                        Connect
-                      </button>
-                    </a>
+                    <button
+                      onClick={() => window.open("mailto:" + r.email)}
+                      className="w-full py-2 bg-primary text-on-primary rounded-lg font-bold font-label-sm text-label-sm shadow-sm hover:opacity-90 transition-opacity"
+                    >
+                      Connect
+                    </button>
                   </div>
                 </div>
               );

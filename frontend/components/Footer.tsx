@@ -9,7 +9,7 @@ export default function Footer() {
             SDD Navigator
           </span>
           <p className="font-label-sm text-label-sm text-on-surface-variant">
-            Copyright 2024 University of Alabama at Birmingham
+            Copyright 2026 University of Alabama at Birmingham
           </p>
         </div>
 

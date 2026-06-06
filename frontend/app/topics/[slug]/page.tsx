@@ -217,7 +217,7 @@ export default async function WikiPage({
                 <h2 className="font-headline-md text-headline-md text-primary mb-5 md:mb-6">Key Concepts</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   {concepts.map((concept, idx) => (
-                    <div key={idx} className="green-border-card p-4 md:p-6">
+                    <div key={idx} className="bg-white border border-[#e6e9e5] border-l-[4px] border-l-[#00523c] rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-4 md:p-6">
                       <h3 className="font-bold text-primary mb-2">{concept.title}</h3>
                       {concept.bullets.length > 0 && (
                         <p className="text-on-surface-variant font-body-md text-body-md text-sm md:text-base">
