@@ -512,14 +512,37 @@ export default function NavigatorPage() {
             <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
 
               {/* ── Map panel ─────────────────────────────────────── */}
-              <div className="flex-1 bg-map-bg relative flex flex-col border-b md:border-b-0 md:border-r border-outline-variant">
-                <div className="absolute inset-0 map-grid opacity-40 pointer-events-none" />
+              <div className="flex-1 bg-map-bg flex flex-col border-b md:border-b-0 md:border-r border-outline-variant">
 
-                <div className="flex-1 relative z-10">
-                  <div className="absolute inset-0 overflow-x-auto">
+                {/* Map drawing area — 300px container, road centered by xMidYMid meet */}
+                <div
+                  className="relative shrink-0 overflow-hidden m-4"
+                  style={{
+                    height: "300px",
+                    background: "#F8F9FA",
+                    borderRadius: "12px",
+                    border: "1px solid #e5e7eb",
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "40px 60px",
+                  }}
+                >
+                  <div className="absolute inset-0 map-grid opacity-40 pointer-events-none" />
+
+                  {/* Compass — top left */}
+                  <div className="absolute top-3 left-3 z-20 w-9 h-9 rounded-full bg-white/80 border border-outline-variant flex items-center justify-center shadow-sm pointer-events-none">
+                    <span className="material-symbols-outlined text-primary" style={{ fontSize: "18px" }}>explore</span>
+                  </div>
+
+                  {/* Zoom buttons — top right */}
+                  <div className="absolute top-3 right-3 z-20 flex flex-col gap-1">
+                    <button className="w-8 h-8 rounded bg-white/80 border border-outline-variant flex items-center justify-center text-primary font-bold text-sm shadow-sm hover:bg-white transition-colors leading-none">+</button>
+                    <button className="w-8 h-8 rounded bg-white/80 border border-outline-variant flex items-center justify-center text-primary font-bold text-sm shadow-sm hover:bg-white transition-colors leading-none">−</button>
+                  </div>
+
                   <svg
                     viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
-                    style={{ minWidth: "560px", width: "100%", height: "100%", display: "block" }}
+                    style={{ width: "100%", height: "auto", display: "block", position: "relative", zIndex: 1 }}
                     preserveAspectRatio="xMidYMid meet"
                     aria-label="Research roadmap"
                   >
@@ -546,11 +569,11 @@ export default function NavigatorPage() {
                     {badges.map((bx, i) => (
                       <g key={`badge-${i}`} pointerEvents="none">
                         <rect
-                          x={bx - 22}
-                          y={ROAD_Y - 9}
-                          width={44}
-                          height={18}
-                          rx={4}
+                          x={bx - 28}
+                          y={ROAD_Y - 12}
+                          width={56}
+                          height={24}
+                          rx={5}
                           fill="#144B39"
                         />
                         <text
@@ -559,7 +582,7 @@ export default function NavigatorPage() {
                           textAnchor="middle"
                           dominantBaseline="middle"
                           fill="white"
-                          fontSize={9}
+                          fontSize={11}
                           fontWeight="700"
                           fontFamily="Inter, sans-serif"
                         >
@@ -622,7 +645,7 @@ export default function NavigatorPage() {
                             textAnchor="middle"
                             dominantBaseline="central"
                             fill={numColor}
-                            fontSize={isSelected ? 14 : 12}
+                            fontSize={isSelected ? 18 : 16}
                             fontWeight="700"
                             fontFamily="Inter, sans-serif"
                             style={{
@@ -634,15 +657,15 @@ export default function NavigatorPage() {
                           </text>
 
                           {(() => {
-                            const [line1, line2] = wrapLabel(stage.name, 14);
+                            const [line1, line2] = wrapLabel(stage.name, 12);
                             return (
                               <text
                                 x={x}
-                                y={ROAD_Y + 40}
+                                y={ROAD_Y + 44}
                                 textAnchor="middle"
                                 dominantBaseline="auto"
                                 fill={isSelected ? "#144B39" : "#3f4944"}
-                                fontSize={9}
+                                fontSize={12}
                                 fontWeight={isSelected ? "700" : "500"}
                                 fontFamily="Inter, sans-serif"
                                 pointerEvents="none"
@@ -650,7 +673,7 @@ export default function NavigatorPage() {
                                 <tspan x={x} dy="0">{line1}</tspan>
                                 {line2 && (
                                   <tspan x={x} dy="1.3em">
-                                    {line2.length > 14 ? line2.slice(0, 13) + "…" : line2}
+                                    {line2.length > 12 ? line2.slice(0, 11) + "…" : line2}
                                   </tspan>
                                 )}
                               </text>
@@ -660,8 +683,10 @@ export default function NavigatorPage() {
                       );
                     })}
                   </svg>
-                  </div>
                 </div>
+
+                {/* Spacer — keeps chips pinned to the bottom of the map panel */}
+                <div className="flex-1" />
 
                 {/* Stage chips */}
                 <div className="bg-white border-t border-outline-variant px-3 py-2 shrink-0 relative z-10">
