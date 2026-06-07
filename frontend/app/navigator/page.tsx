@@ -80,6 +80,13 @@ function badgePositions(pins: number[]): number[] {
   return pins.slice(0, -1).map((x, i) => Math.round((x + pins[i + 1]) / 2));
 }
 
+function wrapLabel(name: string, maxChars: number): [string, string] {
+  if (name.length <= maxChars) return [name, ""];
+  const spaceIdx = name.lastIndexOf(" ", maxChars);
+  if (spaceIdx > 0) return [name.slice(0, spaceIdx), name.slice(spaceIdx + 1)];
+  return [name.slice(0, maxChars), name.slice(maxChars)];
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function NavigatorPage() {
@@ -626,27 +633,29 @@ export default function NavigatorPage() {
                             {stage.id}
                           </text>
 
-                          <text
-                            x={x}
-                            y={ROAD_Y + 40}
-                            textAnchor="middle"
-                            dominantBaseline="auto"
-                            fill={isSelected ? "#144B39" : "#3f4944"}
-                            fontSize={9}
-                            fontWeight={isSelected ? "700" : "500"}
-                            fontFamily="Inter, sans-serif"
-                            pointerEvents="none"
-                          >
-                            <tspan x={x} dy="0">
-                              {stage.name.slice(0, 15)}
-                            </tspan>
-                            {stage.name.length > 15 && (
-                              <tspan x={x} dy="1.3em">
-                                {stage.name.slice(15, 29)}
-                                {stage.name.length > 29 ? "…" : ""}
-                              </tspan>
-                            )}
-                          </text>
+                          {(() => {
+                            const [line1, line2] = wrapLabel(stage.name, 14);
+                            return (
+                              <text
+                                x={x}
+                                y={ROAD_Y + 40}
+                                textAnchor="middle"
+                                dominantBaseline="auto"
+                                fill={isSelected ? "#144B39" : "#3f4944"}
+                                fontSize={9}
+                                fontWeight={isSelected ? "700" : "500"}
+                                fontFamily="Inter, sans-serif"
+                                pointerEvents="none"
+                              >
+                                <tspan x={x} dy="0">{line1}</tspan>
+                                {line2 && (
+                                  <tspan x={x} dy="1.3em">
+                                    {line2.length > 14 ? line2.slice(0, 13) + "…" : line2}
+                                  </tspan>
+                                )}
+                              </text>
+                            );
+                          })()}
                         </g>
                       );
                     })}

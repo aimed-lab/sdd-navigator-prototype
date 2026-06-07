@@ -27,18 +27,15 @@
 }
 
 @layer components {
-  /* Card with left green border — used on wiki key concepts */
+  /* Card with left green border — used on wiki key concepts (static, non-interactive) */
   .green-border-card {
     background: #ffffff;
     border: 1px solid #e6e9e5;
     border-left: 4px solid #00523c;
     border-radius: 0.75rem;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-  .green-border-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    cursor: default;
+    pointer-events: none;
   }
 
   /* Episode card */
