@@ -1,916 +1,183 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type ResearcherMini = {
-  id: string;
-  name: string;
-  email: string;
-  research_focus: string | null;
-  interests: string[] | null;
-  profile_slug: string | null;
-};
-
-type Provider = {
-  name: string;
-  type: string;
-  description: string;
-  website: string;
-  free: boolean;
-};
-
-type Stage = {
-  id: number;
-  name: string;
-  duration: string;
-  description: string;
-  tools: string[];
-  bottleneck: string;
-  providers: Provider[];
-};
-
-type RoadmapData = {
-  title: string;
-  summary: string;
-  stages: Stage[];
-};
-
-// ── Form state ────────────────────────────────────────────────────────────────
-
-type FormData = {
-  assetType: string;
-  assetDesc: string;
-  goal: string;
-  goalDesc: string;
-  timeline: string;
-  budget: string;
-};
-
-const DEFAULT_FORM: FormData = {
-  assetType: "Protein Target",
-  assetDesc: "",
-  goal: "IND Filing",
-  goalDesc: "",
-  timeline: "Standard (24-36 months)",
-  budget: "$1M - $5M",
-};
-
-// ── SVG helpers ───────────────────────────────────────────────────────────────
-
-const SVG_WIDTH = 1000;
-const SVG_HEIGHT = 300;
-const ROAD_Y = 150;
-const PADDING = 60;
-
-function pinPositions(count: number): number[] {
-  if (count <= 1) return [SVG_WIDTH / 2];
-  const usable = SVG_WIDTH - 2 * PADDING;
-  return Array.from({ length: count }, (_, i) =>
-    Math.round(PADDING + (i / (count - 1)) * usable)
-  );
-}
-
-function badgePositions(pins: number[]): number[] {
-  return pins.slice(0, -1).map((x, i) => Math.round((x + pins[i + 1]) / 2));
-}
-
-function wrapLabel(name: string, maxChars: number): [string, string] {
-  if (name.length <= maxChars) return [name, ""];
-  const spaceIdx = name.lastIndexOf(" ", maxChars);
-  if (spaceIdx > 0) return [name.slice(0, spaceIdx), name.slice(spaceIdx + 1)];
-  return [name.slice(0, maxChars), name.slice(maxChars)];
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
+const SPACES = [
+  {
+    key: "target",
+    href: "/navigator/target",
+    icon: "balance",
+    iconColor: "text-primary",
+    iconBg: "rgba(30, 107, 82, 0.1)",
+    category: "Biology & Disease",
+    categoryColor: "text-primary",
+    title: "Target Space",
+    description:
+      "Rank and assess biological targets for your disease using AI-driven scoring across multiple criteria.",
+    have: "Disease hypothesis, gene candidates, protein targets, omics data",
+    ctaColor: "text-primary",
+  },
+  {
+    key: "discovery",
+    href: "/navigator/discovery",
+    icon: "science",
+    iconColor: "text-[#0d9488]",
+    iconBg: "rgba(13, 148, 136, 0.1)",
+    category: "Chemistry & Compounds",
+    categoryColor: "text-[#0d9488]",
+    title: "Discovery Space",
+    description:
+      "Discover and optimize chemical compounds through AI-guided virtual screening, repositioning and natural compound analysis.",
+    have: "Validated target, existing drugs to reposition, natural compounds, hit compounds",
+    ctaColor: "text-[#0d9488]",
+  },
+  {
+    key: "validation",
+    href: "/navigator/validation",
+    icon: "verified_user",
+    iconColor: "text-[#f59e0b]",
+    iconBg: "rgba(245, 158, 11, 0.1)",
+    category: "Wet Lab & Preclinical",
+    categoryColor: "text-[#f59e0b]",
+    title: "Validation Space",
+    description:
+      "Validate your candidate across biological contexts from protein binding to organism level studies.",
+    have: "Lead compound, hit candidate, synthesis ready compound",
+    ctaColor: "text-[#f59e0b]",
+  },
+];
 
 export default function NavigatorPage() {
-  const [view, setView] = useState<"form" | "roadmap">("form");
-  const [form, setForm] = useState<FormData>(DEFAULT_FORM);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [roadmapData, setRoadmapData] = useState<RoadmapData | null>(null);
-  const [selectedStage, setSelectedStage] = useState(1);
-  const [panelVisible, setPanelVisible] = useState(true);
-  const [allResearchers, setAllResearchers] = useState<ResearcherMini[]>([]);
+  const { user, loading: authLoading } = useAuth();
 
-  // Fetch public researchers once when roadmap is shown
-  useEffect(() => {
-    if (view !== "roadmap") return;
-    supabase
-      .from("users")
-      .select("id, name, email, research_focus, interests, profile_slug")
-      .eq("is_public", true)
-      .limit(50)
-      .then(({ data }) => setAllResearchers(data ?? []));
-  }, [view]);
-
-  async function handleGenerate() {
-    if (!form.assetDesc.trim() || !form.goalDesc.trim()) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/generate-roadmap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          what_have: form.assetType,
-          have_description: form.assetDesc,
-          what_want: `${form.goal}: ${form.goalDesc}`,
-          timeline: form.timeline,
-          budget: form.budget,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Failed to generate roadmap. Please try again.");
-        return;
-      }
-      setRoadmapData(data as RoadmapData);
-      setSelectedStage((data as RoadmapData).stages?.[0]?.id ?? 1);
-      setView("roadmap");
-    } catch {
-      setError("Network error. Please check your connection and try again.");
-    } finally {
-      setLoading(false);
-    }
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+      </div>
+    );
   }
 
-  function handleChange(
-    e: React.ChangeEvent<HTMLSelectElement | HTMLTextAreaElement>
-  ) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  }
-
-  function selectStage(id: number) {
-    if (id === selectedStage) return;
-    setPanelVisible(false);
-    setTimeout(() => {
-      setSelectedStage(id);
-      setPanelVisible(true);
-    }, 140);
-  }
-
-  async function handleDownloadPDF() {
-    if (!roadmapData) return;
-    const { jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const pageW = doc.internal.pageSize.getWidth();
-    const margin = 20;
-    const usableW = pageW - 2 * margin;
-    let y = margin;
-
-    // Header
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 82, 60);
-    doc.text("SDD Navigator — UAB SPARC", margin, y);
-    y += 8;
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, y);
-    y += 12;
-
-    // Researcher inputs
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
-    doc.text("Researcher Inputs", margin, y);
-    y += 6;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(60, 60, 60);
-    const inputs = [
-      `Starting Point: ${form.assetType} — ${form.assetDesc}`,
-      `Goal: ${form.goal} — ${form.goalDesc}`,
-      `Timeline: ${form.timeline}`,
-      `Budget: ${form.budget}`,
-    ];
-    for (const line of inputs) {
-      const wrapped = doc.splitTextToSize(line, usableW);
-      doc.text(wrapped, margin, y);
-      y += (wrapped as string[]).length * 5 + 2;
-    }
-    y += 4;
-
-    // Divider
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, y, pageW - margin, y);
-    y += 8;
-
-    // Title + summary
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 82, 60);
-    const titleWrapped = doc.splitTextToSize(roadmapData.title, usableW) as string[];
-    doc.text(titleWrapped, margin, y);
-    y += titleWrapped.length * 7 + 4;
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(60, 60, 60);
-    const summaryWrapped = doc.splitTextToSize(roadmapData.summary, usableW) as string[];
-    doc.text(summaryWrapped, margin, y);
-    y += summaryWrapped.length * 5 + 10;
-
-    // Stages
-    for (const stage of roadmapData.stages) {
-      if (y > 240) {
-        doc.addPage();
-        y = margin;
-      }
-
-      // Stage heading
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 82, 60);
-      doc.text(`Stage ${stage.id}: ${stage.name}  (${stage.duration})`, margin, y);
-      y += 6;
-
-      // Description
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(40, 40, 40);
-      const descWrapped = doc.splitTextToSize(stage.description, usableW) as string[];
-      doc.text(descWrapped, margin, y);
-      y += descWrapped.length * 5 + 3;
-
-      // Tools
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.text("Tools: ", margin, y);
-      doc.setFont("helvetica", "normal");
-      const toolsWrapped = doc.splitTextToSize(stage.tools.join(", "), usableW - 16) as string[];
-      doc.text(toolsWrapped, margin + 16, y);
-      y += toolsWrapped.length * 5 + 3;
-
-      // Bottleneck
-      doc.setFont("helvetica", "bold");
-      doc.text("Bottleneck: ", margin, y);
-      doc.setFont("helvetica", "normal");
-      const bnWrapped = doc.splitTextToSize(stage.bottleneck, usableW - 24) as string[];
-      doc.text(bnWrapped, margin + 24, y);
-      y += bnWrapped.length * 5 + 3;
-
-      // Providers
-      doc.setFont("helvetica", "bold");
-      doc.text("Providers:", margin, y);
-      y += 5;
-      for (const p of stage.providers) {
-        if (y > 270) {
-          doc.addPage();
-          y = margin;
-        }
-        doc.setFont("helvetica", "normal");
-        const tag = p.free ? " [FREE]" : "";
-        const pLine = `  • ${p.name} (${p.type})${tag} — ${p.website}`;
-        const pWrapped = doc.splitTextToSize(pLine, usableW) as string[];
-        doc.text(pWrapped, margin, y);
-        y += pWrapped.length * 5 + 1;
-      }
-      y += 7;
-    }
-
-    // Footer on every page
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text(
-        "sdd-navigator-six.vercel.app",
-        margin,
-        doc.internal.pageSize.getHeight() - 10
-      );
-    }
-
-    doc.save("sdd-navigator-roadmap.pdf");
-  }
-
-  const stages = roadmapData?.stages ?? [];
-  const activeStage = stages.find((s) => s.id === selectedStage) ?? stages[0];
-  const pins = pinPositions(stages.length);
-  const badges = badgePositions(pins);
-
-  function matchedResearchers(stage: Stage | undefined): ResearcherMini[] {
-    if (!stage || allResearchers.length === 0) return [];
-    const keywords = [stage.name, ...stage.tools]
-      .join(" ")
-      .toLowerCase()
-      .split(/\W+/)
-      .filter((w) => w.length > 3);
-    const scored = allResearchers
-      .map((r) => {
-        const interestStr = (r.interests ?? []).join(" ").toLowerCase();
-        const score = keywords.filter((k) => interestStr.includes(k)).length;
-        return { r, score };
-      })
-      .filter(({ score }) => score > 0)
-      .sort((a, b) => b.score - a.score);
-    // Fall back to first 3 researchers if no keyword match
-    return (scored.length > 0 ? scored.map(({ r }) => r) : allResearchers).slice(0, 3);
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <main className="flex-grow flex items-center justify-center px-4 py-xl">
+          <div className="max-w-md w-full text-center flex flex-col items-center gap-6 bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm">
+            <div
+              className="w-16 h-16 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: "rgba(30, 107, 82, 0.1)" }}
+            >
+              <span className="material-symbols-outlined text-4xl text-primary">
+                lock
+              </span>
+            </div>
+            <div className="space-y-2">
+              <h2 className="font-headline-md text-headline-md text-on-surface">
+                Restricted Access
+              </h2>
+              <p className="text-sm text-on-surface-variant leading-relaxed">
+                Sign in to access the Navigator and generate your AI-driven
+                research roadmap.
+              </p>
+            </div>
+            <div className="flex flex-col w-full gap-3">
+              <Link
+                href="/login?callbackUrl=/navigator"
+                className="w-full py-3.5 rounded-lg font-bold flex items-center justify-center gap-2 bg-primary text-on-primary hover:opacity-90 transition-all"
+              >
+                <span className="material-symbols-outlined text-xl">login</span>
+                Sign In to Continue
+              </Link>
+              <p className="text-sm text-on-surface-variant">
+                New to SDD Navigator?{" "}
+                <Link
+                  href="/register"
+                  className="font-bold text-primary hover:underline"
+                >
+                  Register for an account
+                </Link>
+              </p>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
   return (
-    <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
+      <main className="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-md py-xl">
+        {/* Breadcrumb */}
+        <nav className="mb-lg flex items-center gap-2 text-label-sm font-label-sm text-on-surface-variant">
+          <Link href="/" className="hover:text-primary transition-colors">
+            Home
+          </Link>
+          <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+          <span className="text-primary font-bold">Navigator</span>
+        </nav>
 
-      <main className="flex-1 flex flex-col">
+        {/* Hero */}
+        <div className="mb-xl text-center md:text-left">
+          <h1 className="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface mb-sm">
+            Where are you in your research journey?
+          </h1>
+          <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto md:mx-0">
+            Select your research space to get a personalized AI-driven
+            roadmap. Our ecosystem bridges the gap between hypothesis and
+            clinical validation.
+          </p>
+        </div>
 
-        {/* ── Form view ─────────────────────────────────────────── */}
-        {view === "form" && (
-          <div className="max-w-[1280px] mx-auto px-4 sm:px-gutter py-6 md:py-lg w-full">
-            <div className="mb-8 md:mb-10 text-center">
-              <h2 className="font-headline-md text-headline-md text-primary mb-2">
-                Configure Your Research Roadmap
-              </h2>
-              <p className="text-on-surface-variant font-body-md text-body-md">
-                Fill in your asset details to generate an optimized development timeline.
+        {/* Space cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+          {SPACES.map((space) => (
+            <Link
+              key={space.key}
+              href={space.href}
+              className="group relative bg-surface-container-lowest border border-outline-variant rounded-xl p-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col h-full"
+            >
+              <div
+                className="mb-md p-sm rounded-lg inline-flex"
+                style={{ backgroundColor: space.iconBg }}
+              >
+                <span className={`material-symbols-outlined text-[32px] ${space.iconColor}`}>
+                  {space.icon}
+                </span>
+              </div>
+              <div className={`mb-xs font-label-sm text-label-sm uppercase tracking-widest ${space.categoryColor}`}>
+                {space.category}
+              </div>
+              <h3 className="font-headline-md text-headline-md text-on-surface mb-sm">
+                {space.title}
+              </h3>
+              <p className="text-on-surface-variant font-body-md mb-md flex-grow">
+                {space.description}
               </p>
-            </div>
-
-            <div className="bg-white p-5 md:p-lg rounded-xl shadow-md border border-outline-variant max-w-3xl mx-auto">
-              <form className="space-y-8">
-
-                {/* What do you have */}
-                <div className="space-y-4">
-                  <label className="block font-semibold text-on-surface">
-                    What do you have?
-                  </label>
-                  <select
-                    name="assetType"
-                    value={form.assetType}
-                    onChange={handleChange}
-                    className="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md"
-                  >
-                    {[
-                      "Protein Target",
-                      "Gene/Genomic Data",
-                      "Small Molecule Hit",
-                      "Dataset/Biomarker",
-                      "Cell Line",
-                      "Animal Model",
-                      "Other",
-                    ].map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </select>
-                  <textarea
-                    name="assetDesc"
-                    value={form.assetDesc}
-                    onChange={handleChange}
-                    rows={4}
-                    placeholder="Describe your asset's current validation status, available data, and any unique characteristics..."
-                    className="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md resize-none"
-                  />
-                </div>
-
-                {/* What do you want */}
-                <div className="space-y-4">
-                  <label className="block font-semibold text-on-surface">
-                    What do you want to achieve?
-                  </label>
-                  <select
-                    name="goal"
-                    value={form.goal}
-                    onChange={handleChange}
-                    className="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md"
-                  >
-                    {[
-                      "Hit Identification",
-                      "Lead Optimization",
-                      "IND Filing",
-                      "Clinical Trial Design",
-                      "Publication/Patent",
-                      "Biomarker Validation",
-                    ].map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </select>
-                  <textarea
-                    name="goalDesc"
-                    value={form.goalDesc}
-                    onChange={handleChange}
-                    rows={3}
-                    placeholder="Outline your primary objectives and key success metrics for this phase..."
-                    className="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md resize-none"
-                  />
-                </div>
-
-                {/* Timeline + Budget */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="block font-semibold text-on-surface">Timeline</label>
-                    <select
-                      name="timeline"
-                      value={form.timeline}
-                      onChange={handleChange}
-                      className="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md"
-                    >
-                      {[
-                        "Accelerated (12-18 months)",
-                        "Standard (24-36 months)",
-                        "Extended (36+ months)",
-                      ].map((o) => (
-                        <option key={o}>{o}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block font-semibold text-on-surface">Budget Range</label>
-                    <select
-                      name="budget"
-                      value={form.budget}
-                      onChange={handleChange}
-                      className="w-full p-4 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md"
-                    >
-                      {["$500k - $1M", "$1M - $5M", "$5M - $10M", "$10M+"].map((o) => (
-                        <option key={o}>{o}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Error message */}
-                {error && (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
-                    <span className="material-symbols-outlined text-red-500 text-lg shrink-0">error</span>
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                {/* Submit */}
-                <div className="pt-6">
-                  <button
-                    type="button"
-                    onClick={handleGenerate}
-                    disabled={
-                      loading ||
-                      !form.assetDesc.trim() ||
-                      !form.goalDesc.trim()
-                    }
-                    className="w-full py-4 bg-primary text-on-primary rounded-xl font-bold text-lg shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="w-6 h-6 border-[3px] border-white/30 border-t-white rounded-full animate-spin" />
-                        Generating…
-                      </>
-                    ) : (
-                      <>
-                        <span className="material-symbols-outlined">map</span>
-                        Generate My Roadmap
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* ── Roadmap view ───────────────────────────────────────── */}
-        {view === "roadmap" && roadmapData && (
-          <div className="flex-1 flex flex-col">
-
-            {/* Top bar */}
-            <div className="bg-white border-b border-outline-variant px-4 sm:px-gutter py-4 shrink-0">
-              <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div className="flex flex-col gap-1 max-w-2xl">
-                  <h2 className="font-bold text-lg md:text-2xl text-primary leading-snug">
-                    {roadmapData.title}
-                  </h2>
-                  <p className="text-on-surface-variant text-sm leading-relaxed line-clamp-2">
-                    {roadmapData.summary}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
-                  <button
-                    onClick={() => setView("form")}
-                    className="text-on-surface-variant text-sm font-medium hover:text-primary transition-colors"
-                  >
-                    ← Start Over
-                  </button>
-                  <button
-                    onClick={handleDownloadPDF}
-                    className="flex-1 sm:flex-none px-4 py-2.5 min-h-[44px] border-2 border-primary text-primary font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition-all text-sm"
-                  >
-                    <span className="material-symbols-outlined text-lg">download</span>
-                    Download PDF
-                  </button>
-                </div>
+              <div className="bg-surface-container-low rounded-lg p-sm mb-lg border border-outline-variant/30">
+                <span className="font-label-sm text-label-sm block mb-xs text-on-surface-variant">
+                  WHAT YOU MIGHT HAVE:
+                </span>
+                <p className="text-label-sm text-on-surface font-medium">
+                  {space.have}
+                </p>
               </div>
-            </div>
-
-            {/* Map + Panel */}
-            <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-
-              {/* ── Map panel ─────────────────────────────────────── */}
-              <div className="flex-1 bg-map-bg flex flex-col border-b md:border-b-0 md:border-r border-outline-variant">
-
-                {/* Map drawing area — 300px container, road centered by xMidYMid meet */}
-                <div
-                  className="relative shrink-0 overflow-hidden m-4"
-                  style={{
-                    height: "300px",
-                    background: "#F8F9FA",
-                    borderRadius: "12px",
-                    border: "1px solid #e5e7eb",
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "40px 60px",
-                  }}
-                >
-                  <div className="absolute inset-0 map-grid opacity-40 pointer-events-none" />
-
-                  {/* Compass — top left */}
-                  <div className="absolute top-3 left-3 z-20 w-9 h-9 rounded-full bg-white/80 border border-outline-variant flex items-center justify-center shadow-sm pointer-events-none">
-                    <span className="material-symbols-outlined text-primary" style={{ fontSize: "18px" }}>explore</span>
-                  </div>
-
-                  {/* Zoom buttons — top right */}
-                  <div className="absolute top-3 right-3 z-20 flex flex-col gap-1">
-                    <button className="w-8 h-8 rounded bg-white/80 border border-outline-variant flex items-center justify-center text-primary font-bold text-sm shadow-sm hover:bg-white transition-colors leading-none">+</button>
-                    <button className="w-8 h-8 rounded bg-white/80 border border-outline-variant flex items-center justify-center text-primary font-bold text-sm shadow-sm hover:bg-white transition-colors leading-none">−</button>
-                  </div>
-
-                  <svg
-                    viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
-                    style={{ width: "100%", height: "auto", display: "block", position: "relative", zIndex: 1 }}
-                    preserveAspectRatio="xMidYMid meet"
-                    aria-label="Research roadmap"
-                  >
-                    {/* End caps + road line */}
-                    {pins.length > 0 && (
-                      <>
-                        <circle cx={pins[0]} cy={ROAD_Y} r={6} fill="#1E6B52" />
-                        <circle cx={pins[pins.length - 1]} cy={ROAD_Y} r={6} fill="#1E6B52" />
-                      </>
-                    )}
-                    {pins.length > 1 && (
-                      <line
-                        x1={pins[0]}
-                        y1={ROAD_Y}
-                        x2={pins[pins.length - 1]}
-                        y2={ROAD_Y}
-                        stroke="#1E6B52"
-                        strokeWidth={8}
-                        strokeLinecap="round"
-                      />
-                    )}
-
-                    {/* Duration badges between pins */}
-                    {badges.map((bx, i) => (
-                      <g key={`badge-${i}`} pointerEvents="none">
-                        <rect
-                          x={bx - 28}
-                          y={ROAD_Y - 12}
-                          width={56}
-                          height={24}
-                          rx={5}
-                          fill="#144B39"
-                        />
-                        <text
-                          x={bx}
-                          y={ROAD_Y + 1}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          fill="white"
-                          fontSize={11}
-                          fontWeight="700"
-                          fontFamily="Inter, sans-serif"
-                        >
-                          {stages[i]?.duration ?? ""}
-                        </text>
-                      </g>
-                    ))}
-
-                    {/* Stage pins */}
-                    {stages.map((stage, i) => {
-                      const x = pins[i];
-                      const isSelected = selectedStage === stage.id;
-                      const r = isSelected ? 26 : 20;
-                      const fill = isSelected ? "#FFD602" : "#1E6B52";
-                      const numColor = isSelected ? "#144B39" : "#ffffff";
-                      return (
-                        <g
-                          key={stage.id}
-                          onClick={() => selectStage(stage.id)}
-                          style={{ cursor: "pointer" }}
-                          role="button"
-                          aria-label={`Stage ${stage.id}: ${stage.name}`}
-                        >
-                          <title>{stage.name}</title>
-                          {/* Touch-friendly hit area */}
-                          <rect
-                            x={x - 36}
-                            y={ROAD_Y - 50}
-                            width={72}
-                            height={120}
-                            fill="transparent"
-                          />
-
-                          {isSelected && (
-                            <circle
-                              cx={x}
-                              cy={ROAD_Y}
-                              r={r + 7}
-                              fill="none"
-                              stroke="#FFD602"
-                              strokeWidth={2}
-                              opacity={0.35}
-                            />
-                          )}
-
-                          <circle
-                            cx={x}
-                            cy={ROAD_Y}
-                            r={r}
-                            fill={fill}
-                            style={{
-                              filter: `drop-shadow(0 0 ${isSelected ? 10 : 4}px ${fill}99)`,
-                              transition: "r 0.25s ease, fill 0.25s ease, filter 0.25s ease",
-                            }}
-                          />
-
-                          <text
-                            x={x}
-                            y={ROAD_Y}
-                            textAnchor="middle"
-                            dominantBaseline="central"
-                            fill={numColor}
-                            fontSize={isSelected ? 18 : 16}
-                            fontWeight="700"
-                            fontFamily="Inter, sans-serif"
-                            style={{
-                              transition: "fill 0.25s ease, font-size 0.25s ease",
-                            }}
-                            pointerEvents="none"
-                          >
-                            {stage.id}
-                          </text>
-
-                          {(() => {
-                            const [line1, line2] = wrapLabel(stage.name, 12);
-                            return (
-                              <text
-                                x={x}
-                                y={ROAD_Y + 44}
-                                textAnchor="middle"
-                                dominantBaseline="auto"
-                                fill={isSelected ? "#144B39" : "#3f4944"}
-                                fontSize={12}
-                                fontWeight={isSelected ? "700" : "500"}
-                                fontFamily="Inter, sans-serif"
-                                pointerEvents="none"
-                              >
-                                <tspan x={x} dy="0">{line1}</tspan>
-                                {line2 && (
-                                  <tspan x={x} dy="1.3em">
-                                    {line2.length > 12 ? line2.slice(0, 11) + "…" : line2}
-                                  </tspan>
-                                )}
-                              </text>
-                            );
-                          })()}
-                        </g>
-                      );
-                    })}
-                  </svg>
-                </div>
-
-                {/* Spacer — keeps chips pinned to the bottom of the map panel */}
-                <div className="flex-1" />
-
-                {/* Stage chips */}
-                <div className="bg-white border-t border-outline-variant px-3 py-2 shrink-0 relative z-10">
-                  <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
-                    {stages.map((stage) => (
-                      <button
-                        key={stage.id}
-                        onClick={() => selectStage(stage.id)}
-                        className={`flex items-center gap-1 px-3 py-2 min-h-[44px] rounded-full text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                          selectedStage === stage.id
-                            ? "bg-uab-green text-white shadow-md"
-                            : "border border-outline-variant text-on-surface-variant hover:bg-surface-container"
-                        }`}
-                      >
-                        <span>{stage.id}</span>
-                        <span className="opacity-60">·</span>
-                        <span>{stage.name}</span>
-                        <span className="opacity-60">·</span>
-                        <span>{stage.duration}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              <div className="flex items-center justify-between mt-auto">
+                <span className={`flex items-center gap-1 font-bold font-body-md group-hover:translate-x-2 transition-transform duration-300 ${space.ctaColor}`}>
+                  Select {space.title}
+                  <span className="material-symbols-outlined">arrow_right_alt</span>
+                </span>
               </div>
-
-              {/* ── Detail panel ──────────────────────────────────── */}
-              <div className="w-full md:w-80 bg-white overflow-y-auto flex flex-col shrink-0 max-h-[60vh] md:max-h-none">
-                {activeStage && (
-                  <>
-                    {/* Stage header */}
-                    <div
-                      className="p-5 md:p-6 text-white shrink-0"
-                      style={{
-                        background: "#1E6B52",
-                        transition: "background 0.25s ease",
-                      }}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span
-                          className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
-                          style={{ background: "rgba(255,255,255,0.2)" }}
-                        >
-                          {activeStage.id}
-                        </span>
-                        <span className="font-label-sm text-label-sm uppercase tracking-widest opacity-75">
-                          {activeStage.duration}
-                        </span>
-                      </div>
-                      <h3 className="font-bold text-base md:text-lg leading-snug">
-                        {activeStage.name}
-                      </h3>
-                    </div>
-
-                    {/* Panel body */}
-                    <div
-                      className="p-5 md:p-6 flex-1 space-y-5 md:space-y-6"
-                      style={{
-                        opacity: panelVisible ? 1 : 0,
-                        transition: "opacity 0.15s ease",
-                      }}
-                    >
-                      <p className="text-on-surface-variant text-sm leading-relaxed">
-                        {activeStage.description}
-                      </p>
-
-                      {/* Tools */}
-                      {activeStage.tools.length > 0 && (
-                        <div>
-                          <h4 className="font-label-sm text-label-sm text-outline mb-3 uppercase">
-                            Tools
-                          </h4>
-                          <div className="flex flex-wrap gap-2">
-                            {activeStage.tools.map((tool) => (
-                              <span
-                                key={tool}
-                                className="px-3 py-1 rounded-full text-xs font-bold bg-secondary-container text-primary border border-primary/20"
-                              >
-                                {tool}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Bottleneck */}
-                      {activeStage.bottleneck && (
-                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-2">
-                          <span className="material-symbols-outlined text-amber-600 text-lg shrink-0">
-                            warning
-                          </span>
-                          <div>
-                            <p className="font-bold text-amber-800 text-xs uppercase mb-1">
-                              Bottleneck
-                            </p>
-                            <p className="text-amber-700 text-sm leading-relaxed">
-                              {activeStage.bottleneck}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Service Providers */}
-                      {activeStage.providers.length > 0 && (
-                        <div>
-                          <h4 className="font-label-sm text-label-sm text-outline mb-3 uppercase">
-                            Service Providers
-                          </h4>
-                          <div className="space-y-3">
-                            {activeStage.providers.map((provider) => (
-                              <div
-                                key={provider.name}
-                                className="p-3 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors"
-                              >
-                                <div className="flex items-start flex-wrap gap-1.5 mb-1.5">
-                                  <span className="font-bold text-on-surface text-sm">
-                                    {provider.name}
-                                  </span>
-                                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-surface-container text-on-surface-variant">
-                                    {provider.type}
-                                  </span>
-                                  {provider.free && (
-                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-green-100 text-green-700">
-                                      FREE
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-on-surface-variant text-xs mb-2 leading-relaxed">
-                                  {provider.description}
-                                </p>
-                                <button
-                                  onClick={() => {
-                                    if (!provider.website) {
-                                      window.open("mailto:sparc@uab.edu");
-                                      return;
-                                    }
-                                    const url = /^https?:\/\//i.test(provider.website)
-                                      ? provider.website
-                                      : "https://" + provider.website;
-                                    window.open(url, "_blank", "noopener,noreferrer");
-                                  }}
-                                  className="text-primary font-bold text-xs hover:underline"
-                                >
-                                  Connect →
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Researchers who can help */}
-                      {(() => {
-                        const matched = matchedResearchers(activeStage);
-                        if (matched.length === 0) return null;
-                        return (
-                          <div>
-                            <h4 className="font-label-sm text-label-sm text-outline mb-3 uppercase">
-                              Researchers Who Can Help
-                            </h4>
-                            <div className="space-y-2">
-                              {matched.map((r) => {
-                                const initials = r.name
-                                  .split(" ")
-                                  .map((n) => n[0] ?? "")
-                                  .join("")
-                                  .toUpperCase()
-                                  .slice(0, 2);
-                                return (
-                                  <div
-                                    key={r.id}
-                                    className="p-2.5 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors"
-                                  >
-                                    <div className="flex items-start gap-2.5">
-                                      <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs shrink-0">
-                                        {initials}
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="font-bold text-on-surface text-xs leading-tight truncate">
-                                          {r.name}
-                                        </p>
-                                        {r.research_focus && (
-                                          <p
-                                            className="text-[10px] text-on-surface-variant line-clamp-2"
-                                            title={r.research_focus}
-                                          >
-                                            {r.research_focus}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="flex gap-2 mt-2">
-                                      {r.profile_slug && (
-                                        <Link href={`/researchers/${r.profile_slug}`}>
-                                          <button className="text-[10px] font-bold text-primary border border-primary/30 px-2 py-0.5 rounded hover:bg-primary/5 transition-colors">
-                                            View
-                                          </button>
-                                        </Link>
-                                      )}
-                                      {r.email && (
-                                        <button
-                                          onClick={() => window.open("mailto:" + r.email)}
-                                          className="text-[10px] font-bold text-white bg-primary px-2 py-0.5 rounded hover:opacity-90 transition-opacity"
-                                        >
-                                          Connect
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+            </Link>
+          ))}
+        </div>
       </main>
-
-      {view === "form" && <Footer />}
+      <Footer />
     </div>
   );
 }

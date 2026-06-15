@@ -80,6 +80,7 @@ const config: Config = {
       },
       fontFamily: {
         "display-lg": ["Inter", "sans-serif"],
+        "display-lg-mobile": ["Inter", "sans-serif"],
         "headline-md": ["Inter", "sans-serif"],
         "body-lg": ["Inter", "sans-serif"],
         "body-md": ["Inter", "sans-serif"],
@@ -89,6 +90,10 @@ const config: Config = {
         "display-lg": [
           "48px",
           { lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "700" },
+        ],
+        "display-lg-mobile": [
+          "32px",
+          { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "700" },
         ],
         "headline-md": [
           "24px",
