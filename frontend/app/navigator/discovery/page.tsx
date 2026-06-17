@@ -224,73 +224,76 @@ export default function DiscoverySpacePage() {
                 </span>
               </div>
 
-              {/* Entry Points (desktop) */}
-              <div className="hidden lg:flex absolute left-8 top-1/2 -translate-y-1/2 flex-col gap-4 z-10">
-                <p className="text-label-sm font-label-sm text-outline uppercase tracking-widest text-center">
-                  Entry Points
-                </p>
-                <div className="flex flex-col gap-3">
-                  {roadmap.entry_points.map((ep) => (
-                    <div key={ep} className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-secondary shrink-0" />
-                      <span className="text-label-sm font-label-sm text-on-surface-variant">{ep}</span>
-                    </div>
-                  ))}
+              {/* Entry points | Main nodes | Exit point — grid columns so none can overlap */}
+              <div className="grid grid-cols-1 lg:grid-cols-[160px_minmax(0,1fr)_160px] items-center gap-6 w-full z-10 mt-20 lg:mt-0">
+                {/* Entry Points (desktop) */}
+                <div className="hidden lg:flex flex-col gap-4">
+                  <p className="text-label-sm font-label-sm text-outline uppercase tracking-widest text-center">
+                    Entry Points
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    {roadmap.entry_points.map((ep) => (
+                      <div key={ep} className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-secondary shrink-0" />
+                        <span className="text-label-sm font-label-sm text-on-surface-variant">{ep}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Main iterative nodes */}
-              <div className="relative w-full max-w-lg flex items-center justify-center gap-10 lg:justify-between lg:gap-0 z-10 mt-20 lg:mt-0">
-                <svg
-                  className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-32 pointer-events-none"
-                  viewBox="0 0 400 100"
-                >
-                  <path d="M 50,40 Q 200,-10 350,40" fill="none" stroke="#1d6a51" strokeDasharray="6 4" strokeWidth="2">
-                    <animate attributeName="stroke-dashoffset" dur="5s" from="100" repeatCount="indefinite" to="0" />
-                  </path>
-                  <path d="M 350,60 Q 200,110 50,60" fill="none" stroke="#1d6a51" strokeDasharray="6 4" strokeWidth="2">
-                    <animate attributeName="stroke-dashoffset" dur="5s" from="0" repeatCount="indefinite" to="100" />
-                  </path>
-                  <polygon fill="#1d6a51" points="350,40 340,35 342,45" />
-                  <polygon fill="#1d6a51" points="50,60 60,65 58,55" />
-                </svg>
+                {/* Main iterative nodes */}
+                <div className="relative mx-auto w-full max-w-md flex items-center justify-center gap-10 lg:justify-between lg:gap-0">
+                  <svg
+                    className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-32 pointer-events-none"
+                    viewBox="0 0 400 100"
+                  >
+                    <path d="M 50,40 Q 200,-10 350,40" fill="none" stroke="#1d6a51" strokeDasharray="6 4" strokeWidth="2">
+                      <animate attributeName="stroke-dashoffset" dur="5s" from="100" repeatCount="indefinite" to="0" />
+                    </path>
+                    <path d="M 350,60 Q 200,110 50,60" fill="none" stroke="#1d6a51" strokeDasharray="6 4" strokeWidth="2">
+                      <animate attributeName="stroke-dashoffset" dur="5s" from="0" repeatCount="indefinite" to="100" />
+                    </path>
+                    <polygon fill="#1d6a51" points="350,40 340,35 342,45" />
+                    <polygon fill="#1d6a51" points="50,60 60,65 58,55" />
+                  </svg>
 
-                {ITERATION_CONFIG.map((iter) => {
-                  const isActive = iter.id === selectedIterationId;
-                  return (
-                    <button
-                      key={iter.id}
-                      type="button"
-                      onClick={() => setSelectedIterationId(iter.id)}
-                      className={`group w-36 h-36 md:w-48 md:h-48 rounded-full bg-white border-2 flex flex-col items-center justify-center p-4 md:p-6 text-center transition-all hover:scale-105 active:scale-95 shadow-lg ${
-                        isActive ? "border-primary ring-4 ring-primary-container/20" : "border-outline-variant"
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-primary text-3xl md:text-4xl mb-2">
-                        {iter.icon}
-                      </span>
-                      <span className="font-headline-md text-headline-md text-primary leading-tight">
-                        {iter.name.split(" ").map((word, i) => (
-                          <span key={i}>
-                            {word}
-                            <br />
-                          </span>
-                        ))}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+                  {ITERATION_CONFIG.map((iter) => {
+                    const isActive = iter.id === selectedIterationId;
+                    return (
+                      <button
+                        key={iter.id}
+                        type="button"
+                        onClick={() => setSelectedIterationId(iter.id)}
+                        className={`group w-36 h-36 md:w-48 md:h-48 rounded-full bg-white border-2 flex flex-col items-center justify-center p-4 md:p-6 text-center transition-all hover:scale-105 active:scale-95 shadow-lg ${
+                          isActive ? "border-primary ring-4 ring-primary-container/20" : "border-outline-variant"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-primary text-3xl md:text-4xl mb-2">
+                          {iter.icon}
+                        </span>
+                        <span className="font-headline-md text-headline-md text-primary leading-tight">
+                          {iter.name.split(" ").map((word, i) => (
+                            <span key={i}>
+                              {word}
+                              <br />
+                            </span>
+                          ))}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-              {/* Exit Point (desktop) */}
-              <div className="hidden lg:flex absolute right-8 top-1/2 -translate-y-1/2 flex-col items-center gap-4 z-10">
-                <p className="text-label-sm font-label-sm text-outline uppercase tracking-widest text-center">
-                  Exit Point
-                </p>
-                <div className="w-16 h-1 bg-primary-container/20 rounded-full" />
-                <div className="p-4 bg-primary text-on-primary rounded-xl shadow-xl flex flex-col items-center gap-2 max-w-[140px] text-center">
-                  <span className="material-symbols-outlined">check_circle</span>
-                  <span className="font-label-sm text-label-sm font-bold">Synthesis Ready Candidate</span>
+                {/* Exit Point (desktop) */}
+                <div className="hidden lg:flex flex-col items-center gap-4">
+                  <p className="text-label-sm font-label-sm text-outline uppercase tracking-widest text-center">
+                    Exit Point
+                  </p>
+                  <div className="w-16 h-1 bg-primary-container/20 rounded-full" />
+                  <div className="p-4 bg-primary text-on-primary rounded-xl shadow-xl flex flex-col items-center gap-2 max-w-[140px] text-center">
+                    <span className="material-symbols-outlined">check_circle</span>
+                    <span className="font-label-sm text-label-sm font-bold">Synthesis Ready Candidate</span>
+                  </div>
                 </div>
               </div>
 

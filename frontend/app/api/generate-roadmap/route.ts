@@ -31,6 +31,14 @@ If the researcher provided a molecule_list, you MUST analyze and rank the SPECIF
 
 For service providers, ONLY suggest real-world Contract Research Organizations (CROs) that actually perform compound synthesis or screening services. Real examples: Southern Research, WuXi AppTec, Evotec, Charles River, Enamine, Sigma-Aldrich Custom Synthesis, Pharmaron, WuXi STA. Do NOT include databases (ChEMBL, PubChem, Zinc) or software tools (Schrodinger, AutoDock) in the cro_partners section — those belong only in tools_and_software. Each suggested CRO must include a brief reason why it fits (synthesis capability, turnaround time, typical cost range, relevant experience) based on the researcher's budget and timeline.
 
+CRITICAL — budget and timeline matching:
+The researcher will give you a specific budget range and timeline. You MUST treat these as hard constraints, not background context.
+For each CRO you suggest:
+- estimated_cost and estimated_timeline must be your best real-world estimate for that specific CRO doing this specific batch of work, not a generic company profile.
+- In the description field, explicitly state whether this CRO's realistic cost/timeline FITS the researcher's stated budget and timeline, or explain the gap. Example: 'Standard turnaround is 2-6 months; your 2-week timeline will require a rush/priority service tier, which most CROs offer at a 30-50% cost premium — confirm with Southern Research directly.'
+- If no real CRO can realistically meet the researcher's stated timeline, say so explicitly instead of silently giving a longer estimate. Suggest the closest realistic option and name the trade-off clearly.
+- Never give a cost/timeline range so wide it could apply to any project. Avoid generic ranges like '2-6 months' unless you also explain why this specific case lands at a particular point in that range given the researcher's constraints.
+
 Return ONLY valid JSON, no markdown, no explanation, in this exact shape:
 {
   "space": "discovery",
@@ -59,7 +67,8 @@ Return ONLY valid JSON, no markdown, no explanation, in this exact shape:
   ]
 }
 The "iterations" array must contain exactly 2 entries, in this order, with ids "hit-finding" and "lead-optimization".
-For each iteration, suggest 2-3 REAL tools/software in tools_and_software and 1-2 REAL CROs in cro_partners with real website URLs.`;
+For each iteration, suggest 2-3 REAL tools/software in tools_and_software and EXACTLY 2 REAL CROs in cro_partners with real website URLs — never just 1. The two CROs must be genuinely different options (different cost tiers, different turnaround speeds, or different specialties) so the researcher has an actual choice, not two near-identical options.
+In each CRO's description, briefly note how it compares to the other listed CRO for this specific case (e.g. faster but more expensive, cheaper but longer lead time, better track record with this compound class). The researcher should be able to read both descriptions and understand which one fits their situation better and why.`;
 
 const VALIDATION_SYSTEM_PROMPT = `You are an expert in preclinical validation and drug candidate assessment at UAB SPARC.
 Determine the current context level (1-10) based on what the researcher describes.
