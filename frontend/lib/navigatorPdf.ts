@@ -71,7 +71,12 @@ function ensureSpace(doc: PDFDoc, y: number, threshold = PAGE_BREAK_Y): number {
   return y;
 }
 
-function addProviders(doc: PDFDoc, usableW: number, y: number, providers: Provider[]): number {
+function addProviders(
+  doc: PDFDoc,
+  usableW: number,
+  y: number,
+  providers: Array<{ name: string; type?: string; website: string; free: boolean }>
+): number {
   if (!providers || providers.length === 0) return y;
   y = ensureSpace(doc, y);
   doc.setFont("helvetica", "bold");
@@ -84,7 +89,8 @@ function addProviders(doc: PDFDoc, usableW: number, y: number, providers: Provid
     doc.setFont("helvetica", "normal");
     doc.setTextColor(60, 60, 60);
     const tag = p.free ? " [FREE]" : "";
-    const pLine = `  • ${p.name} (${p.type})${tag} — ${p.website}`;
+    const typeLabel = p.type ? ` (${p.type})` : "";
+    const pLine = `  • ${p.name}${typeLabel}${tag} — ${p.website}`;
     const pWrapped = doc.splitTextToSize(pLine, usableW);
     doc.text(pWrapped, MARGIN, y);
     y += pWrapped.length * 5 + 1;
@@ -183,8 +189,8 @@ export async function downloadDiscoveryRoadmapPDF(roadmap: DiscoveryRoadmap) {
     doc.text(descWrapped, MARGIN, y);
     y += descWrapped.length * 5 + 3;
 
-    y = addToolsLine(doc, usableW, y, iteration.tools);
-    y = addProviders(doc, usableW, y, iteration.providers);
+    y = addToolsLine(doc, usableW, y, (iteration.tools_and_software ?? []).map((t) => t.name));
+    y = addProviders(doc, usableW, y, iteration.cro_partners ?? []);
     y += 3;
   }
 

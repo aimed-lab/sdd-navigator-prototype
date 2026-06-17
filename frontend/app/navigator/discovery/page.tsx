@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import RoadmapTopBar from "@/components/navigator/RoadmapTopBar";
 import ProvidersList from "@/components/navigator/ProvidersList";
+import CROPartnersList from "@/components/navigator/CROPartnersList";
 import ResearchersWhoCanHelp from "@/components/navigator/ResearchersWhoCanHelp";
 import { fetchPublicResearchers, matchResearchers } from "@/lib/navigatorResearchers";
 import { downloadDiscoveryRoadmapPDF } from "@/lib/navigatorPdf";
@@ -65,6 +66,7 @@ type DiscoveryFormState = {
   target: string;
   approach: string;
   currentCompounds: string;
+  moleculeList: string;
   optimizationGoals: string[];
   timeline: string;
   budget: string;
@@ -74,6 +76,7 @@ const DEFAULT_FORM: DiscoveryFormState = {
   target: "",
   approach: "",
   currentCompounds: "",
+  moleculeList: "",
   optimizationGoals: ["Improve binding affinity", "Improve selectivity"],
   timeline: TIMELINE_OPTIONS[0],
   budget: BUDGET_OPTIONS[0],
@@ -110,13 +113,17 @@ export default function DiscoverySpacePage() {
       setError("Please describe your target and select a discovery approach.");
       return;
     }
+    if (form.approach === "hits" && !form.moleculeList.trim()) {
+      setError("Please list your candidate molecules when using existing hit compounds.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/generate-roadmap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ space: "discovery", ...form }),
+        body: JSON.stringify({ space: "discovery", ...form, molecule_list: form.moleculeList }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -151,7 +158,10 @@ export default function DiscoverySpacePage() {
       roadmap.iterations.find((it) => normalizeId(it.id) === selectedIterationId) ??
       roadmap.iterations[0];
     const matchedResearchers = activeIteration
-      ? matchResearchers(allResearchers, [activeIteration.name, ...activeIteration.tools])
+      ? matchResearchers(allResearchers, [
+          activeIteration.name,
+          ...(activeIteration.tools_and_software ?? []).map((t) => t.name),
+        ])
       : [];
 
     return (
@@ -167,6 +177,33 @@ export default function DiscoverySpacePage() {
           onDownloadPDF={handleDownloadPDF}
         />
         <main className="flex-grow max-w-[1280px] mx-auto w-full px-4 sm:px-margin py-lg">
+          {/* Prioritized Molecules */}
+          {roadmap.prioritized_molecules?.length > 0 && (
+            <div className="mb-gutter bg-surface-container-lowest rounded-xl border border-outline-variant p-md">
+              <h2 className="font-label-sm text-label-sm text-outline uppercase tracking-widest mb-4">
+                Prioritized Molecules
+              </h2>
+              <ol className="space-y-3">
+                {roadmap.prioritized_molecules
+                  .slice()
+                  .sort((a, b) => a.priority_rank - b.priority_rank)
+                  .map((mol) => (
+                    <li key={mol.id} className="flex gap-4 items-start">
+                      <span className="w-7 h-7 rounded-full bg-[#0d9488] text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        {mol.priority_rank}
+                      </span>
+                      <div>
+                        <span className="font-bold text-on-surface text-sm">{mol.id}</span>
+                        <p className="text-on-surface-variant text-sm mt-0.5 leading-relaxed">
+                          {mol.reasoning}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+              </ol>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
             {/* LEFT PANEL: Visualization */}
             <div className="lg:col-span-7 bg-surface-container-lowest rounded-xl border border-outline-variant p-lg relative overflow-hidden flex flex-col items-center justify-center min-h-[480px] lg:min-h-[600px]">
@@ -288,24 +325,13 @@ export default function DiscoverySpacePage() {
                       {activeIteration.description}
                     </p>
                     <div className="space-y-gutter">
-                      {activeIteration.tools.length > 0 && (
-                        <div>
-                          <h3 className="font-label-sm text-label-sm text-outline uppercase tracking-widest mb-3">
-                            Research Tools &amp; Data
-                          </h3>
-                          <div className="grid grid-cols-2 gap-3">
-                            {activeIteration.tools.map((tool) => (
-                              <div
-                                key={tool}
-                                className="bg-surface p-3 rounded-lg border border-outline-variant hover:border-primary transition-colors"
-                              >
-                                <p className="font-bold text-on-surface text-sm">{tool}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                      {activeIteration.tools_and_software?.length > 0 && (
+                        <ProvidersList
+                          providers={activeIteration.tools_and_software}
+                          title="Research Tools & Software"
+                        />
                       )}
-                      <ProvidersList providers={activeIteration.providers} title="CRO Partners" />
+                      <CROPartnersList partners={activeIteration.cro_partners ?? []} />
                       <ResearchersWhoCanHelp researchers={matchedResearchers} />
                     </div>
                   </>
@@ -426,7 +452,7 @@ export default function DiscoverySpacePage() {
                 </div>
               </div>
 
-              {/* Conditional textarea */}
+              {/* Conditional: current compounds */}
               {form.approach === "hits" && (
                 <div className="space-y-2">
                   <label className="block font-bold text-on-surface" htmlFor="current_compounds">
@@ -442,6 +468,25 @@ export default function DiscoverySpacePage() {
                   />
                 </div>
               )}
+
+              {/* Molecule list */}
+              <div className="space-y-2">
+                <label className="block font-bold text-on-surface" htmlFor="molecule_list">
+                  List your candidate molecules
+                  {form.approach !== "hits" && (
+                    <span className="ml-2 text-xs font-normal text-on-surface-variant">(optional)</span>
+                  )}
+                </label>
+                <textarea
+                  id="molecule_list"
+                  value={form.moleculeList}
+                  onChange={(e) => setForm((p) => ({ ...p, moleculeList: e.target.value }))}
+                  required={form.approach === "hits"}
+                  className="w-full rounded-lg border-outline-variant focus:border-primary focus:ring-primary bg-surface"
+                  placeholder={`List each molecule with known properties, one per line. Example:\nMol-001: IC50 5μM, MW 320, binding score 8.2\nMol-002: IC50 12μM, MW 290, binding score 6.5`}
+                  rows={4}
+                />
+              </div>
 
               {/* Optimization goals */}
               <div className="space-y-4">

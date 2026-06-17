@@ -37,18 +37,34 @@ export type TargetRoadmap = {
 
 // ── Discovery Space ─────────────────────────────────────────────────────────
 
+export type PrioritizedMolecule = {
+  id: string;
+  priority_rank: number;
+  reasoning: string;
+};
+
+export type CROPartner = {
+  name: string;
+  description: string;
+  website: string;
+  estimated_cost: string;
+  estimated_timeline: string;
+  free: false;
+};
+
 export type DiscoveryIteration = {
   id: string; // hit-finding | lead-optimization
   name: string;
   description: string;
-  tools: string[];
-  providers: Provider[];
+  tools_and_software: Provider[];
+  cro_partners: CROPartner[];
 };
 
 export type DiscoveryRoadmap = {
   space: "discovery";
   title: string;
   summary: string;
+  prioritized_molecules: PrioritizedMolecule[];
   entry_points: string[];
   iterations: DiscoveryIteration[];
 };

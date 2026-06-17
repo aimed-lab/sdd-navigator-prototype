@@ -26,27 +26,40 @@ Mix free tools with paid options and include at least one free option per step.`
 
 const DISCOVERY_SYSTEM_PROMPT = `You are an expert in drug discovery and compound optimization at UAB SPARC.
 Generate a discovery space roadmap with iterative hit-to-lead optimization.
+
+If the researcher provided a molecule_list, you MUST analyze and rank the SPECIFIC molecules they listed. Reference them by their exact names/IDs in your output. Do not give generic advice — explicitly state which molecules to prioritize and why, based on the properties given (IC50, MW, binding score, etc). If no molecules were provided, return an empty array for prioritized_molecules.
+
+For service providers, ONLY suggest real-world Contract Research Organizations (CROs) that actually perform compound synthesis or screening services. Real examples: Southern Research, WuXi AppTec, Evotec, Charles River, Enamine, Sigma-Aldrich Custom Synthesis, Pharmaron, WuXi STA. Do NOT include databases (ChEMBL, PubChem, Zinc) or software tools (Schrodinger, AutoDock) in the cro_partners section — those belong only in tools_and_software. Each suggested CRO must include a brief reason why it fits (synthesis capability, turnaround time, typical cost range, relevant experience) based on the researcher's budget and timeline.
+
 Return ONLY valid JSON, no markdown, no explanation, in this exact shape:
 {
   "space": "discovery",
   "title": "string",
   "summary": "string",
+  "prioritized_molecules": [
+    {
+      "id": "string (e.g. Mol-007)",
+      "priority_rank": number,
+      "reasoning": "string"
+    }
+  ],
   "entry_points": ["string"],
   "iterations": [
     {
       "id": "string (one of: hit-finding, lead-optimization)",
       "name": "string",
       "description": "string",
-      "tools": ["string"],
-      "providers": [
+      "tools_and_software": [
         { "name": "string", "type": "string", "description": "string", "website": "string", "free": boolean }
+      ],
+      "cro_partners": [
+        { "name": "string", "description": "string", "website": "string", "estimated_cost": "string", "estimated_timeline": "string", "free": false }
       ]
     }
   ]
 }
 The "iterations" array must contain exactly 2 entries, in this order, with ids "hit-finding" and "lead-optimization".
-For each iteration, suggest 2-3 REAL globally known service providers or tools researchers actually use, with real website URLs.
-Mix free tools with paid CROs and include at least one free option per iteration.`;
+For each iteration, suggest 2-3 REAL tools/software in tools_and_software and 1-2 REAL CROs in cro_partners with real website URLs.`;
 
 const VALIDATION_SYSTEM_PROMPT = `You are an expert in preclinical validation and drug candidate assessment at UAB SPARC.
 Determine the current context level (1-10) based on what the researcher describes.
@@ -109,10 +122,11 @@ Return only the JSON roadmap.`;
 }
 
 function buildDiscoveryUserMessage(body: Record<string, unknown>) {
-  const { target, approach, currentCompounds, optimizationGoals, timeline, budget } = body as {
+  const { target, approach, currentCompounds, molecule_list, optimizationGoals, timeline, budget } = body as {
     target?: string;
     approach?: string;
     currentCompounds?: string;
+    molecule_list?: string;
     optimizationGoals?: string[];
     timeline?: string;
     budget?: string;
@@ -123,7 +137,7 @@ function buildDiscoveryUserMessage(body: Record<string, unknown>) {
   return `Generate a discovery space roadmap for a researcher with the following details:
 Validated target: ${target}
 Discovery approach: ${approach}
-${currentCompounds ? `Current compounds: ${currentCompounds}\n` : ""}Key optimization goals: ${(optimizationGoals ?? []).join(", ") || "Not specified"}
+${currentCompounds ? `Current compounds: ${currentCompounds}\n` : ""}${molecule_list ? `Candidate molecules with properties:\n${molecule_list}\n` : ""}Key optimization goals: ${(optimizationGoals ?? []).join(", ") || "Not specified"}
 Timeline: ${timeline ?? "Not specified"}
 Budget range: ${budget ?? "Not specified"}
 
