@@ -111,9 +111,10 @@ export default function ProfileSetupPage() {
   // Pre-populate existing profile fields
   useEffect(() => {
     if (!user) return;
+
     supabase
       .from("users")
-      .select("bio, research_focus, linkedin_url, website_url, interests")
+      .select("bio, research_focus, linkedin_url, website_url, interests, is_public")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => {
@@ -123,6 +124,32 @@ export default function ProfileSetupPage() {
         if (data.linkedin_url) setLinkedinUrl(data.linkedin_url);
         if (data.website_url) setWebsiteUrl(data.website_url);
         if (data.interests?.length) setInterests(data.interests);
+        // is_public is NOT NULL in the DB, so this only falls back to the
+        // current default (true) when the row itself has no value for it.
+        setIsPublic(data.is_public ?? true);
+      });
+
+    // Pre-populate previously published works so editing/removing them on
+    // re-publish actually reconciles against what's already saved, instead
+    // of starting from an empty list and only ever appending.
+    supabase
+      .from("researcher_works")
+      .select("id, type, title, journal, year, url, description")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (!data || data.length === 0) return;
+        setWorks(
+          data.map((w) => ({
+            clientId: w.id,
+            type: w.type,
+            title: w.title,
+            journal: w.journal ?? "",
+            year: w.year != null ? String(w.year) : "",
+            url: w.url ?? "",
+            description: w.description ?? "",
+          }))
+        );
       });
   }, [user]);
 
@@ -236,6 +263,16 @@ export default function ProfileSetupPage() {
         .eq("id", user.id);
 
       if (updateErr) throw new Error(updateErr.message);
+
+      // Reconcile researcher_works against the current `works` state instead
+      // of blindly appending: delete this user's existing rows, then
+      // reinsert the current set. This makes edits/removals take effect and
+      // prevents duplicate rows from accumulating on repeat publishes.
+      const { error: deleteErr } = await supabase
+        .from("researcher_works")
+        .delete()
+        .eq("user_id", user.id);
+      if (deleteErr) throw new Error(deleteErr.message);
 
       if (works.length > 0) {
         const rows = works.map((w) => ({
