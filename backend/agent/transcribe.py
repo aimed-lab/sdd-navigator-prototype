@@ -53,9 +53,12 @@ def _episode_number(entry, index: int, total: int) -> int:
         except (ValueError, TypeError):
             pass
 
-    m = re.search(r"\b[Ee]p(?:isode)?\s*\.?\s*#?\s*(\d+)\b", entry.get("title", ""))
+    m = re.search(
+        r"\b[Ee]p(?:isode)?\s*\.?\s*#?\s*(\d+)\b|(?<!\w)#(\d+)\b",
+        entry.get("title", ""),
+    )
     if m:
-        return int(m.group(1))
+        return int(m.group(1) or m.group(2))
 
     return total - index
 
@@ -104,6 +107,7 @@ def parse_rss(rss_url: str) -> list[dict]:
                 if href.startswith("http"):
                     episode_url = href
                     break
+        episode_url = _normalize_episode_url(episode_url)
 
         image_url = (
             entry.get("image", {}).get("href")
@@ -141,7 +145,7 @@ def _download(url: str, dest: str) -> None:
 
 
 def _transcribe_audio(path: str, model) -> str:
-    print(f"   🎙️  Transcribing with Whisper base…")
+    print(f"   🎙️  Transcribing with Whisper {WHISPER_MODEL}…")
     result = model.transcribe(path, fp16=False, verbose=False)
     text = result["text"].strip()
     print(f"   ✅ Transcript: {len(text.split()):,} words")
@@ -169,10 +173,15 @@ def _normalize_episode_url(url: str) -> str:
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
+# large-v3 over base: substantially better accuracy on specialized vocabulary
+# (drug names, gene/protein names, dosages) that base frequently mis-hears.
+WHISPER_MODEL = "large-v3"
+
+
 def load_whisper_model():
-    """Load Whisper base model once (downloads ~140 MB on first run)."""
-    print("🧠 Loading Whisper base model…")
-    model = whisper.load_model("base")
+    """Load Whisper large-v3 model once (downloads ~3 GB on first run)."""
+    print(f"🧠 Loading Whisper {WHISPER_MODEL} model…")
+    model = whisper.load_model(WHISPER_MODEL)
     print("   ✅ Whisper ready.\n")
     return model
 

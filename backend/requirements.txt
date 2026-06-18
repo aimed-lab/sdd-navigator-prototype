@@ -1,5 +1,5 @@
 # ── Transcription ──────────────────────────────────
-openai-whisper          # Local Whisper ASR (base model, runs on CPU)
+openai-whisper          # Local Whisper ASR (large-v3 model; CPU works but is slow — GPU recommended)
 # NOTE: Whisper requires ffmpeg on PATH:
 #   Windows : winget install ffmpeg
 #   macOS   : brew install ffmpeg
