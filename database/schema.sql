@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS public.users (
     interests      TEXT[]      DEFAULT '{}',
     is_public      BOOLEAN     NOT NULL DEFAULT false,
     profile_slug   TEXT        UNIQUE,
+    notify_weekly  BOOLEAN     NOT NULL DEFAULT false,    -- /settings → Notifications
+    notify_daily   BOOLEAN     NOT NULL DEFAULT false,    -- /settings → Notifications
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

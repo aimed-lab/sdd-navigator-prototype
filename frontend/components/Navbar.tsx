@@ -62,6 +62,18 @@ export default function Navbar() {
                   {displayName}
                 </span>
               </div>
+              <Link
+                href="/settings"
+                className="text-on-surface-variant text-sm font-medium hover:text-primary-container transition-colors"
+              >
+                Settings
+              </Link>
+              <Link
+                href="/profile/setup"
+                className="text-on-surface-variant text-sm font-medium hover:text-primary-container transition-colors"
+              >
+                Public Profile
+              </Link>
               <button
                 onClick={handleLogout}
                 className="px-5 py-2 min-h-[44px] rounded-full border border-outline text-primary font-semibold hover:bg-surface-container-low transition-all active:scale-95 text-sm"
@@ -129,6 +141,20 @@ export default function Navbar() {
                       {displayName}
                     </span>
                   </div>
+                  <Link
+                    href="/settings"
+                    onClick={() => setMenuOpen(false)}
+                    className="px-4 py-3 rounded-xl font-medium min-h-[44px] flex items-center text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                  >
+                    Settings
+                  </Link>
+                  <Link
+                    href="/profile/setup"
+                    onClick={() => setMenuOpen(false)}
+                    className="px-4 py-3 rounded-xl font-medium min-h-[44px] flex items-center text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                  >
+                    Public Profile
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="mx-4 py-3 rounded-xl border border-outline text-primary font-semibold text-sm min-h-[44px] hover:bg-surface-container-low transition-all"

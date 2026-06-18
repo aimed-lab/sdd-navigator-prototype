@@ -38,7 +38,15 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
-// Protect /navigator and /profile/setup — everything else (including /graph) is public.
+// Protect /navigator, /profile/setup, and /settings — everything else
+// (including /graph) is public.
 export const config = {
-  matcher: ["/navigator", "/navigator/:path*", "/profile/setup", "/profile/:path*"],
+  matcher: [
+    "/navigator",
+    "/navigator/:path*",
+    "/profile/setup",
+    "/profile/:path*",
+    "/settings",
+    "/settings/:path*",
+  ],
 };
