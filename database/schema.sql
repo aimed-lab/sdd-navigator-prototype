@@ -22,13 +22,20 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";   -- gen_random_uuid() on older PG ve
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS public.users (
-    id          UUID        PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
-    name        TEXT,
-    email       TEXT        NOT NULL DEFAULT '',
-    affiliation TEXT,                               -- "Researcher" | "Laboratory Head" | etc.
-    institution TEXT,
-    country     TEXT,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    id             UUID        PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
+    name           TEXT,
+    email          TEXT        NOT NULL DEFAULT '',
+    affiliation    TEXT,                               -- "Researcher" | "Laboratory Head" | etc.
+    institution    TEXT,
+    country        TEXT,
+    bio            TEXT,
+    research_focus TEXT,
+    linkedin_url   TEXT,
+    website_url    TEXT,
+    interests      TEXT[]      DEFAULT '{}',
+    is_public      BOOLEAN     NOT NULL DEFAULT false,
+    profile_slug   TEXT        UNIQUE,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
@@ -136,7 +143,9 @@ CREATE POLICY "edges_select_public"
 -- TABLE: providers
 -- =============================================================================
 -- Institutional service providers referenced on the Navigator roadmap page.
--- Currently hardcoded in the frontend; this table is ready for dynamic data.
+-- UNUSED by the frontend as of this writing — provider data is currently
+-- hardcoded in the app. This table is kept as a placeholder for when
+-- provider data moves to the database.
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS public.providers (
