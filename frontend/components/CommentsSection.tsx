@@ -109,10 +109,17 @@ export default function CommentsSection({
 
   return (
     <section className="space-y-md">
-      <h2 className="font-headline-md text-headline-md text-primary flex items-center gap-2">
-        <span className="material-symbols-outlined">forum</span>
-        Researcher Discussion
-      </h2>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h2 className="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+          <span className="material-symbols-outlined">forum</span>
+          Researcher Discussion
+        </h2>
+        {!loadingComments && (
+          <span className="bg-primary-container text-on-primary-container px-3 py-1 rounded-full font-label-sm text-label-sm">
+            {comments.length} {comments.length === 1 ? "Comment" : "Comments"}
+          </span>
+        )}
+      </div>
 
       {/* ── Input area / login gate ────────────────────────────── */}
       {authLoading ? null : user ? (

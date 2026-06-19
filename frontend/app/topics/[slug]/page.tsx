@@ -20,6 +20,14 @@ type WikiPage = {
   episode_url: string;
   description: string;
   summary: string[];
+  image_url: string | null;
+};
+
+type RelatedEpisode = {
+  episode_number: number;
+  title: string;
+  slug: string;
+  image_url: string | null;
 };
 
 type PubMedPaper = {
@@ -76,18 +84,18 @@ async function fetchPubMedPapers(query: string): Promise<PubMedPaper[]> {
 
 function TranscriptSection({ transcript }: { transcript: string }) {
   return (
-    <section className="bg-surface-container-low rounded-xl p-8">
-      <details>
-        <summary className="w-full flex items-center justify-between cursor-pointer list-none group">
-          <h2 className="font-headline-md text-headline-md text-primary flex items-center gap-2">
+    <section className="bg-white rounded-xl border border-outline-variant shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] overflow-hidden">
+      <details className="group">
+        <summary className="w-full px-6 md:px-8 py-4 flex items-center justify-between cursor-pointer list-none bg-surface-container-low hover:bg-surface-container-high transition-colors">
+          <h2 className="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
             <span className="material-symbols-outlined">description</span>
             Full Transcript
           </h2>
-          <span className="material-symbols-outlined text-primary group-open:rotate-180 transition-transform">
+          <span className="material-symbols-outlined text-on-surface group-open:rotate-180 transition-transform duration-300">
             expand_more
           </span>
         </summary>
-        <div className="mt-6 font-mono text-sm leading-relaxed text-on-surface-variant border-t border-outline-variant pt-6 max-h-[400px] overflow-y-auto pr-4 custom-scrollbar whitespace-pre-wrap">
+        <div className="p-6 md:p-8 font-body-md text-body-md text-on-surface-variant italic leading-relaxed max-h-96 overflow-y-auto custom-scrollbar whitespace-pre-wrap border-t border-outline-variant">
           {transcript}
         </div>
       </details>
@@ -106,7 +114,7 @@ export default async function WikiPage({
 
   const { data: pageData, error } = await supabase
     .from("wiki_pages")
-    .select("id,slug,title,episode_number,transcript,concepts,tags,episode_url,description,summary")
+    .select("id,slug,title,episode_number,transcript,concepts,tags,episode_url,description,summary,image_url")
     .eq("slug", slug)
     .single();
 
@@ -117,14 +125,14 @@ export default async function WikiPage({
   const [relatedResult, papers] = await Promise.all([
     supabase
       .from("wiki_pages")
-      .select("episode_number,title,slug")
+      .select("episode_number,title,slug,image_url")
       .neq("slug", slug)
       .order("episode_number", { ascending: false })
       .limit(3),
     fetchPubMedPapers(page.title),
   ]);
 
-  const relatedEpisodes = relatedResult.data ?? [];
+  const relatedEpisodes = (relatedResult.data ?? []) as RelatedEpisode[];
 
   const concepts: Concept[] = (page.concepts ?? []).map((c) =>
     typeof c === "string" ? { title: c, bullets: [] } : (c as Concept)
@@ -132,116 +140,145 @@ export default async function WikiPage({
 
   const summaryBullets: string[] = Array.isArray(page.summary) ? page.summary : [];
 
-  const spotifyUrl = "https://open.spotify.com/show/50grwY6FX198o7BoYlRH6D";
+  // Fallback to the show-level Spotify feed if this episode has no normalized episode_url yet.
+  const spotifyShowUrl = "https://open.spotify.com/show/50grwY6FX198o7BoYlRH6D";
+  const listenUrl = page.episode_url || spotifyShowUrl;
+
+  // Note: this project's "tertiary" tokens are coral/red, not the green the
+  // Stitch mockup assumes — so concept cards alternate within the green family instead.
+  const CONCEPT_TINTS = [
+    { bg: "bg-secondary-fixed/30", border: "border-secondary-fixed-dim", text: "text-secondary" },
+    { bg: "bg-primary-fixed/30", border: "border-primary-fixed-dim", text: "text-primary" },
+  ];
 
   return (
     <div className="bg-background text-on-background font-body-md text-body-md">
       <Navbar />
 
       <main className="max-w-[1280px] mx-auto px-4 sm:px-gutter py-6 md:py-lg">
-        {/* ── Hero ─────────────────────────────────────────────── */}
-        <div className="mb-8 md:mb-12">
-          <div className="flex items-center gap-3 mb-3 flex-wrap">
-            <span className="bg-primary text-white px-3 py-1 rounded font-label-sm text-label-sm tracking-widest uppercase">
-              Episode #{page.episode_number}
-            </span>
-          </div>
-
-          <h1 className="font-bold text-[24px] sm:text-[32px] md:text-display-lg text-primary mb-4 md:mb-6 leading-tight">
-            {page.title}
-          </h1>
-
-          <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-4 md:mb-8">
-            {page.tags.map((tag) => (
-              <span
-                key={tag}
-                className="px-3 py-1 md:px-4 md:py-1.5 bg-secondary-container text-on-secondary-container rounded-full font-label-sm text-label-sm"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-
-          {/* Spotify button — full width on mobile */}
-          <a href={spotifyUrl} target="_blank" rel="noopener noreferrer" className="block sm:inline-block">
-            <button className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#1DB954] text-white px-5 py-3 min-h-[48px] rounded-full font-bold hover:opacity-90 transition-all shadow-md">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-                play_circle
-              </span>
-              Listen on Spotify
-            </button>
-          </a>
-        </div>
-
         {/*
-          On desktop: 2-column grid [main | sidebar]
-          On mobile: all children stack top-to-bottom naturally
-            col 1 = main content (summary, concepts, transcript)
-            col 2 = sidebar (live lit, related, graph CTA)
-            col 1 row 2 = comments (auto-placed back into left column on desktop)
+          Two-column layout per the new design:
+            Main (≈65%): hero header, summary, concepts, transcript, live literature, comments
+            Sidebar (≈35%): related episodes, knowledge graph teaser
+          Stacks to a single column on mobile.
         */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 lg:gap-12">
-
-          {/* ── Main content (col 1 row 1 on desktop) ─────────── */}
-          <div className="space-y-8 md:space-y-12">
-            {/* Episode Summary */}
-            {summaryBullets.length > 0 && (
-              <section>
-                <h2 className="font-headline-md text-headline-md text-primary border-b border-outline-variant pb-3 mb-5 md:mb-6 flex items-center gap-2">
-                  <span className="material-symbols-outlined">summarize</span>
-                  Episode Summary
-                </h2>
-                <div className="text-on-surface-variant text-base md:font-body-lg md:text-body-lg">
-                  <ul className="space-y-3 md:space-y-4 list-disc pl-5 marker:text-primary">
-                    {summaryBullets.map((bullet, i) => (
-                      <li key={i}>{bullet}</li>
-                    ))}
-                  </ul>
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+          {/* ── Main content ───────────────────────────────────── */}
+          <div className="w-full lg:w-[65%] space-y-8 md:space-y-12">
+            {/* Hero / header card */}
+            <section className="bg-white rounded-xl border border-outline-variant shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] p-6 md:p-8">
+              <div className="flex flex-col md:flex-row gap-6 items-start">
+                <div className="w-full md:w-48 h-48 rounded-lg overflow-hidden shrink-0 relative flex items-center justify-center">
+                  <div
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{ background: "linear-gradient(135deg, #00523c 0%, #1e6b52 60%, #0d9488 100%)" }}
+                  >
+                    <span className="material-symbols-outlined text-white/25 text-6xl">science</span>
+                  </div>
+                  {page.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={page.image_url}
+                      alt={page.title}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : null}
                 </div>
-              </section>
-            )}
 
-            {page.description && !summaryBullets.length && (
-              <section>
-                <h2 className="font-headline-md text-headline-md text-primary border-b border-outline-variant pb-3 mb-5 md:mb-6 flex items-center gap-2">
-                  <span className="material-symbols-outlined">summarize</span>
-                  Episode Summary
-                </h2>
+                <div className="flex-grow space-y-3 min-w-0">
+                  <span className="text-secondary font-label-md text-label-md uppercase tracking-wider">
+                    Episode #{page.episode_number}
+                  </span>
+                  <h1 className="font-headline-lg text-headline-lg text-on-surface leading-tight">
+                    {page.title}
+                  </h1>
+                  {page.description && (
+                    <p className="text-on-surface-variant font-body-md text-body-md leading-relaxed">
+                      {page.description}
+                    </p>
+                  )}
+
+                  {page.tags.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {page.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-label-sm text-label-sm"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <a
+                      href={listenUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-secondary text-on-secondary px-6 py-3 min-h-[44px] rounded-full flex items-center gap-2 font-label-md text-label-md font-bold hover:shadow-lg transition-all active:scale-95"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        play_arrow
+                      </span>
+                      Listen on Spotify
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Episode Summary */}
+            {summaryBullets.length > 0 ? (
+              <section className="bg-white rounded-xl border border-outline-variant shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] p-6 md:p-8">
+                <h2 className="font-headline-md text-headline-md text-on-surface mb-5 md:mb-6">Episode Summary</h2>
+                <ul className="space-y-3 md:space-y-4 list-none">
+                  {summaryBullets.map((bullet, i) => (
+                    <li key={i} className="flex items-start gap-3 text-on-surface-variant">
+                      <span className="material-symbols-outlined text-secondary mt-0.5 shrink-0">check_circle</span>
+                      <span className="text-base md:font-body-lg md:text-body-lg">{bullet}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : page.description ? (
+              <section className="bg-white rounded-xl border border-outline-variant shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] p-6 md:p-8">
+                <h2 className="font-headline-md text-headline-md text-on-surface mb-5 md:mb-6">Episode Summary</h2>
                 <p className="text-base md:font-body-lg md:text-body-lg text-on-surface-variant">{page.description}</p>
               </section>
-            )}
+            ) : null}
 
             {/* Key Concepts — full width cards on mobile */}
             {concepts.length > 0 && (
-              <section>
-                <h2 className="font-headline-md text-headline-md text-primary mb-5 md:mb-6">Key Concepts</h2>
+              <section className="space-y-4 md:space-y-6">
+                <h2 className="font-headline-md text-headline-md text-on-surface">Key Concepts</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                  {concepts.map((concept, idx) => (
-                    <div key={idx} className="green-border-card p-4 md:p-6">
-                      <h3 className="font-bold text-primary mb-2">{concept.title}</h3>
-                      {concept.bullets.length > 0 && (
-                        <p className="text-on-surface-variant font-body-md text-body-md text-sm md:text-base">
-                          {concept.bullets.slice(0, 2).join(" • ")}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                  {concepts.map((concept, idx) => {
+                    const tint = CONCEPT_TINTS[idx % CONCEPT_TINTS.length];
+                    return (
+                      <div key={idx} className={`${tint.bg} ${tint.border} border rounded-xl p-4 md:p-6`}>
+                        <h3 className={`font-headline-sm text-headline-sm ${tint.text} mb-2`}>{concept.title}</h3>
+                        {concept.bullets.length > 0 && (
+                          <ul className="space-y-1 list-disc list-inside font-body-sm text-on-surface-variant text-sm md:text-base">
+                            {concept.bullets.map((bullet, bi) => (
+                              <li key={bi}>{bullet}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
             )}
 
             {/* Transcript */}
             {page.transcript && <TranscriptSection transcript={page.transcript} />}
-          </div>
 
-          {/* ── Sidebar (col 2 on desktop, after main on mobile) ── */}
-          <aside className="space-y-6 md:space-y-10">
             {/* Live Literature */}
-            <div className="bg-white rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.05)] p-5 md:p-6 border border-outline-variant">
-              <div className="flex justify-between items-center mb-5 md:mb-6">
-                <h3 className="font-bold text-primary uppercase tracking-wider font-label-sm text-label-sm">
-                  Live Literature
-                </h3>
+            <section className="space-y-4 md:space-y-6">
+              <div className="flex items-center gap-3">
+                <h2 className="font-headline-md text-headline-md text-on-surface">Live Literature</h2>
                 <div className="flex items-center gap-2 bg-primary/10 px-2 py-1 rounded">
                   <span className="pulse-dot" />
                   <span className="text-[10px] font-bold text-primary">LIVE</span>
@@ -251,55 +288,77 @@ export default async function WikiPage({
               {papers.length === 0 ? (
                 <p className="text-on-surface-variant text-sm">No recent papers found.</p>
               ) : (
-                <div className="space-y-5 md:space-y-6">
+                <div className="flex flex-wrap gap-4">
                   {papers.map((paper) => (
                     <a
                       key={paper.id}
                       href={`https://pubmed.ncbi.nlm.nih.gov/${paper.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group block cursor-pointer"
+                      className="group bg-white border-l-4 border-primary p-4 rounded-r-lg shadow-sm w-full sm:w-64 space-y-1 hover:shadow-md transition-shadow"
                     >
                       {paper.journal && (
-                        <div className="text-outline font-label-sm text-label-sm mb-1 uppercase">
+                        <p className="text-[12px] text-on-surface-variant italic">
                           {paper.journal}
-                        </div>
+                          {paper.date && ` · ${paper.date}`}
+                        </p>
                       )}
-                      <h4 className="font-bold text-on-surface leading-tight group-hover:text-primary transition-colors line-clamp-2 text-sm md:text-base">
+                      <p className="font-label-md text-label-md text-on-surface line-clamp-2 group-hover:text-primary transition-colors">
                         {paper.title}
-                      </h4>
-                      <div className="flex items-center gap-1 mt-2 text-primary font-label-sm text-label-sm">
-                        <span className="material-symbols-outlined text-[14px]">description</span>
-                        View Paper
-                        {paper.date && <span className="text-outline ml-1">· {paper.date}</span>}
-                      </div>
+                      </p>
+                      <span className="text-[12px] text-secondary font-semibold">View on PubMed →</span>
                     </a>
                   ))}
                 </div>
               )}
 
-              <button className="w-full mt-5 md:mt-6 py-3 min-h-[44px] text-center border-t border-outline-variant text-primary font-bold font-label-sm text-label-sm hover:bg-surface-container-low transition-colors">
+              <Link
+                href="/knowledge-hub?tab=discover"
+                className="block w-full py-3 min-h-[44px] text-center border border-outline-variant rounded-lg text-primary font-bold font-label-sm text-label-sm hover:bg-surface-container-low transition-colors"
+              >
                 View All Stream
-              </button>
-            </div>
+              </Link>
+            </section>
 
+            {/* Researcher Discussion */}
+            <section className="bg-white rounded-xl border border-outline-variant shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] p-6 md:p-8">
+              <CommentsSection wikiPageId={page.id} />
+            </section>
+          </div>
+
+          {/* ── Sidebar ──────────────────────────────────────────── */}
+          <aside className="w-full lg:w-[35%] space-y-6 md:space-y-10">
             {/* Related Episodes */}
             {relatedEpisodes.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="font-bold text-on-surface-variant uppercase tracking-widest font-label-sm text-label-sm">
-                  Related Episodes
-                </h3>
-                <div className="space-y-3">
+              <div className="bg-white rounded-xl border border-outline-variant shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.05)] p-5 md:p-6">
+                <h3 className="font-headline-sm text-headline-sm text-on-surface mb-4 md:mb-5">Related Episodes</h3>
+                <div className="space-y-3 md:space-y-4">
                   {relatedEpisodes.map((ep) => (
-                    <Link key={ep.slug} href={`/topics/${ep.slug}`} className="flex gap-4 group">
-                      <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg bg-surface-container-high flex-shrink-0 flex items-center justify-center text-primary/30 group-hover:text-primary transition-colors">
-                        <span className="material-symbols-outlined text-2xl">science</span>
+                    <Link
+                      key={ep.slug}
+                      href={`/topics/${ep.slug}`}
+                      className="group flex gap-4 hover:bg-surface-container-low p-2 rounded-lg transition-all -mx-2"
+                    >
+                      <div className="w-20 h-20 rounded flex-shrink-0 overflow-hidden relative">
+                        <div className="absolute inset-0 bg-surface-container-high flex items-center justify-center text-primary/30 group-hover:text-primary transition-colors">
+                          <span className="material-symbols-outlined text-2xl">science</span>
+                        </div>
+                        {ep.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={ep.image_url}
+                            alt={ep.title}
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          />
+                        ) : null}
                       </div>
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-sm leading-snug group-hover:text-primary transition-colors line-clamp-2">
+                      <div className="space-y-1 min-w-0">
+                        <span className="text-[10px] text-secondary font-bold uppercase tracking-tight">
+                          EP {ep.episode_number}
+                        </span>
+                        <h4 className="font-label-md text-label-md text-on-surface group-hover:text-primary transition-colors line-clamp-2">
                           {ep.title}
                         </h4>
-                        <p className="text-outline text-xs mt-1">Episode #{ep.episode_number}</p>
                       </div>
                     </Link>
                   ))}
@@ -307,32 +366,25 @@ export default async function WikiPage({
               </div>
             )}
 
-            {/* Knowledge Graph CTA */}
+            {/* Knowledge Graph Teaser */}
             <Link href="/knowledge-hub?tab=graph">
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary-fixed to-secondary-fixed p-5 md:p-6 group cursor-pointer">
-                <div className="relative z-10">
-                  <h3 className="font-bold text-primary-fixed-variant mb-2">Explore the Knowledge Graph</h3>
-                  <p className="text-on-primary-fixed-variant text-xs mb-4">
-                    Visualize the relationships between concepts, target proteins, and clinical markers.
-                  </p>
-                  <div className="flex items-center gap-2 font-bold text-primary-fixed-variant text-sm">
-                    Open Interactive Map
-                    <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform text-[18px]">
-                      arrow_forward
-                    </span>
+              <div className="bg-primary text-on-primary p-5 md:p-6 rounded-xl border border-primary-container relative overflow-hidden group cursor-pointer">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary-container/40 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-700" />
+                <div className="relative z-10 space-y-3 md:space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary-fixed">hub</span>
+                    <h3 className="font-headline-sm text-headline-sm text-white">Knowledge Graph</h3>
                   </div>
-                </div>
-                <div className="absolute -right-4 -bottom-4 opacity-10">
-                  <span className="material-symbols-outlined text-[120px]">hub</span>
+                  <p className="font-body-sm text-body-sm text-white/90 leading-relaxed">
+                    Visualize the connections between this episode&apos;s concepts, cited papers, and future research directions.
+                  </p>
+                  <div className="w-full h-20 bg-white/10 rounded-lg flex items-center justify-center border border-white/20 group-hover:bg-white/15 transition-all">
+                    <span className="font-label-md text-label-md text-primary-fixed">Launch Interactive Map</span>
+                  </div>
                 </div>
               </div>
             </Link>
           </aside>
-
-          {/* ── Comments — auto-placed into col 1 row 2 on desktop, after sidebar on mobile ── */}
-          <div className="lg:col-start-1">
-            <CommentsSection wikiPageId={page.id} />
-          </div>
         </div>
       </main>
 
