@@ -53,13 +53,13 @@ const NODE_COLOR: Record<string, string> = {
 
 const TYPE_CONFIG: Record<
   string,
-  { color: string; label: string }
+  { color: string; bg: string; label: string }
 > = {
-  paper:    { color: "#3b82f6", label: "Paper" },
-  patent:   { color: "#a855f7", label: "Patent" },
-  grant:    { color: "#1E6B52", label: "Grant" },
-  trial:    { color: "#f97316", label: "Trial" },
-  preprint: { color: "#0d9488", label: "Preprint" },
+  paper:    { color: "#1E88E5", bg: "#E3F2FD", label: "Paper" },
+  patent:   { color: "#8E24AA", bg: "#F3E5F5", label: "Patent" },
+  grant:    { color: "#FFA000", bg: "#FFF8E1", label: "Grant" },
+  trial:    { color: "#388E3C", bg: "#E8F5E9", label: "Trial" },
+  preprint: { color: "#00796B", bg: "#E0F2F1", label: "Preprint" },
 };
 
 const DISCOVER_FILTERS = [
@@ -117,8 +117,8 @@ function DiscoverCard({ item }: { item: DiscoverItem }) {
       <div className="p-5 flex-grow">
         <div className="flex justify-between items-start mb-3">
           <span
-            className="text-[10px] font-bold px-2 py-0.5 rounded text-white"
-            style={{ backgroundColor: cfg.color }}
+            className="px-3 py-1 rounded font-label-sm text-label-sm"
+            style={{ backgroundColor: cfg.bg, color: cfg.color }}
           >
             {cfg.label}
           </span>
@@ -162,7 +162,7 @@ function DiscoverCard({ item }: { item: DiscoverItem }) {
 
 // ── Discover tab ──────────────────────────────────────────────────────────────
 
-function DiscoverTab() {
+function DiscoverTab({ user }: { user: unknown }) {
   const [items, setItems]     = useState<DiscoverItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState("all");
@@ -199,6 +199,25 @@ function DiscoverTab() {
 
   return (
     <>
+      {/* Personalization banner — logged-out users only */}
+      {!user && (
+        <section className="px-gutter max-w-[1280px] mx-auto mb-8">
+          <div className="bg-primary p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-6 shadow-md">
+            <div className="text-white text-center md:text-left">
+              <h2 className="font-headline-md text-headline-md mb-1">Tailor your research experience</h2>
+              <p className="font-body-md text-body-md opacity-90">
+                Sign in to personalize your feed and get research recommendations based on your profile.
+              </p>
+            </div>
+            <Link href="/login?callbackUrl=/knowledge-hub" className="shrink-0">
+              <button className="whitespace-nowrap px-8 py-3 bg-white text-primary font-bold rounded-lg hover:bg-surface-container-low transition-colors shadow-sm">
+                Sign in to personalize
+              </button>
+            </Link>
+          </div>
+        </section>
+      )}
+
       {/* Search & filters */}
       <section className="px-gutter max-w-[1280px] mx-auto mb-8">
         <div className="space-y-4 md:space-y-6">
@@ -1106,8 +1125,8 @@ function ResearchersTab() {
     <>
       {/* Search + filter bar */}
       <section className="px-gutter max-w-[1280px] mx-auto mb-8">
-        <div className="flex flex-col lg:flex-row gap-md items-center justify-between bg-surface-container-low p-md rounded-xl border border-outline-variant/30">
-          <div className="relative w-full lg:max-w-md">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-md">
+          <div className="relative w-full md:max-w-xl">
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">
               search
             </span>
@@ -1116,18 +1135,18 @@ function ResearchersTab() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, institution, or research area…"
-              className="w-full pl-12 pr-4 py-3 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md"
+              className="w-full pl-12 pr-4 py-3 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md shadow-sm"
             />
           </div>
-          <div className="flex bg-white p-1 rounded-lg border border-outline-variant">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
             {AFFILIATION_FILTERS.map((f) => (
               <button
                 key={f}
                 onClick={() => setAffFilter(f)}
-                className={`px-4 py-1.5 rounded-md font-label-sm text-label-sm transition-colors ${
+                className={`shrink-0 px-4 py-1.5 rounded-full font-label-sm text-label-sm border transition-all ${
                   affFilter === f
-                    ? "bg-primary text-white"
-                    : "text-on-surface-variant hover:bg-surface-variant"
+                    ? "bg-primary text-white border-primary"
+                    : "bg-white text-on-surface-variant border-outline-variant hover:border-primary hover:text-primary"
                 }`}
               >
                 {f}
@@ -1203,7 +1222,7 @@ function ResearchersTab() {
                       {(r.interests ?? []).slice(0, 3).map((interest) => (
                         <span
                           key={interest}
-                          className="px-3 py-1 bg-secondary-container/30 text-on-secondary-container rounded-full font-label-sm text-label-sm"
+                          className="px-3 py-1 rounded bg-secondary-fixed-dim/20 text-secondary font-label-sm text-label-sm"
                         >
                           {interest}
                         </span>
@@ -1238,13 +1257,13 @@ function ResearchersTab() {
 
                   <div className="mt-auto grid grid-cols-2 gap-sm">
                     <Link href={`/researchers/${r.profile_slug}`}>
-                      <button className="w-full py-2 border border-primary text-primary rounded-lg font-bold font-label-sm text-label-sm hover:bg-primary/5 transition-colors">
+                      <button className="w-full py-2.5 border border-primary text-primary rounded-lg font-bold font-label-sm text-label-sm hover:bg-primary/5 transition-colors">
                         View Profile
                       </button>
                     </Link>
                     <button
                       onClick={() => window.open("mailto:" + r.email)}
-                      className="w-full py-2 bg-primary text-on-primary rounded-lg font-bold font-label-sm text-label-sm shadow-sm hover:opacity-90 transition-opacity"
+                      className="w-full py-2.5 bg-primary text-on-primary rounded-lg font-bold font-label-sm text-label-sm shadow-sm hover:opacity-90 transition-opacity"
                     >
                       Connect
                     </button>
@@ -1252,6 +1271,22 @@ function ResearchersTab() {
                 </div>
               );
             })}
+
+            {/* Sparse-state CTA — encourages researchers to set up a public profile */}
+            <Link href="/profile/setup">
+              <div className="bg-surface-container-low border border-dashed border-outline-variant rounded-xl p-lg flex flex-col items-center justify-center text-center h-full hover:bg-surface-container transition-colors">
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mb-md shadow-sm">
+                  <span className="material-symbols-outlined text-primary">add</span>
+                </div>
+                <h3 className="font-headline-md text-headline-md text-on-surface mb-2">Are you a researcher?</h3>
+                <p className="font-body-md text-body-md text-on-surface-variant mb-lg max-w-[240px]">
+                  Create your public profile to connect with peers and showcase your latest findings.
+                </p>
+                <button className="px-6 py-2 rounded-full bg-white border border-outline-variant text-primary font-label-sm text-label-sm hover:border-primary transition-all">
+                  Get Started
+                </button>
+              </div>
+            </Link>
           </div>
         )}
       </section>
@@ -1337,15 +1372,15 @@ function KnowledgeHubInner() {
 
         {/* Tabs */}
         <section className="px-gutter max-w-[1280px] mx-auto mb-6 md:mb-10">
-          <div className="flex border-b border-outline-variant">
+          <div className="flex gap-6 md:gap-10 border-b border-outline-variant overflow-x-auto scrollbar-hide">
             {TABS.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 md:flex-none md:px-8 py-4 min-h-[48px] font-semibold transition-all text-sm md:text-base ${
+                className={`shrink-0 pb-4 min-h-[48px] font-semibold transition-colors text-sm md:text-base whitespace-nowrap ${
                   activeTab === tab.key
                     ? "text-primary border-b-2 border-primary"
-                    : "text-on-surface-variant font-medium hover:text-primary"
+                    : "text-on-surface-variant hover:text-primary"
                 }`}
               >
                 {tab.label}
@@ -1355,7 +1390,7 @@ function KnowledgeHubInner() {
         </section>
 
         {/* ── Discover Tab ─────────────────────────────────────── */}
-        {activeTab === "discover" && <DiscoverTab />}
+        {activeTab === "discover" && <DiscoverTab user={user} />}
 
         {/* ── Podcast Tab ───────────────────────────────────────── */}
         {activeTab === "podcast" && (
@@ -1458,15 +1493,15 @@ function KnowledgeHubInner() {
                   {filtered.map((ep) => (
                     <Link key={ep.id} href={`/topics/${ep.slug}`}>
                       <div className="group bg-white rounded-xl border border-surface-container-high overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer h-full flex flex-col">
-                        <div
-                          className="relative overflow-hidden flex items-center justify-center"
-                          style={{
-                            height: "160px",
-                            background:
-                              "linear-gradient(135deg, #00523c 0%, #1e6b52 60%, #0d9488 100%)",
-                          }}
-                        >
-                          <span className="material-symbols-outlined text-white/20 text-8xl">
+                        <div className="relative h-56 overflow-hidden flex items-center justify-center">
+                          <div
+                            className="absolute inset-0 transition-transform duration-500 group-hover:scale-110"
+                            style={{
+                              background:
+                                "linear-gradient(135deg, #00523c 0%, #1e6b52 60%, #0d9488 100%)",
+                            }}
+                          />
+                          <span className="material-symbols-outlined text-white/20 text-8xl relative">
                             science
                           </span>
                           {ep.image_url && (
@@ -1474,12 +1509,12 @@ function KnowledgeHubInner() {
                             <img
                               src={ep.image_url}
                               alt={ep.title}
-                              className="absolute inset-0 w-full h-full object-cover"
+                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                               onError={(e) => { e.currentTarget.style.display = "none"; }}
                             />
                           )}
-                          <div className="absolute top-4 left-4 bg-primary-container text-white px-3 py-1 rounded-full font-label-sm text-label-sm font-bold">
-                            EP #{ep.episode_number}
+                          <div className="absolute top-4 left-4 bg-primary/90 text-white px-3 py-1 rounded text-[11px] font-bold tracking-widest uppercase">
+                            Episode {ep.episode_number}
                           </div>
                         </div>
                         <div className="p-6 flex flex-col flex-1">
@@ -1487,30 +1522,32 @@ function KnowledgeHubInner() {
                             {ep.tags.slice(0, 2).map((tag) => (
                               <span
                                 key={tag}
-                                className="text-[10px] uppercase tracking-wider font-bold text-primary bg-secondary-container px-2 py-0.5 rounded"
+                                className="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container text-[11px] font-bold uppercase tracking-tight"
                               >
                                 {tag}
                               </span>
                             ))}
                           </div>
-                          <h3 className="font-headline-md text-headline-md text-on-surface mb-2 leading-snug">
+                          <h3 className="font-headline-md text-headline-md text-primary mb-2 leading-snug line-clamp-2">
                             {ep.title}
                           </h3>
                           <p className="text-on-surface-variant font-body-md text-body-md line-clamp-2 mb-6 flex-1">
                             {ep.description || "Explore this episode's key concepts and research insights."}
                           </p>
                           <div className="flex items-center justify-between pt-4 border-t border-surface-container">
-                            <span className="font-label-sm text-label-sm text-on-surface-variant">
-                              Episode #{ep.episode_number}
+                            <span className="text-primary font-label-sm text-label-sm hover:underline flex items-center gap-1">
+                              Read wiki
+                              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                             </span>
-                            <div className="flex gap-3">
-                              <span className="text-primary group-hover:text-primary-container transition-colors">
-                                <span
-                                  className="material-symbols-outlined"
-                                  style={{ fontVariationSettings: "'FILL' 1" }}
-                                >
-                                  play_circle
-                                </span>
+                            <div
+                              className="w-10 h-10 rounded-full bg-secondary text-on-secondary flex items-center justify-center group-hover:scale-110 transition-transform"
+                              title="Open episode wiki"
+                            >
+                              <span
+                                className="material-symbols-outlined"
+                                style={{ fontVariationSettings: "'FILL' 1" }}
+                              >
+                                play_arrow
                               </span>
                             </div>
                           </div>
