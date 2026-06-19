@@ -11,14 +11,13 @@ export default function LandingPage() {
         {/* ── Hero ──────────────────────────────────────────────── */}
         <section className="py-10 md:py-xl px-gutter bg-background">
           <div className="max-w-[1280px] mx-auto text-center">
-            <div className="inline-flex items-center gap-2 bg-secondary-container text-on-secondary-container px-4 py-1.5 rounded-full font-label-sm text-label-sm mb-6 md:mb-8">
+            <div className="inline-flex items-center gap-2 bg-secondary-container text-on-secondary-container px-4 py-1.5 rounded-full font-label-sm text-label-sm mb-6 md:mb-8 uppercase tracking-wider">
               <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
               Powered by UAB SPARC
             </div>
 
-            <h1 className="font-bold text-[28px] leading-tight md:text-display-lg text-on-surface mb-4 md:mb-6 max-w-3xl mx-auto">
-              From Discovery to{" "}
-              <em className="not-italic text-primary">Destination</em>
+            <h1 className="font-bold text-[28px] leading-tight md:text-display-lg md:font-display-lg text-primary mb-4 md:mb-6 max-w-3xl mx-auto">
+              From Discovery to Destination
             </h1>
 
             <p className="text-base md:font-body-lg md:text-body-lg text-on-surface-variant max-w-2xl mx-auto mb-8 md:mb-10">
@@ -29,17 +28,28 @@ export default function LandingPage() {
 
             {/* Buttons: stack full-width on mobile, row on sm+ */}
             <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 px-4 sm:px-0">
-              <Link href="/navigator" className="w-full sm:w-auto">
-                <button className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 min-h-[48px] bg-primary text-on-primary rounded-full font-bold hover:bg-primary-container transition-all active:scale-95 shadow-sm">
-                  Try Navigator
-                  <span className="material-symbols-outlined text-[18px]">north_east</span>
-                </button>
-              </Link>
               <Link href="/knowledge-hub" className="w-full sm:w-auto">
-                <button className="w-full sm:w-auto flex items-center justify-center px-8 py-3.5 min-h-[48px] rounded-full border border-outline text-primary font-semibold hover:bg-surface-container-low transition-all active:scale-95">
+                <button className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 min-h-[48px] bg-primary text-on-primary rounded-full font-bold hover:bg-primary-container transition-all active:scale-95 shadow-sm">
                   Explore Knowledge Hub
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </button>
               </Link>
+              <Link href="/login" className="w-full sm:w-auto">
+                <button className="w-full sm:w-auto flex items-center justify-center px-8 py-3.5 min-h-[48px] rounded-full border border-outline text-primary font-semibold hover:bg-surface-container-low transition-all active:scale-95">
+                  Sign In
+                </button>
+              </Link>
+            </div>
+
+            {/* Hero visual — brand gradient panel (no stock photography) */}
+            <div className="max-w-5xl mx-auto mt-16 md:mt-20 relative rounded-xl overflow-hidden border border-outline-variant shadow-xl">
+              <div
+                className="aspect-video w-full flex items-center justify-center relative"
+                style={{ background: "linear-gradient(135deg, #00523c 0%, #1e6b52 60%, #0d9488 100%)" }}
+              >
+                <span className="material-symbols-outlined text-white/15 text-[140px] md:text-[200px]">hub</span>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+              </div>
             </div>
           </div>
         </section>
@@ -106,65 +116,146 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Feature Cards — single col on mobile ──────────────── */}
+        {/* ── Feature Cards — two centered pillars ──────────────── */}
         <section className="py-10 md:py-xl px-gutter bg-surface-container-low">
-          <div className="max-w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-lg">
-            {/* Knowledge Hub card */}
-            <Link href="/knowledge-hub">
-              <div className="bg-white rounded-xl border border-surface-container-high p-6 md:p-lg flex flex-col gap-4 hover:shadow-lg transition-all group cursor-pointer h-full">
-                <div className="w-12 h-12 bg-secondary-container rounded-xl flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-primary text-2xl">menu_book</span>
-                </div>
-                <h3 className="font-headline-md text-headline-md text-on-surface">Knowledge Hub</h3>
-                <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
-                  An editorial-first repository featuring scientific wikis,{" "}
-                  <strong className="text-on-surface">peer-reviewed podcasts</strong>, and deep-dive case studies into
-                  successful research commercialization.
-                </p>
-                <div className="flex flex-col gap-2 text-sm text-on-surface-variant">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[16px]">check_circle</span>
-                    200+ Research Case Studies
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[16px]">check_circle</span>
-                    Bi-weekly Podcast Episodes
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-primary font-bold font-label-sm text-label-sm group-hover:gap-3 transition-all mt-auto">
-                  Browse Knowledge
-                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                </div>
-              </div>
-            </Link>
+          <div className="max-w-[1280px] mx-auto">
+            <div className="flex flex-col items-center text-center mb-8 md:mb-lg">
+              <h2 className="font-headline-lg text-headline-lg text-on-surface mb-2">Core Intelligence Pillars</h2>
+              <p className="font-body-md text-body-md text-on-surface-variant max-w-xl">
+                Every stage of the drug discovery lifecycle supported by specialized analytical modules.
+              </p>
+            </div>
 
-            {/* Navigator card */}
-            <Link href="/navigator">
-              <div className="bg-primary rounded-xl p-6 md:p-lg flex flex-col gap-4 hover:shadow-lg transition-all group cursor-pointer h-full">
-                <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-white text-2xl">explore</span>
-                </div>
-                <h3 className="font-headline-md text-headline-md text-white">Research Navigator</h3>
-                <p className="font-body-md text-body-md text-on-primary/80 leading-relaxed">
-                  An AI-powered tool that generates personalized roadmaps. Input your current phase to
-                  discover providers, funding, and collaboration milestones.
-                </p>
-                <div className="flex flex-col gap-2 text-sm text-on-primary/70">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-on-primary text-[16px]">check_circle</span>
-                    AI-Generated Milestones
+            <div className="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-lg">
+              {/* Knowledge Hub card */}
+              <Link href="/knowledge-hub">
+                <div className="bg-white rounded-xl border border-outline-variant p-6 md:p-lg flex flex-col gap-4 hover:shadow-md transition-all group cursor-pointer h-full">
+                  <div className="w-12 h-12 bg-secondary-container rounded-lg flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-on-secondary-container text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>auto_stories</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-on-primary text-[16px]">check_circle</span>
-                    Real-time Provider Directory
+                  <h3 className="font-headline-md text-headline-md text-primary">Knowledge Hub</h3>
+                  <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                    An editorial-first repository featuring scientific wikis,{" "}
+                    <strong className="text-on-surface">peer-reviewed podcasts</strong>, and deep-dive case studies into
+                    successful research commercialization.
+                  </p>
+                  <div className="flex flex-col gap-2 text-sm text-on-surface-variant">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-[16px]">check_circle</span>
+                      200+ Research Case Studies
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-[16px]">check_circle</span>
+                      Bi-weekly Podcast Episodes
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-primary font-bold font-label-sm text-label-sm group-hover:gap-3 transition-all mt-auto">
+                    Learn &amp; Discover
+                    <span className="material-symbols-outlined text-[16px]">chevron_right</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-white font-bold font-label-sm text-label-sm group-hover:gap-3 transition-all mt-auto">
-                  Start Navigating
-                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </Link>
+
+              {/* Navigator card */}
+              <Link href="/navigator">
+                <div className="bg-primary rounded-xl p-6 md:p-lg flex flex-col gap-4 hover:shadow-md transition-all group cursor-pointer h-full">
+                  <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-white text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>explore</span>
+                  </div>
+                  <h3 className="font-headline-md text-headline-md text-white">Navigator</h3>
+                  <p className="font-body-md text-body-md text-on-primary/80 leading-relaxed">
+                    An AI-powered tool that generates personalized roadmaps. Input your current phase to
+                    discover providers, funding, and collaboration milestones.
+                  </p>
+                  <div className="flex flex-col gap-2 text-sm text-on-primary/70">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-on-primary text-[16px]">check_circle</span>
+                      AI-Generated Milestones
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-on-primary text-[16px]">check_circle</span>
+                      Real-time Provider Directory
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-white font-bold font-label-sm text-label-sm group-hover:gap-3 transition-all mt-auto">
+                    Plan &amp; Act
+                    <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                  </div>
                 </div>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ── We're the intelligence layer ──────────────────────── */}
+        <section className="py-10 md:py-xl px-gutter bg-background overflow-hidden">
+          <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            <div className="relative">
+              <div className="aspect-square rounded-3xl overflow-hidden border border-outline-variant shadow-lg academic-grid-pattern flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary/15 text-[160px] md:text-[220px]">shield_lock</span>
               </div>
-            </Link>
+              {/* Floating stat card */}
+              <div className="absolute -bottom-6 -right-6 bg-white p-6 rounded-2xl shadow-xl border border-outline-variant max-w-[240px]">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="material-symbols-outlined text-primary text-[32px]">verified_user</span>
+                  <span className="font-headline-md text-headline-md text-primary">100% Secure</span>
+                </div>
+                <p className="font-body-md text-body-md text-on-surface-variant">
+                  Your files stay on your own secure storage; we manage the intelligence layer.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col">
+              <h2 className="font-headline-lg text-headline-lg text-primary mb-4">We&apos;re the intelligence layer</h2>
+              <p className="font-body-lg text-body-lg text-on-surface-variant mb-8 leading-relaxed">
+                The SDD Navigator functions as a sophisticated neural network for research institutions.
+                While your raw data remains safely behind your firewall on institutional storage, our
+                platform provides the connective tissue that manages, analyzes, tracks, and connects
+                findings across the global network.
+              </p>
+              <ul className="space-y-6">
+                {[
+                  { title: "Decentralized Management", desc: "No centralized data silos. You maintain complete ownership and sovereignty over your research files." },
+                  { title: "Advanced Connectivity", desc: "Real-time tracking of research progress and automated discovery of complementary studies worldwide." },
+                  { title: "Intelligent Analysis", desc: "High-performance computational layers that analyze meta-data to predict research outcomes." },
+                ].map((item) => (
+                  <li key={item.title} className="flex items-start gap-4">
+                    <div className="mt-1 w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-primary text-[16px]" style={{ fontVariationSettings: "'wght' 700" }}>check</span>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-primary">{item.title}</h4>
+                      <p className="text-on-surface-variant text-sm">{item.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Green CTA Band ─────────────────────────────────────── */}
+        <section className="bg-primary py-12 md:py-16 px-gutter text-on-primary">
+          <div className="max-w-[1280px] mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="text-center md:text-left">
+              <h2 className="font-headline-lg text-headline-lg text-white mb-2">Join the Global Research Network</h2>
+              <p className="font-body-lg text-body-lg text-white/80 max-w-xl">
+                Start collaborating with top-tier drug discovery scientists and accelerate your discovery timeline today.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 shrink-0 w-full md:w-auto">
+              <Link href="/register" className="w-full sm:w-auto">
+                <button className="w-full bg-white text-primary font-bold font-label-md text-label-md px-10 py-4 rounded-full hover:bg-surface-container-low transition-all shadow-lg text-center">
+                  Create a free account
+                </button>
+              </Link>
+              <Link href="/login" className="w-full sm:w-auto">
+                <button className="w-full border border-white/50 text-white font-bold font-label-md text-label-md px-10 py-4 rounded-full hover:bg-primary-container transition-all text-center">
+                  Sign in
+                </button>
+              </Link>
+            </div>
           </div>
         </section>
 
