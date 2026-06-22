@@ -24,7 +24,6 @@ import json
 import os
 import sys
 
-import requests
 from dotenv import load_dotenv
 
 # ── Load .env before local imports ────────────────────────────────────────────
@@ -40,6 +39,7 @@ from transcribe import (         # noqa: E402
 from extract    import extract_knowledge   # noqa: E402
 from validator  import validate_episode    # noqa: E402
 from graph_agent import run_graph_agent    # noqa: E402
+from supabase_client import sb_post        # noqa: E402
 
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
@@ -47,35 +47,6 @@ from graph_agent import run_graph_agent    # noqa: E402
 RSS_URL    = os.environ.get("RSS_URL", "https://anchor.fm/s/103fb6090/podcast/rss")
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
 PROGRESS_F = os.path.join(OUTPUT_DIR, "progress.json")
-
-
-# ── Supabase REST helpers ──────────────────────────────────────────────────────
-
-def _sb_url(table: str) -> str:
-    return os.environ["SUPABASE_URL"].rstrip("/") + f"/rest/v1/{table}"
-
-
-def _sb_headers(*, represent: bool = False) -> dict:
-    key = os.environ["SUPABASE_KEY"]
-    h = {
-        "apikey":        key,
-        "Authorization": f"Bearer {key}",
-        "Content-Type":  "application/json",
-    }
-    if represent:
-        h["Prefer"] = "return=representation"
-    return h
-
-
-def _sb_post(table: str, payload: dict | list) -> list:
-    r = requests.post(
-        _sb_url(table),
-        headers=_sb_headers(represent=True),
-        json=payload,
-        timeout=30,
-    )
-    r.raise_for_status()
-    return r.json() if r.text.strip() else []
 
 
 # ── Progress tracking ──────────────────────────────────────────────────────────
@@ -145,7 +116,7 @@ def _save_wiki_page(metadata: dict, transcript: str, extracted: dict, image_url:
         "image_url":      image_url or metadata.get("image_url", ""),
     }
 
-    result = _sb_post("wiki_pages", row)
+    result = sb_post("wiki_pages", row)
     if not result:
         raise RuntimeError("wiki_pages insert returned no data")
     return result[0]["id"]

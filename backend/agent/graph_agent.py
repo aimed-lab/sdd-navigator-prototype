@@ -32,45 +32,7 @@ from dotenv import load_dotenv
 _ENV_PATH = os.path.join(os.path.dirname(__file__), "..", ".env")
 load_dotenv(_ENV_PATH)
 
-
-# ── Supabase REST helpers ──────────────────────────────────────────────────────
-
-def _sb_url(table: str) -> str:
-    return os.environ["SUPABASE_URL"].rstrip("/") + f"/rest/v1/{table}"
-
-
-def _sb_headers(*, represent: bool = False) -> dict:
-    key = os.environ["SUPABASE_KEY"]
-    h = {
-        "apikey":        key,
-        "Authorization": f"Bearer {key}",
-        "Content-Type":  "application/json",
-    }
-    if represent:
-        h["Prefer"] = "return=representation"
-    return h
-
-
-def _sb_get(table: str, params: dict | None = None) -> list:
-    r = requests.get(
-        _sb_url(table),
-        headers=_sb_headers(),
-        params={**(params or {}), "limit": "10000"},
-        timeout=30,
-    )
-    r.raise_for_status()
-    return r.json()
-
-
-def _sb_post(table: str, payload: dict) -> list:
-    r = requests.post(
-        _sb_url(table),
-        headers=_sb_headers(represent=True),
-        json=payload,
-        timeout=30,
-    )
-    r.raise_for_status()
-    return r.json() if r.text.strip() else []
+from supabase_client import sb_get, sb_post   # noqa: E402
 
 
 # ── Node upsert ────────────────────────────────────────────────────────────────
@@ -96,7 +58,7 @@ def _upsert_node(
         return existing[label], False
 
     try:
-        result = _sb_post("nodes", {
+        result = sb_post("nodes", {
             "label":       label,
             "type":        node_type,
             "description": description,
@@ -110,7 +72,7 @@ def _upsert_node(
         if status in (409, 422):
             # Node already exists — recover its id so edges still work
             try:
-                rows = _sb_get("nodes", {"label": f"eq.{label}", "select": "id"})
+                rows = sb_get("nodes", {"label": f"eq.{label}", "select": "id"})
                 if rows:
                     nid = rows[0]["id"]
                     existing[label] = nid
@@ -145,7 +107,7 @@ def _upsert_edge(
     if pair in existing:
         return False
     try:
-        _sb_post("edges", {
+        sb_post("edges", {
             "source_id":    src_id,
             "target_id":    tgt_id,
             "relationship": rel,
@@ -211,7 +173,7 @@ def run_graph_agent() -> None:
     # ── Phase 1: Load wiki_pages ───────────────────────────────────────────
     print("📚 Fetching wiki_pages from Supabase…")
     try:
-        pages = _sb_get(
+        pages = sb_get(
             "wiki_pages",
             {"select": "id,title,slug,episode_number,concepts,tags,entities"},
         )
@@ -229,9 +191,9 @@ def run_graph_agent() -> None:
     existing_nodes: dict[str, str] = {}
     existing_edges: set[tuple[str, str]] = set()
     try:
-        for n in _sb_get("nodes", {"select": "id,label"}):
+        for n in sb_get("nodes", {"select": "id,label"}):
             existing_nodes[n["label"]] = n["id"]
-        for e in _sb_get("edges", {"select": "source_id,target_id"}):
+        for e in sb_get("edges", {"select": "source_id,target_id"}):
             existing_edges.add((e["source_id"], e["target_id"]))
     except Exception as exc:
         print(f"   ❌ Could not load graph: {exc}")

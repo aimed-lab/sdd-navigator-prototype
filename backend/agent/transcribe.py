@@ -18,20 +18,22 @@ import feedparser
 import requests
 import whisper
 
+from supabase_client import sb_get
+
 
 # ── Supabase helper ────────────────────────────────────────────────────────────
 
 def get_processed_numbers(supabase_url: str, supabase_key: str) -> set[int]:
     """Return episode_numbers already stored in wiki_pages."""
     try:
-        r = requests.get(
-            supabase_url.rstrip("/") + "/rest/v1/wiki_pages",
-            headers={"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"},
-            params={"select": "episode_number", "limit": "10000"},
-            timeout=30,
+        rows = sb_get(
+            "wiki_pages",
+            {"select": "episode_number"},
+            content_type=False,
+            supabase_url=supabase_url,
+            supabase_key=supabase_key,
         )
-        r.raise_for_status()
-        return {row["episode_number"] for row in r.json() if row.get("episode_number")}
+        return {row["episode_number"] for row in rows if row.get("episode_number")}
     except Exception as exc:
         print(f"   ⚠️  Could not query Supabase: {exc}")
         return set()
