@@ -375,8 +375,8 @@ export default function DiscoverySpacePage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-grow max-w-[1280px] w-full mx-auto px-4 sm:px-margin py-lg">
-        <nav className="flex items-center gap-2 mb-8 text-on-surface-variant font-label-sm text-sm">
+      <main className="flex-grow w-full max-w-4xl mx-auto px-4 sm:px-margin py-xl">
+        <nav className="flex items-center gap-2 mb-6 text-on-surface-variant font-label-sm text-sm">
           <Link href="/navigator" className="hover:text-primary transition-colors">
             Navigator
           </Link>
@@ -384,199 +384,218 @@ export default function DiscoverySpacePage() {
           <span className="text-primary font-bold">Discovery Space</span>
         </nav>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
-          {/* Left Column: Header & Context */}
-          <div className="lg:col-span-4 lg:sticky lg:top-24">
-            <h1 className="text-display-lg-mobile md:text-display-lg font-bold text-primary mb-4 leading-tight">
-              Configure Your Discovery Space Roadmap
-            </h1>
-            <p className="text-body-lg text-on-surface-variant mb-8">
-              Select your approach and define your chemical goals for AI-guided compound
-              optimization. This configuration phase aligns computational resources with your
-              laboratory&apos;s capabilities.
+        <header className="mb-lg text-center md:text-left">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#0d9488] text-white rounded-full mb-4">
+            <span className="material-symbols-outlined text-sm">science</span>
+            <span className="font-label-sm text-label-sm uppercase tracking-wider">Discovery Space</span>
+          </div>
+          <h1 className="text-display-lg-mobile md:text-display-lg font-bold text-primary mb-2 leading-tight">
+            Configure Your Discovery Space Roadmap
+          </h1>
+          <p className="text-body-lg text-on-surface-variant max-w-2xl mx-auto md:mx-0">
+            Select your approach and define your chemical goals for AI-guided compound
+            optimization. This configuration phase aligns computational resources with your
+            laboratory&apos;s capabilities.
+          </p>
+        </header>
+
+        {/* Strategic tip callout */}
+        <div className="mb-lg bg-primary-container/10 border border-primary-container/30 p-md rounded-xl flex items-start gap-4">
+          <div className="bg-primary-container text-on-primary-container p-2 rounded-lg shrink-0">
+            <span className="material-symbols-outlined">lightbulb</span>
+          </div>
+          <div>
+            <h3 className="font-bold text-primary-container mb-1">Strategic Tip</h3>
+            <p className="text-sm text-on-surface-variant leading-relaxed">
+              Defining precise optimization goals such as &quot;BBB penetration&quot; or
+              &quot;solubility&quot; allows our AI models to prioritize scaffolds with relevant
+              pharmacokinetic profiles early in the generative process.
             </p>
-            <div className="bg-primary-container p-6 rounded-xl text-on-primary-container shadow-sm">
-              <h3 className="font-bold mb-2 flex items-center gap-2">
-                <span className="material-symbols-outlined">lightbulb</span>
-                Strategic Tip
-              </h3>
-              <p className="text-sm opacity-90 leading-relaxed">
-                Defining precise optimization goals such as &quot;BBB penetration&quot; or
-                &quot;solubility&quot; allows our AI models to prioritize scaffolds with
-                relevant pharmacokinetic profiles early in the generative process.
-              </p>
+          </div>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="bg-surface-container-lowest p-md md:p-lg rounded-xl border border-outline-variant shadow-[0px_4px_20px_rgba(0,0,0,0.05)] space-y-gutter"
+        >
+          {/* Target */}
+          <div className="space-y-2">
+            <label className="font-bold text-on-surface flex items-center gap-2" htmlFor="target">
+              <span className="material-symbols-outlined text-[#0d9488]">dns</span>
+              What validated target are you working with?
+            </label>
+            <textarea
+              id="target"
+              value={form.target}
+              onChange={(e) => setForm((p) => ({ ...p, target: e.target.value }))}
+              required
+              className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-body-md placeholder:text-outline resize-none"
+              placeholder="e.g., Human CDK9, Serine Protease inhibitor binding pocket..."
+              rows={3}
+            />
+          </div>
+
+          {/* Approach (single-select) */}
+          <div className="space-y-3">
+            <label className="font-bold text-on-surface flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#0d9488]">science</span>
+              Discovery approach
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {APPROACH_OPTIONS.map((opt) => {
+                const active = form.approach === opt.value;
+                return (
+                  <label
+                    key={opt.value}
+                    className={`px-4 py-2 border rounded-full font-label-sm text-label-sm cursor-pointer transition-all ${
+                      active
+                        ? "bg-[#0d9488] text-white border-[#0d9488]"
+                        : "border-outline-variant hover:border-[#0d9488] text-on-surface-variant"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="approach"
+                      value={opt.value}
+                      checked={active}
+                      onChange={(e) => setForm((p) => ({ ...p, approach: e.target.value }))}
+                      className="sr-only"
+                    />
+                    {opt.label}
+                  </label>
+                );
+              })}
             </div>
           </div>
 
-          {/* Right Column: Form */}
-          <div className="lg:col-span-8">
-            <form
-              onSubmit={handleSubmit}
-              className="bg-surface-container-lowest p-md md:p-lg rounded-xl border border-outline-variant shadow-sm space-y-8"
-            >
-              {/* Target */}
-              <div className="space-y-2">
-                <label className="block font-bold text-on-surface" htmlFor="target">
-                  What validated target are you working with?
-                </label>
-                <textarea
-                  id="target"
-                  value={form.target}
-                  onChange={(e) => setForm((p) => ({ ...p, target: e.target.value }))}
-                  required
-                  className="w-full rounded-lg border-outline-variant focus:border-primary focus:ring-primary bg-surface"
-                  placeholder="e.g., Human CDK9, Serine Protease inhibitor binding pocket..."
-                  rows={3}
-                />
-              </div>
+          {/* Conditional: current compounds */}
+          {form.approach === "hits" && (
+            <div className="space-y-2">
+              <label className="font-bold text-on-surface" htmlFor="current_compounds">
+                Describe your current compounds
+              </label>
+              <textarea
+                id="current_compounds"
+                value={form.currentCompounds}
+                onChange={(e) => setForm((p) => ({ ...p, currentCompounds: e.target.value }))}
+                className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-body-md placeholder:text-outline resize-none"
+                placeholder="Paste SMILES strings or describe structural classes..."
+                rows={3}
+              />
+            </div>
+          )}
 
-              {/* Approach */}
-              <div className="space-y-4">
-                <label className="block font-bold text-on-surface">Discovery approach</label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {APPROACH_OPTIONS.map((opt) => (
-                    <label
-                      key={opt.value}
-                      className="flex items-center p-4 border border-outline-variant rounded-lg cursor-pointer hover:bg-surface-container transition-colors group"
-                    >
-                      <input
-                        className="text-primary focus:ring-primary"
-                        name="approach"
-                        type="radio"
-                        value={opt.value}
-                        checked={form.approach === opt.value}
-                        onChange={(e) => setForm((p) => ({ ...p, approach: e.target.value }))}
-                      />
-                      <span className="ml-3 text-on-surface-variant font-medium group-hover:text-primary">
-                        {opt.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Conditional: current compounds */}
-              {form.approach === "hits" && (
-                <div className="space-y-2">
-                  <label className="block font-bold text-on-surface" htmlFor="current_compounds">
-                    Describe your current compounds
-                  </label>
-                  <textarea
-                    id="current_compounds"
-                    value={form.currentCompounds}
-                    onChange={(e) => setForm((p) => ({ ...p, currentCompounds: e.target.value }))}
-                    className="w-full rounded-lg border-outline-variant focus:border-primary focus:ring-primary bg-surface"
-                    placeholder="Paste SMILES strings or describe structural classes..."
-                    rows={3}
-                  />
-                </div>
+          {/* Molecule list */}
+          <div className="space-y-2">
+            <label className="font-bold text-on-surface" htmlFor="molecule_list">
+              List your candidate molecules
+              {form.approach !== "hits" && (
+                <span className="ml-2 text-xs font-normal text-on-surface-variant">(Optional)</span>
               )}
-
-              {/* Molecule list */}
-              <div className="space-y-2">
-                <label className="block font-bold text-on-surface" htmlFor="molecule_list">
-                  List your candidate molecules
-                  {form.approach !== "hits" && (
-                    <span className="ml-2 text-xs font-normal text-on-surface-variant">(optional)</span>
-                  )}
-                </label>
-                <textarea
-                  id="molecule_list"
-                  value={form.moleculeList}
-                  onChange={(e) => setForm((p) => ({ ...p, moleculeList: e.target.value }))}
-                  required={form.approach === "hits"}
-                  className="w-full rounded-lg border-outline-variant focus:border-primary focus:ring-primary bg-surface"
-                  placeholder={`List each molecule with known properties, one per line. Example:\nMol-001: IC50 5μM, MW 320, binding score 8.2\nMol-002: IC50 12μM, MW 290, binding score 6.5`}
-                  rows={4}
-                />
-              </div>
-
-              {/* Optimization goals */}
-              <div className="space-y-4">
-                <label className="block font-bold text-on-surface">Key optimization goals</label>
-                <div className="flex flex-wrap gap-2">
-                  {OPTIMIZATION_GOAL_OPTIONS.map((goal) => {
-                    const active = form.optimizationGoals.includes(goal);
-                    return (
-                      <button
-                        key={goal}
-                        type="button"
-                        onClick={() => toggleGoal(goal)}
-                        className={`px-4 py-2 rounded-full border text-sm font-medium transition-all ${
-                          active
-                            ? "bg-[#1e6b52] text-white border-[#1e6b52]"
-                            : "border-outline-variant hover:border-primary"
-                        }`}
-                      >
-                        {goal}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Timeline / Budget */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
-                <div className="space-y-2">
-                  <label className="block font-bold text-on-surface" htmlFor="timeline">
-                    Timeline
-                  </label>
-                  <select
-                    id="timeline"
-                    value={form.timeline}
-                    onChange={(e) => setForm((p) => ({ ...p, timeline: e.target.value }))}
-                    className="w-full rounded-lg border-outline-variant focus:border-primary focus:ring-primary bg-surface h-12"
-                  >
-                    {TIMELINE_OPTIONS.map((opt) => (
-                      <option key={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="block font-bold text-on-surface" htmlFor="budget">
-                    Budget Range
-                  </label>
-                  <select
-                    id="budget"
-                    value={form.budget}
-                    onChange={(e) => setForm((p) => ({ ...p, budget: e.target.value }))}
-                    className="w-full rounded-lg border-outline-variant focus:border-primary focus:ring-primary bg-surface h-12"
-                  >
-                    {BUDGET_OPTIONS.map((opt) => (
-                      <option key={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Submit */}
-              <div className="pt-6 border-t border-outline-variant">
-                {error && <p className="text-error text-sm mb-4">{error}</p>}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-4 bg-[#0d9488] text-white font-bold text-lg rounded-xl hover:bg-[#0f766e] transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl active:scale-[0.98] disabled:opacity-60"
-                >
-                  {loading ? (
-                    <>
-                      <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                      Processing Roadmap...
-                    </>
-                  ) : (
-                    <>
-                      Generate Discovery Roadmap
-                      <span className="material-symbols-outlined">rocket_launch</span>
-                    </>
-                  )}
-                </button>
-                <p className="text-center text-on-surface-variant text-sm mt-4">
-                  By generating, you agree to UAB&apos;s data privacy and ethical research
-                  frameworks.
-                </p>
-              </div>
-            </form>
+            </label>
+            <textarea
+              id="molecule_list"
+              value={form.moleculeList}
+              onChange={(e) => setForm((p) => ({ ...p, moleculeList: e.target.value }))}
+              required={form.approach === "hits"}
+              className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-body-md placeholder:text-outline font-mono text-sm resize-none"
+              placeholder={`List each molecule with known properties, one per line. Example:\nMol-001: IC50 5μM, MW 320, binding score 8.2\nMol-002: IC50 12μM, MW 290, binding score 6.5`}
+              rows={4}
+            />
           </div>
-        </div>
+
+          {/* Optimization goals (multi-select) */}
+          <div className="space-y-3">
+            <label className="font-bold text-on-surface">Key optimization goals</label>
+            <div className="flex flex-wrap gap-2">
+              {OPTIMIZATION_GOAL_OPTIONS.map((goal) => {
+                const active = form.optimizationGoals.includes(goal);
+                return (
+                  <button
+                    key={goal}
+                    type="button"
+                    onClick={() => toggleGoal(goal)}
+                    className={`flex items-center gap-1 px-3 py-1.5 border rounded-lg font-label-sm text-label-sm transition-all ${
+                      active
+                        ? "bg-[#0d9488]/10 text-[#0d9488] border-[#0d9488]"
+                        : "border-outline-variant hover:border-[#0d9488] text-on-surface-variant"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-sm">{active ? "check" : "add"}</span>
+                    {goal}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Timeline / Budget */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+            <div className="space-y-2">
+              <label className="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide" htmlFor="timeline">
+                Timeline
+              </label>
+              <select
+                id="timeline"
+                value={form.timeline}
+                onChange={(e) => setForm((p) => ({ ...p, timeline: e.target.value }))}
+                className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all appearance-none cursor-pointer text-body-md"
+              >
+                {TIMELINE_OPTIONS.map((opt) => (
+                  <option key={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide" htmlFor="budget">
+                Budget Range
+              </label>
+              <select
+                id="budget"
+                value={form.budget}
+                onChange={(e) => setForm((p) => ({ ...p, budget: e.target.value }))}
+                className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all appearance-none cursor-pointer text-body-md"
+              >
+                {BUDGET_OPTIONS.map((opt) => (
+                  <option key={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Action bar */}
+          <div className="pt-6 border-t border-outline-variant flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-on-surface-variant font-label-sm text-label-sm flex items-center gap-2 text-center md:text-left">
+              <span className="material-symbols-outlined text-[#0d9488] text-lg">verified_user</span>
+              Data encryption and research privacy protocols active.
+            </div>
+            <div className="flex flex-col items-stretch md:items-end gap-2 w-full md:w-auto">
+              {error && <p className="text-error text-sm">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full md:w-auto bg-[#0d9488] text-white font-label-sm text-label-sm px-8 py-3.5 rounded-lg shadow-md hover:bg-[#0f766e] transition-all flex items-center justify-center gap-2 disabled:opacity-60 group"
+              >
+                {loading ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                    Processing Roadmap...
+                  </>
+                ) : (
+                  <>
+                    Generate Discovery Roadmap
+                    <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">
+                      rocket_launch
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          <p className="text-center text-on-surface-variant text-sm">
+            By generating, you agree to UAB&apos;s data privacy and ethical research frameworks.
+          </p>
+        </form>
       </main>
       <Footer />
     </div>

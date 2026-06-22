@@ -385,151 +385,161 @@ export default function TargetSpacePage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-grow w-full max-w-[1280px] mx-auto px-4 sm:px-margin py-lg">
-        <div className="mb-lg">
-          <nav className="flex items-center gap-2 text-on-surface-variant font-label-sm mb-4">
-            <Link href="/navigator" className="hover:text-primary transition-colors">
-              Navigator
-            </Link>
-            <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-            <span className="text-primary font-bold">Target Space</span>
-          </nav>
+      <main className="flex-grow w-full max-w-4xl mx-auto px-4 sm:px-margin py-xl">
+        <nav className="flex items-center gap-2 text-on-surface-variant font-label-sm mb-6">
+          <Link href="/navigator" className="hover:text-primary transition-colors">
+            Navigator
+          </Link>
+          <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+          <span className="text-primary font-bold">Target Space</span>
+        </nav>
+
+        <header className="mb-xl text-center md:text-left">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary text-on-primary rounded-full mb-4">
+            <span className="material-symbols-outlined text-sm">biotech</span>
+            <span className="font-label-sm text-label-sm uppercase tracking-wider">Target Space</span>
+          </div>
           <h1 className="font-display-lg text-display-lg-mobile md:text-display-lg text-primary mb-2">
             Configure Your Target Space Roadmap
           </h1>
-          <p className="text-body-lg text-on-surface-variant max-w-2xl">
+          <p className="text-body-lg text-on-surface-variant max-w-2xl mx-auto md:mx-0">
             Provide your disease and target details to generate an AI-scored ranking and
             assessment loop.
           </p>
-        </div>
+        </header>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
-          {/* Left Column: Primary Inputs */}
-          <div className="lg:col-span-7 flex flex-col gap-gutter">
-            <div className="bg-surface-container-lowest border border-outline-variant p-md rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
-              <label className="block font-headline-md text-primary mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined">vital_signs</span>
-                Disease or Condition
+        <form
+          onSubmit={handleSubmit}
+          className="bg-surface-container-lowest border border-outline-variant rounded-xl p-md md:p-lg shadow-[0px_4px_20px_rgba(0,0,0,0.05)] space-y-gutter"
+        >
+          {/* Disease or condition */}
+          <div className="space-y-2">
+            <label className="font-bold text-on-surface flex items-center gap-2" htmlFor="disease">
+              <span className="material-symbols-outlined text-primary">vital_signs</span>
+              Disease or Condition
+            </label>
+            <textarea
+              id="disease"
+              value={form.disease}
+              onChange={(e) => setForm((p) => ({ ...p, disease: e.target.value }))}
+              required
+              className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-body-md placeholder:text-outline resize-none"
+              placeholder="Describe the disease, patient population, pathophysiology, and unmet clinical needs..."
+              rows={4}
+            />
+          </div>
+
+          {/* Candidate targets */}
+          <div className="space-y-2">
+            <label className="font-bold text-on-surface flex items-center gap-2" htmlFor="targets">
+              <span className="material-symbols-outlined text-primary">dns</span>
+              Candidate Targets
+            </label>
+            <textarea
+              id="targets"
+              value={form.targets}
+              onChange={(e) => setForm((p) => ({ ...p, targets: e.target.value }))}
+              required
+              className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-body-md placeholder:text-outline resize-none"
+              placeholder="List your candidate targets, genes, or proteins (e.g., EGFR, KRAS G12C, TNF-alpha)..."
+              rows={4}
+            />
+          </div>
+
+          {/* Target volume / Budget range */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-gutter">
+            <div className="space-y-2">
+              <label className="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide" htmlFor="target-volume">
+                Target Volume
               </label>
-              <textarea
-                value={form.disease}
-                onChange={(e) => setForm((p) => ({ ...p, disease: e.target.value }))}
-                required
-                className="w-full bg-surface border-outline-variant rounded-lg p-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all text-body-md placeholder:text-outline"
-                placeholder="Describe the disease, patient population, pathophysiology, and unmet clinical needs..."
-                rows={4}
-              />
+              <select
+                id="target-volume"
+                value={form.targetVolume}
+                onChange={(e) => setForm((p) => ({ ...p, targetVolume: e.target.value }))}
+                className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all appearance-none cursor-pointer text-body-md"
+              >
+                {TARGET_VOLUME_OPTIONS.map((opt) => (
+                  <option key={opt}>{opt}</option>
+                ))}
+              </select>
             </div>
-
-            <div className="bg-surface-container-lowest border border-outline-variant p-md rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
-              <label className="block font-headline-md text-primary mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined">dns</span>
-                Candidate Targets
+            <div className="space-y-2">
+              <label className="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide" htmlFor="budget-range">
+                Budget Range
               </label>
-              <textarea
-                value={form.targets}
-                onChange={(e) => setForm((p) => ({ ...p, targets: e.target.value }))}
-                required
-                className="w-full bg-surface border-outline-variant rounded-lg p-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all text-body-md placeholder:text-outline"
-                placeholder="List your candidate targets, genes, or proteins (e.g., EGFR, KRAS G12C, TNF-alpha)..."
-                rows={4}
-              />
-              <div className="mt-gutter grid grid-cols-1 sm:grid-cols-2 gap-gutter">
-                <div>
-                  <label className="block font-label-sm text-on-surface-variant mb-2">
-                    Target Volume
-                  </label>
-                  <select
-                    value={form.targetVolume}
-                    onChange={(e) => setForm((p) => ({ ...p, targetVolume: e.target.value }))}
-                    className="w-full bg-surface border-outline-variant rounded-lg p-sm focus:ring-primary focus:border-primary text-body-md"
-                  >
-                    {TARGET_VOLUME_OPTIONS.map((opt) => (
-                      <option key={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-label-sm text-on-surface-variant mb-2">
-                    Budget Range
-                  </label>
-                  <select
-                    value={form.budgetRange}
-                    onChange={(e) => setForm((p) => ({ ...p, budgetRange: e.target.value }))}
-                    className="w-full bg-surface border-outline-variant rounded-lg p-sm focus:ring-primary focus:border-primary text-body-md"
-                  >
-                    {BUDGET_RANGE_OPTIONS.map((opt) => (
-                      <option key={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <select
+                id="budget-range"
+                value={form.budgetRange}
+                onChange={(e) => setForm((p) => ({ ...p, budgetRange: e.target.value }))}
+                className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all appearance-none cursor-pointer text-body-md"
+              >
+                {BUDGET_RANGE_OPTIONS.map((opt) => (
+                  <option key={opt}>{opt}</option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* Right Column: Secondary/Specifics */}
-          <div className="lg:col-span-5 flex flex-col gap-gutter">
-            <div className="bg-surface-container-lowest border border-outline-variant p-md rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
-              <label className="block font-headline-md text-primary mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined">monitoring</span>
-                Scoring Criteria
-              </label>
-              <p className="text-label-sm text-on-surface-variant mb-4">
-                Select the metrics that matter most for your roadmap priority score.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {SCORING_CRITERIA_OPTIONS.map((opt) => {
-                  const active = form.scoringCriteria.includes(opt);
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => toggleCriterion(opt)}
-                      className={`px-4 py-2 border rounded-full text-label-sm font-medium transition-colors ${
-                        active
-                          ? "bg-primary-container text-on-primary-container border-primary-container"
-                          : "border-outline-variant hover:border-primary"
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
+          {/* Scoring criteria (multi-select) */}
+          <div className="space-y-3">
+            <label className="font-bold text-on-surface flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">monitoring</span>
+              Scoring Criteria
+            </label>
+            <p className="text-label-sm text-on-surface-variant">
+              Select the metrics that matter most for your roadmap priority score.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {SCORING_CRITERIA_OPTIONS.map((opt) => {
+                const active = form.scoringCriteria.includes(opt);
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => toggleCriterion(opt)}
+                    className={`flex items-center gap-1 px-3 py-1.5 border rounded-lg font-label-sm text-label-sm transition-all ${
+                      active
+                        ? "bg-secondary-container text-on-secondary-container border-on-secondary-container"
+                        : "border-outline-variant hover:border-primary"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-sm">{active ? "check" : "add"}</span>
+                    {opt}
+                  </button>
+                );
+              })}
             </div>
+          </div>
 
-            <div className="bg-surface-container-lowest border border-outline-variant p-md rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
-              <label className="block font-headline-md text-primary mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined">groups</span>
-                Patient Cohort Specifics
-              </label>
-              <textarea
-                value={form.patientCohort}
-                onChange={(e) => setForm((p) => ({ ...p, patientCohort: e.target.value }))}
-                className="w-full bg-surface border-outline-variant rounded-lg p-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all text-body-md placeholder:text-outline"
-                placeholder="Any specific patient subgroup, biomarkers, or exclusion criteria..."
-                rows={4}
-              />
+          {/* Patient cohort */}
+          <div className="space-y-2">
+            <label className="font-bold text-on-surface flex items-center gap-2" htmlFor="patient-cohort">
+              <span className="material-symbols-outlined text-primary">groups</span>
+              Patient Cohort Specifics
+              <span className="ml-1 text-xs font-normal text-on-surface-variant">(Optional)</span>
+            </label>
+            <textarea
+              id="patient-cohort"
+              value={form.patientCohort}
+              onChange={(e) => setForm((p) => ({ ...p, patientCohort: e.target.value }))}
+              className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-body-md placeholder:text-outline resize-none"
+              placeholder="Any specific patient subgroup, biomarkers, or exclusion criteria..."
+              rows={4}
+            />
+          </div>
+
+          {/* Action bar */}
+          <div className="pt-6 border-t border-outline-variant flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-on-surface-variant font-label-sm text-label-sm flex items-center gap-2 text-center md:text-left">
+              <span className="material-symbols-outlined text-primary text-lg">auto_awesome</span>
+              AI-ready input — cross-referenced against 14 academic databases.
             </div>
-
-            <div className="bg-primary-container/10 border border-primary-container/30 p-md rounded-xl">
-              <div className="flex items-start gap-4 mb-lg">
-                <div className="bg-primary-container text-on-primary-container p-2 rounded-lg">
-                  <span className="material-symbols-outlined">auto_awesome</span>
-                </div>
-                <div>
-                  <h4 className="font-headline-md text-primary-container mb-1">AI-Ready Input</h4>
-                  <p className="text-label-sm text-on-secondary-container">
-                    Our models will process these details against 14 academic databases to
-                    generate your scoring matrix.
-                  </p>
-                </div>
-              </div>
-              {error && <p className="text-error text-sm mb-4">{error}</p>}
+            <div className="flex flex-col items-stretch md:items-end gap-2 w-full md:w-auto">
+              {error && <p className="text-error text-sm">{error}</p>}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-primary-container text-on-primary-container py-4 rounded-xl font-headline-md flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-primary-container/20 disabled:opacity-60"
+                className="w-full md:w-auto bg-primary text-on-primary font-label-sm text-label-sm px-8 py-3.5 rounded-lg shadow-md hover:bg-primary-container hover:text-on-primary-container transition-all flex items-center justify-center gap-2 disabled:opacity-60 group"
               >
                 {loading ? (
                   <>
@@ -539,7 +549,9 @@ export default function TargetSpacePage() {
                 ) : (
                   <>
                     Generate Target Roadmap
-                    <span className="material-symbols-outlined">rocket_launch</span>
+                    <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">
+                      rocket_launch
+                    </span>
                   </>
                 )}
               </button>

@@ -330,8 +330,8 @@ export default function ValidationSpacePage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="max-w-[1280px] mx-auto w-full px-4 sm:px-margin py-lg">
-        <nav className="flex items-center gap-2 mb-8 text-on-surface-variant font-label-sm uppercase tracking-wider">
+      <main className="max-w-4xl mx-auto w-full px-4 sm:px-margin py-xl">
+        <nav className="flex items-center gap-2 mb-6 text-on-surface-variant font-label-sm uppercase tracking-wider">
           <Link href="/navigator" className="hover:text-primary transition-colors">
             Navigator
           </Link>
@@ -339,185 +339,175 @@ export default function ValidationSpacePage() {
           <span className="text-on-surface font-bold">Validation Space</span>
         </nav>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
-          {/* Left Side: Header */}
-          <div className="lg:col-span-5 flex flex-col gap-6 lg:sticky lg:top-32">
-            <h1 className="text-display-lg-mobile md:text-display-lg font-display-lg text-primary leading-tight">
-              Configure Your <br />
-              <span className="text-amber-500">Validation Space</span> <br />
-              Roadmap
-            </h1>
-            <p className="text-body-lg text-on-surface-variant max-w-md">
-              Detail your lead compound&apos;s current status to map out the wet lab and
-              preclinical validation journey. This data fuels our predictive models to optimize
-              your path to clinical readiness.
-            </p>
-            <div className="relative w-full h-64 rounded-xl overflow-hidden mt-4 border border-outline-variant shadow-inner bg-surface-container">
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-md">
-                <div className="bg-surface/80 backdrop-blur-md p-4 rounded-lg border border-outline-variant text-center">
-                  <span className="material-symbols-outlined text-amber-500 text-4xl mb-2">
-                    biotech
-                  </span>
-                  <p className="text-label-sm font-bold uppercase text-on-surface-variant">
-                    Live Roadmap Engine
-                  </p>
-                </div>
-              </div>
+        <header className="mb-xl text-center md:text-left">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500 text-white rounded-full mb-4">
+            <span className="material-symbols-outlined text-sm">verified_user</span>
+            <span className="font-label-sm text-label-sm uppercase tracking-wider">Validation Space</span>
+          </div>
+          <h1 className="text-display-lg-mobile md:text-display-lg font-display-lg text-primary leading-tight mb-2">
+            Configure Your <span className="text-amber-500">Validation Space</span> Roadmap
+          </h1>
+          <p className="text-body-lg text-on-surface-variant max-w-2xl mx-auto md:mx-0">
+            Detail your lead compound&apos;s current status to map out the wet lab and
+            preclinical validation journey. This data fuels our predictive models to optimize
+            your path to clinical readiness.
+          </p>
+        </header>
+
+        <form
+          onSubmit={handleSubmit}
+          className="bg-surface-container-lowest p-md md:p-lg rounded-xl border border-outline-variant shadow-[0px_4px_20px_rgba(0,0,0,0.05)] space-y-gutter"
+        >
+          {/* Compound details */}
+          <div className="space-y-2">
+            <label className="font-bold text-on-surface flex items-center gap-2" htmlFor="compound-details">
+              <span className="material-symbols-outlined text-amber-500">biotech</span>
+              What compound do you have?
+            </label>
+            <textarea
+              id="compound-details"
+              value={form.compoundDetails}
+              onChange={(e) => setForm((p) => ({ ...p, compoundDetails: e.target.value }))}
+              required
+              className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all text-body-md placeholder:text-outline resize-none"
+              placeholder="Describe your lead compound, chemical scaffold, or biologic entity..."
+              rows={3}
+            />
+          </div>
+
+          {/* Validation done (multi-select) */}
+          <div className="space-y-3">
+            <label className="font-bold text-on-surface flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-500">checklist</span>
+              What validation have you done so far?
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {VALIDATION_DONE_OPTIONS.map((opt) => {
+                const active = form.validationDone.includes(opt);
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => toggleValidationDone(opt)}
+                    className={`flex items-center gap-1 px-3 py-1.5 border rounded-lg font-label-sm text-label-sm transition-all ${
+                      active
+                        ? "bg-amber-500/10 border-amber-500 text-amber-600"
+                        : "border-outline-variant hover:border-amber-500 text-on-surface-variant"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-sm">{active ? "check" : "add"}</span>
+                    {opt}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Right Side: Form */}
-          <div className="lg:col-span-7">
-            <form
-              onSubmit={handleSubmit}
-              className="bg-surface-container-lowest p-md md:p-lg rounded-xl border border-outline-variant shadow-[0px_4px_20px_rgba(0,0,0,0.05)] flex flex-col gap-8"
-            >
-              {/* Compound details */}
-              <div className="flex flex-col gap-2">
-                <label className="text-label-sm font-bold text-primary uppercase" htmlFor="compound-details">
-                  What compound do you have?
-                </label>
-                <textarea
-                  id="compound-details"
-                  value={form.compoundDetails}
-                  onChange={(e) => setForm((p) => ({ ...p, compoundDetails: e.target.value }))}
-                  required
-                  className="w-full rounded-lg border-outline-variant focus:border-amber-500 focus:ring-amber-500 bg-surface-bright text-body-md transition-all"
-                  placeholder="Describe your lead compound, chemical scaffold, or biologic entity..."
-                  rows={3}
-                />
-              </div>
-
-              {/* Validation done */}
-              <div className="flex flex-col gap-4">
-                <label className="text-label-sm font-bold text-primary uppercase">
-                  What validation have you done so far?
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {VALIDATION_DONE_OPTIONS.map((opt) => {
-                    const active = form.validationDone.includes(opt);
-                    return (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => toggleValidationDone(opt)}
-                        className={`px-4 py-2 rounded-full border text-label-sm font-medium transition-all ${
-                          active
-                            ? "bg-amber-500/10 border-amber-500 text-amber-600"
-                            : "border-outline-variant bg-surface-bright hover:border-amber-500"
-                        }`}
-                      >
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Target indication */}
-              <div className="flex flex-col gap-2">
-                <label className="text-label-sm font-bold text-primary uppercase" htmlFor="target-indication">
-                  What is your target indication?
-                </label>
-                <textarea
-                  id="target-indication"
-                  value={form.targetIndication}
-                  onChange={(e) => setForm((p) => ({ ...p, targetIndication: e.target.value }))}
-                  required
-                  className="w-full rounded-lg border-outline-variant focus:border-amber-500 focus:ring-amber-500 bg-surface-bright text-body-md transition-all"
-                  placeholder="Specify disease area, population, or target mechanism..."
-                  rows={2}
-                />
-              </div>
-
-              {/* Three-column dropdowns */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-                <div className="flex flex-col gap-2">
-                  <label className="text-label-sm font-bold text-primary uppercase" htmlFor="milestone">
-                    Next Milestone
-                  </label>
-                  <select
-                    id="milestone"
-                    value={form.milestone}
-                    onChange={(e) => setForm((p) => ({ ...p, milestone: e.target.value }))}
-                    className="w-full rounded-lg border-outline-variant focus:border-amber-500 focus:ring-amber-500 bg-surface-bright text-body-md transition-all"
-                  >
-                    <option value="" disabled>
-                      Select...
-                    </option>
-                    {MILESTONE_OPTIONS.map((opt) => (
-                      <option key={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-label-sm font-bold text-primary uppercase" htmlFor="budget">
-                    Budget for wet lab
-                  </label>
-                  <select
-                    id="budget"
-                    value={form.budget}
-                    onChange={(e) => setForm((p) => ({ ...p, budget: e.target.value }))}
-                    className="w-full rounded-lg border-outline-variant focus:border-amber-500 focus:ring-amber-500 bg-surface-bright text-body-md transition-all"
-                  >
-                    <option value="" disabled>
-                      Select range...
-                    </option>
-                    {BUDGET_OPTIONS.map((opt) => (
-                      <option key={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-label-sm font-bold text-primary uppercase" htmlFor="timeline">
-                    Timeline
-                  </label>
-                  <select
-                    id="timeline"
-                    value={form.timeline}
-                    onChange={(e) => setForm((p) => ({ ...p, timeline: e.target.value }))}
-                    className="w-full rounded-lg border-outline-variant focus:border-amber-500 focus:ring-amber-500 bg-surface-bright text-body-md transition-all"
-                  >
-                    <option value="" disabled>
-                      Target duration...
-                    </option>
-                    {TIMELINE_OPTIONS.map((opt) => (
-                      <option key={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="h-px bg-outline-variant w-full my-2" />
-
-              {/* Submit */}
-              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-2 text-on-surface-variant italic text-label-sm">
-                  <span className="material-symbols-outlined text-[18px]">lock</span>
-                  Secure encrypted submission
-                </div>
-                {error && <p className="text-error text-sm">{error}</p>}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full md:w-auto px-10 py-4 bg-amber-500 text-white font-bold rounded-lg shadow-lg hover:bg-amber-600 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  {loading ? (
-                    <>
-                      <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                      Generating Roadmap...
-                    </>
-                  ) : (
-                    <>
-                      Generate Validation Roadmap
-                      <span className="material-symbols-outlined">auto_awesome</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+          {/* Target indication */}
+          <div className="space-y-2">
+            <label className="font-bold text-on-surface flex items-center gap-2" htmlFor="target-indication">
+              <span className="material-symbols-outlined text-amber-500">flag</span>
+              What is your target indication?
+            </label>
+            <textarea
+              id="target-indication"
+              value={form.targetIndication}
+              onChange={(e) => setForm((p) => ({ ...p, targetIndication: e.target.value }))}
+              required
+              className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all text-body-md placeholder:text-outline resize-none"
+              placeholder="Specify disease area, population, or target mechanism..."
+              rows={2}
+            />
           </div>
-        </div>
+
+          {/* Three-column dropdowns */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+            <div className="space-y-2">
+              <label className="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide" htmlFor="milestone">
+                Next Milestone
+              </label>
+              <select
+                id="milestone"
+                value={form.milestone}
+                onChange={(e) => setForm((p) => ({ ...p, milestone: e.target.value }))}
+                className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all appearance-none cursor-pointer text-body-md"
+              >
+                <option value="" disabled>
+                  Select...
+                </option>
+                {MILESTONE_OPTIONS.map((opt) => (
+                  <option key={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide" htmlFor="budget">
+                Budget for Wet Lab
+              </label>
+              <select
+                id="budget"
+                value={form.budget}
+                onChange={(e) => setForm((p) => ({ ...p, budget: e.target.value }))}
+                className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all appearance-none cursor-pointer text-body-md"
+              >
+                <option value="" disabled>
+                  Select range...
+                </option>
+                {BUDGET_OPTIONS.map((opt) => (
+                  <option key={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="block font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide" htmlFor="timeline">
+                Timeline
+              </label>
+              <select
+                id="timeline"
+                value={form.timeline}
+                onChange={(e) => setForm((p) => ({ ...p, timeline: e.target.value }))}
+                className="w-full bg-surface border border-outline-variant rounded-lg p-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all appearance-none cursor-pointer text-body-md"
+              >
+                <option value="" disabled>
+                  Target duration...
+                </option>
+                {TIMELINE_OPTIONS.map((opt) => (
+                  <option key={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Action bar */}
+          <div className="pt-6 border-t border-outline-variant flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-on-surface-variant font-label-sm text-label-sm flex items-center gap-2 text-center md:text-left">
+              <span className="material-symbols-outlined text-amber-500 text-lg">lock</span>
+              Secure encrypted submission
+            </div>
+            <div className="flex flex-col items-stretch md:items-end gap-2 w-full md:w-auto">
+              {error && <p className="text-error text-sm">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full md:w-auto bg-amber-500 text-white font-label-sm text-label-sm px-8 py-3.5 rounded-lg shadow-md hover:bg-amber-600 transition-all flex items-center justify-center gap-2 disabled:opacity-60 group"
+              >
+                {loading ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                    Generating Roadmap...
+                  </>
+                ) : (
+                  <>
+                    Generate Validation Roadmap
+                    <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">
+                      auto_awesome
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </form>
 
         {/* Trust factors */}
         <section className="mt-xl grid grid-cols-1 md:grid-cols-3 gap-gutter pt-xl border-t border-outline-variant">
