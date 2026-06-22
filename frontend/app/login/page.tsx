@@ -52,84 +52,55 @@ function LoginForm() {
   }
 
   return (
-    <div className="bg-background min-h-screen flex flex-col academic-grid-pattern">
-      {/* Minimal nav */}
-      <header className="bg-surface shadow-sm">
-        <div className="flex justify-between items-center w-full px-gutter max-w-[1280px] mx-auto h-20">
-          <Link href="/">
-            <span className="font-display-lg text-display-lg font-bold text-primary cursor-pointer">
-              SDD Navigator
-            </span>
-          </Link>
-          <nav className="hidden md:flex items-center gap-8">
-            <Link href="/knowledge-hub" className="text-on-surface-variant font-medium hover:text-primary-container transition-colors font-body-md text-body-md">
-              Knowledge Hub
-            </Link>
-            <Link href="/navigator" className="text-on-surface-variant font-medium hover:text-primary-container transition-colors font-body-md text-body-md">
-              Navigator
-            </Link>
-          </nav>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push("/login")}
-              className="text-on-surface-variant font-medium hover:text-primary-container transition-all px-4 py-2 font-label-sm text-label-sm"
-            >
-              Sign In
-            </button>
-            <Link href="/register">
-              <button className="bg-primary text-on-primary px-6 py-2.5 rounded-lg font-semibold hover:bg-primary-container transition-all shadow-sm font-label-sm text-label-sm">
-                Register
-              </button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-grow flex items-center justify-center py-xl px-gutter relative overflow-hidden">
-        {/* Decorative blobs */}
-        <div className="absolute top-1/4 -left-20 w-64 h-64 bg-primary opacity-5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-secondary opacity-5 rounded-full blur-3xl pointer-events-none" />
-
-        <section className="w-full max-w-[440px] mx-4 sm:mx-0">
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 sm:p-lg shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
-            {/* Header */}
-            <div className="mb-lg text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-secondary-container rounded-full mb-4">
-                <span className="material-symbols-outlined text-primary text-3xl">lock_open</span>
+    <div className="bg-background min-h-screen flex flex-col">
+      <main
+        className="flex-grow flex items-center justify-center px-gutter py-xl"
+        style={{
+          background:
+            "radial-gradient(circle at 10% 20%, rgba(0,82,60,0.04) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(52,104,84,0.05) 0%, transparent 40%)",
+        }}
+      >
+        <div className="w-full max-w-[440px]">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
+            {/* Logo Section */}
+            <div className="pt-10 pb-6 flex flex-col items-center px-8">
+              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-white text-[28px]">biotech</span>
               </div>
-              <h1 className="font-headline-md text-headline-md text-primary mb-2">Sign In</h1>
-              <p className="font-body-md text-body-md text-on-surface-variant">
-                Access your academic roadmaps and data.
+              <h1 className="font-headline-md text-headline-md text-on-surface">Welcome back.</h1>
+              <p className="font-body-md text-body-md text-on-surface-variant mt-2 text-center">
+                Access the SDD Navigator academic intelligence platform.
               </p>
             </div>
 
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-error-container border border-error/30 text-error font-body-md text-body-md flex items-center gap-2">
+              <div className="mx-8 mb-4 p-3 rounded-lg bg-error-container border border-error/30 text-error font-body-md text-body-md flex items-center gap-2">
                 <span className="material-symbols-outlined text-[16px]">error</span>
                 {error}
               </div>
             )}
 
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              {/* Email */}
-              <div className="space-y-1.5">
-                <label className="font-label-sm text-label-sm text-on-surface-variant">Email Address</label>
+            {/* Login Form */}
+            <form className="px-8 pb-10 space-y-6" onSubmit={handleSubmit}>
+              {/* Email Field */}
+              <div className="space-y-2">
+                <label className="block font-label-sm text-label-sm text-on-surface-variant">Email</label>
                 <input
                   type="email"
                   required
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@example.edu"
-                  className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
+                  placeholder="name@institution.edu"
+                  className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-outline-variant"
                 />
               </div>
 
-              {/* Password */}
-              <div className="space-y-1.5">
+              {/* Password Field */}
+              <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <label className="font-label-sm text-label-sm text-on-surface-variant">Password</label>
-                  <a href="#" className="font-label-sm text-label-sm text-primary hover:underline">
+                  <label className="block font-label-sm text-label-sm text-on-surface-variant">Password</label>
+                  <a href="#" className="font-label-sm text-label-sm text-secondary hover:underline transition-all">
                     Forgot password?
                   </a>
                 </div>
@@ -141,12 +112,12 @@ function LoginForm() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 pr-12 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
+                    className="w-full h-12 pl-4 pr-12 bg-surface-container-low border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-outline-variant"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-outline cursor-pointer hover:text-primary transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors p-1"
                   >
                     <span className="material-symbols-outlined">
                       {showPassword ? "visibility_off" : "visibility"}
@@ -155,10 +126,11 @@ function LoginForm() {
                 </div>
               </div>
 
+              {/* Sign In Button */}
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-primary text-on-primary font-bold py-4 rounded-lg hover:bg-primary-container active:scale-[0.98] transition-all shadow-md font-body-lg text-body-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full h-12 bg-primary hover:bg-primary-container text-white font-label-sm text-label-sm rounded-lg shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <>
@@ -166,51 +138,43 @@ function LoginForm() {
                     Signing In…
                   </>
                 ) : (
-                  "Sign In"
+                  <>
+                    Sign in
+                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  </>
                 )}
               </button>
 
-              {/* Divider */}
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-outline-variant" />
-                </div>
-                <div className="relative flex justify-center">
-                  <span className="bg-surface-container-lowest px-2 font-label-sm text-label-sm text-on-surface-variant">
-                    OR CONTINUE WITH
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  className="flex items-center justify-center gap-2 border border-outline-variant rounded-lg py-2.5 hover:bg-surface-container-low transition-colors font-label-sm text-label-sm text-on-surface"
+              {/* Create Account Link */}
+              <div className="pt-4 border-t border-outline-variant flex flex-col items-center gap-2">
+                <p className="text-sm text-on-surface-variant">New here?</p>
+                <Link
+                  href="/register"
+                  className="font-label-sm text-label-sm text-secondary hover:text-primary-container font-semibold transition-colors"
                 >
-                  <span className="material-symbols-outlined text-sm">business</span>
-                  Institutional SSO
-                </button>
-                <button
-                  type="button"
-                  className="flex items-center justify-center gap-2 border border-outline-variant rounded-lg py-2.5 hover:bg-surface-container-low transition-colors font-label-sm text-label-sm text-on-surface"
-                >
-                  <span className="material-symbols-outlined text-sm">account_circle</span>
-                  ORCID iD
-                </button>
-              </div>
-
-              <div className="pt-2 text-center">
-                <p className="font-body-md text-body-md text-on-surface-variant">
-                  New to SDD?{" "}
-                  <Link href="/register" className="text-primary font-bold hover:underline">
-                    Create Account
-                  </Link>
-                </p>
+                  Create an account
+                </Link>
               </div>
             </form>
           </div>
-        </section>
+        </div>
       </main>
+
+      {/* Footer Segment */}
+      <footer className="w-full border-t border-outline-variant bg-surface-container-low py-lg px-gutter">
+        <div className="max-w-[1280px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex flex-col items-center md:items-start gap-1">
+            <span className="font-label-sm text-label-sm font-bold text-on-surface">SDD Navigator</span>
+            <span className="text-sm text-secondary">© 2026 SDD Navigator. Academic Research Intelligence Platform.</span>
+          </div>
+          <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2">
+            <a href="#" className="text-sm text-on-surface-variant hover:text-primary transition-colors">Privacy Policy</a>
+            <a href="#" className="text-sm text-on-surface-variant hover:text-primary transition-colors">Terms of Service</a>
+            <a href="#" className="text-sm text-on-surface-variant hover:text-primary transition-colors">Institutional Access</a>
+            <a href="#" className="text-sm text-on-surface-variant hover:text-primary transition-colors">Contact Support</a>
+          </nav>
+        </div>
+      </footer>
     </div>
   );
 }

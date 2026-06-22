@@ -74,168 +74,150 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="bg-background min-h-screen flex flex-col academic-grid-pattern">
-      {/* Minimal nav */}
-      <header className="bg-surface shadow-sm">
-        <div className="flex justify-between items-center w-full px-gutter max-w-[1280px] mx-auto h-20">
-          <Link href="/">
-            <span className="font-display-lg text-display-lg font-bold text-primary cursor-pointer">
-              SDD Navigator
-            </span>
-          </Link>
-          <nav className="hidden md:flex items-center gap-8">
-            <Link href="/knowledge-hub" className="text-on-surface-variant font-medium hover:text-primary-container transition-colors font-body-md text-body-md">
-              Knowledge Hub
-            </Link>
-            <Link href="/navigator" className="text-on-surface-variant font-medium hover:text-primary-container transition-colors font-body-md text-body-md">
-              Navigator
-            </Link>
-          </nav>
-          <div className="flex items-center gap-4">
-            <Link href="/login">
-              <button className="text-on-surface-variant font-medium hover:text-primary-container transition-all px-4 py-2 font-label-sm text-label-sm">
-                Sign In
-              </button>
-            </Link>
-            <button className="bg-primary text-on-primary px-6 py-2.5 rounded-lg font-semibold hover:bg-primary-container transition-all shadow-sm font-label-sm text-label-sm">
-              Register
-            </button>
-          </div>
-        </div>
+    <div className="bg-background text-on-surface min-h-screen flex flex-col">
+      {/* Minimal header — transactional screen, global nav suppressed */}
+      <header className="h-16 w-full flex items-center px-gutter max-w-[1280px] mx-auto">
+        <Link href="/">
+          <span className="font-headline-md text-headline-md font-bold text-primary cursor-pointer">
+            SDD Navigator
+          </span>
+        </Link>
       </header>
 
-      <main className="flex-grow flex items-center justify-center py-xl px-gutter relative overflow-hidden">
-        {/* Decorative blobs */}
-        <div className="absolute top-1/4 -left-20 w-64 h-64 bg-primary opacity-5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-secondary opacity-5 rounded-full blur-3xl pointer-events-none" />
+      <main className="flex-grow flex items-center justify-center py-lg px-gutter">
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm w-full max-w-md p-6 sm:p-lg">
+          {/* Heading */}
+          <div className="text-center mb-lg">
+            <h1 className="font-headline-md text-headline-md text-on-surface mb-2">Create your account</h1>
+            <p className="font-body-md text-body-md text-on-surface-variant">
+              Join the academic research intelligence network.
+            </p>
+          </div>
 
-        <section className="w-full max-w-[560px] mx-4 sm:mx-0">
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 sm:p-lg shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
-            {/* Header */}
-            <div className="mb-lg text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-secondary-container rounded-full mb-4">
-                <span className="material-symbols-outlined text-primary text-3xl">school</span>
-              </div>
-              <h1 className="font-headline-md text-headline-md text-primary mb-2">Create Free Account</h1>
-              <p className="font-body-md text-body-md text-on-surface-variant">
-                Join the global community of researchers and institutions.
-              </p>
+          {error && (
+            <div className="mb-4 p-3 rounded-lg bg-error-container border border-error/30 text-error font-body-md text-body-md flex items-center gap-2">
+              <span className="material-symbols-outlined text-[16px]">error</span>
+              {error}
+            </div>
+          )}
+
+          {/* Registration Form */}
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            {/* Full Name */}
+            <div className="space-y-1.5">
+              <label className="font-label-sm text-label-sm text-on-surface-variant block">Full Name</label>
+              <input
+                type="text"
+                name="name"
+                required
+                autoComplete="name"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Dr. Jane Smith"
+                className="w-full h-12 px-4 rounded-lg border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all font-body-md text-body-md"
+              />
             </div>
 
-            {error && (
-              <div className="mb-4 p-3 rounded-lg bg-error-container border border-error/30 text-error font-body-md text-body-md flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px]">error</span>
-                {error}
-              </div>
-            )}
+            {/* Email */}
+            <div className="space-y-1.5">
+              <label className="font-label-sm text-label-sm text-on-surface-variant block">Email</label>
+              <input
+                type="email"
+                name="email"
+                required
+                autoComplete="email"
+                value={form.email}
+                onChange={handleChange}
+                placeholder="jane.smith@institution.edu"
+                className="w-full h-12 px-4 rounded-lg border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all font-body-md text-body-md"
+              />
+            </div>
 
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              {/* Name + Email */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="font-label-sm text-label-sm text-on-surface-variant">Full Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    required
-                    autoComplete="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    placeholder="Dr. Jane Smith"
-                    className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="font-label-sm text-label-sm text-on-surface-variant">Email Address</label>
-                  <input
-                    type="email"
-                    name="email"
-                    required
-                    autoComplete="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    placeholder="jane.smith@uab.edu"
-                    className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
-                  />
-                </div>
-              </div>
+            {/* Password */}
+            <div className="space-y-1.5">
+              <label className="font-label-sm text-label-sm text-on-surface-variant block">Password</label>
+              <input
+                type="password"
+                name="password"
+                required
+                autoComplete="new-password"
+                minLength={8}
+                value={form.password}
+                onChange={handleChange}
+                placeholder="••••••••"
+                className="w-full h-12 px-4 rounded-lg border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all font-body-md text-body-md"
+              />
+            </div>
 
-              {/* Password */}
-              <div className="space-y-1.5">
-                <label className="font-label-sm text-label-sm text-on-surface-variant">Password</label>
-                <input
-                  type="password"
-                  name="password"
-                  required
-                  autoComplete="new-password"
-                  minLength={8}
-                  value={form.password}
+            {/* Affiliation Dropdown */}
+            <div className="space-y-1.5">
+              <label className="font-label-sm text-label-sm text-on-surface-variant block">Affiliation</label>
+              <div className="relative">
+                <select
+                  name="affiliation"
+                  value={form.affiliation}
                   onChange={handleChange}
-                  placeholder="••••••••"
-                  className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
-                />
+                  className="w-full h-12 px-4 appearance-none rounded-lg border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all font-body-md text-body-md"
+                >
+                  {AFFILIATIONS.map((a) => (
+                    <option key={a}>{a}</option>
+                  ))}
+                </select>
+                <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">
+                  expand_more
+                </span>
               </div>
+            </div>
 
-              {/* Affiliation + Country */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="font-label-sm text-label-sm text-on-surface-variant">Affiliation</label>
-                  <select
-                    name="affiliation"
-                    value={form.affiliation}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
-                  >
-                    {AFFILIATIONS.map((a) => <option key={a}>{a}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="font-label-sm text-label-sm text-on-surface-variant">Country</label>
-                  <input
-                    type="text"
-                    name="country"
-                    value={form.country}
-                    onChange={handleChange}
-                    placeholder="United States"
-                    className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
-                  />
-                </div>
-              </div>
+            {/* Institution */}
+            <div className="space-y-1.5">
+              <label className="font-label-sm text-label-sm text-on-surface-variant block">Institution</label>
+              <input
+                type="text"
+                name="institution"
+                value={form.institution}
+                onChange={handleChange}
+                placeholder="University of Alabama at Birmingham"
+                className="w-full h-12 px-4 rounded-lg border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all font-body-md text-body-md"
+              />
+            </div>
 
-              {/* Institution */}
-              <div className="space-y-1.5">
-                <label className="font-label-sm text-label-sm text-on-surface-variant">Institution</label>
-                <input
-                  type="text"
-                  name="institution"
-                  value={form.institution}
-                  onChange={handleChange}
-                  placeholder="University of Alabama at Birmingham"
-                  className="w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
-                />
-              </div>
+            {/* Country */}
+            <div className="space-y-1.5">
+              <label className="font-label-sm text-label-sm text-on-surface-variant block">Country</label>
+              <input
+                type="text"
+                name="country"
+                value={form.country}
+                onChange={handleChange}
+                placeholder="United States"
+                className="w-full h-12 px-4 rounded-lg border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all font-body-md text-body-md"
+              />
+            </div>
 
-              {/* Terms */}
-              <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  id="agree"
-                  checked={agreed}
-                  onChange={(e) => setAgreed(e.target.checked)}
-                  className="mt-1 rounded text-primary focus:ring-primary border-outline-variant"
-                />
-                <label htmlFor="agree" className="font-body-md text-body-md text-on-surface-variant leading-tight cursor-pointer">
-                  I agree to the{" "}
-                  <a href="#" className="text-primary hover:underline font-semibold">Terms of Service</a>
-                  {" "}and{" "}
-                  <a href="#" className="text-primary hover:underline font-semibold">Privacy Policy</a>.
-                </label>
-              </div>
+            {/* Terms — required by existing validation; not present in the new design */}
+            <div className="flex items-start gap-3 pt-1">
+              <input
+                type="checkbox"
+                id="agree"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-1 rounded text-primary focus:ring-primary border-outline-variant"
+              />
+              <label htmlFor="agree" className="font-body-md text-body-md text-on-surface-variant leading-tight cursor-pointer">
+                I agree to the{" "}
+                <a href="#" className="text-primary hover:underline font-semibold">Terms of Service</a>
+                {" "}and{" "}
+                <a href="#" className="text-primary hover:underline font-semibold">Privacy Policy</a>.
+              </label>
+            </div>
 
+            {/* Submit Button */}
+            <div className="pt-2">
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-primary text-on-primary font-bold py-4 rounded-lg hover:bg-primary-container active:scale-[0.98] transition-all shadow-md font-body-lg text-body-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full h-12 bg-secondary text-on-secondary font-label-sm text-label-sm rounded-lg shadow-sm hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <>
@@ -243,22 +225,37 @@ export default function RegisterPage() {
                     Creating Account…
                   </>
                 ) : (
-                  "Create Free Account"
+                  <>
+                    Create account
+                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  </>
                 )}
               </button>
+            </div>
+          </form>
 
-              <div className="pt-2 text-center">
-                <p className="font-body-md text-body-md text-on-surface-variant">
-                  Already have an account?{" "}
-                  <Link href="/login" className="text-primary font-bold hover:underline">
-                    Sign In
-                  </Link>
-                </p>
-              </div>
-            </form>
+          {/* Bottom Link */}
+          <div className="mt-lg text-center">
+            <p className="text-sm text-on-surface-variant">
+              Already have an account?{" "}
+              <Link href="/login" className="text-secondary font-semibold hover:underline decoration-2 underline-offset-4 transition-all">
+                Sign in
+              </Link>
+            </p>
           </div>
-        </section>
+        </div>
       </main>
+
+      {/* Footer Segment */}
+      <footer className="w-full py-md border-t border-outline-variant bg-surface-container-low">
+        <div className="max-w-[1280px] mx-auto px-gutter flex flex-col md:flex-row justify-between items-center gap-3">
+          <p className="text-xs text-on-surface-variant">© 2026 SDD Navigator. Academic Research Intelligence Platform.</p>
+          <div className="flex gap-6">
+            <a href="#" className="text-xs text-on-surface-variant hover:text-secondary">Privacy Policy</a>
+            <a href="#" className="text-xs text-on-surface-variant hover:text-secondary">Terms of Service</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

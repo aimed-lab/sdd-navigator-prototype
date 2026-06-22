@@ -205,6 +205,56 @@ export default function SettingsPage() {
     setPasswordSaving(false);
   }
 
+  // ── Account: delete account ──────────────────────────────────────────────
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  function closeDeleteModal() {
+    if (deleting) return;
+    setShowDeleteConfirm(false);
+    setDeletePassword("");
+    setDeleteError(null);
+  }
+
+  async function handleDeleteAccount(e: React.FormEvent) {
+    e.preventDefault();
+    setDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const res = await fetch("/api/delete-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: deletePassword }),
+      });
+      const result = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setDeleteError(result?.error || "Could not delete your account. Please try again.");
+        setDeleting(false);
+        return;
+      }
+
+      if (Array.isArray(result?.flaggedProjects) && result.flaggedProjects.length > 0) {
+        const names = result.flaggedProjects
+          .map((p: { name: string | null; id: string }) => p.name ?? p.id)
+          .join(", ");
+        window.alert(
+          `Your account was deleted. Note: you owned project(s) with other active members (${names}) — these were left untouched and need manual review.`
+        );
+      }
+
+      await supabase.auth.signOut();
+      router.push("/");
+    } catch (err) {
+      console.error("Delete account error:", err);
+      setDeleteError("Could not delete your account. Please try again.");
+      setDeleting(false);
+    }
+  }
+
   // ── Notifications: toggle + save ────────────────────────────────────────
   const [notifyError, setNotifyError] = useState<string | null>(null);
 
@@ -526,6 +576,33 @@ export default function SettingsPage() {
                     </div>
                   </form>
                 </div>
+
+                {/* Danger zone */}
+                <div className="bg-error-container/20 border-2 border-error/40 rounded-xl p-lg">
+                  <div className="flex items-start gap-sm mb-md">
+                    <span className="material-symbols-outlined text-error">warning</span>
+                    <div>
+                      <h2 className="font-headline-md text-headline-md text-error">
+                        Danger Zone
+                      </h2>
+                      <p className="font-body-md text-body-md text-on-surface-variant mt-xs">
+                        Deleting your account is permanent and cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+                  <ul className="font-label-sm text-label-sm text-on-surface-variant space-y-1 mb-md list-disc list-inside">
+                    <li>Your public profile, works, and comments will be permanently removed.</li>
+                    <li>You will be signed out everywhere immediately.</li>
+                    <li>This action cannot be reversed.</li>
+                  </ul>
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="bg-error text-on-error px-xl py-sm rounded-full font-label-sm text-label-sm hover:opacity-90 transition-all flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete_forever</span>
+                    Delete account
+                  </button>
+                </div>
               </div>
             )}
 
@@ -594,6 +671,76 @@ export default function SettingsPage() {
           </div>
         </section>
       </main>
+
+      {/* Delete account confirmation modal */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={closeDeleteModal}
+        >
+          <div
+            className="w-full max-w-md bg-surface-container-lowest rounded-xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="h-1.5 w-full bg-error" />
+            <div className="p-lg">
+              <div className="flex items-center gap-sm mb-md">
+                <span className="material-symbols-outlined text-error text-3xl">warning</span>
+                <h2 className="font-headline-md text-headline-md text-on-surface">
+                  Delete your account?
+                </h2>
+              </div>
+              <p className="font-body-md text-body-md text-on-surface-variant mb-md">
+                This permanently deletes your profile, works, and comments, and signs you out
+                everywhere.{" "}
+                <span className="font-bold text-on-surface">This cannot be undone.</span>
+              </p>
+
+              <form onSubmit={handleDeleteAccount} className="space-y-sm">
+                <div className="space-y-xs">
+                  <label className="font-label-sm text-label-sm text-on-surface-variant block">
+                    Enter your password to confirm
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    autoComplete="current-password"
+                    autoFocus
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full h-12 px-md bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-error focus:border-error transition-all font-body-md text-body-md outline-none"
+                  />
+                </div>
+
+                {deleteError && <ErrorBanner>{deleteError}</ErrorBanner>}
+
+                <div className="flex gap-sm pt-sm">
+                  <button
+                    type="submit"
+                    disabled={deleting || !deletePassword}
+                    className="flex-1 bg-error text-on-error py-sm rounded-full font-label-sm text-label-sm hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {deleting && (
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    )}
+                    {deleting ? "Deleting…" : "Permanently delete my account"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeDeleteModal}
+                    disabled={deleting}
+                    className="px-lg py-sm rounded-full font-label-sm text-label-sm border border-outline-variant hover:bg-surface-container-low transition-colors text-on-surface-variant disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
