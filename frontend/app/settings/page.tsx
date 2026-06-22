@@ -338,8 +338,8 @@ export default function SettingsPage() {
                 onClick={() => setActiveSection(s.key)}
                 className={`w-full flex items-center gap-sm p-sm rounded-lg transition-all duration-150 text-left ${
                   activeSection === s.key
-                    ? "bg-primary-container text-on-primary-container font-bold"
-                    : "text-on-surface-variant hover:bg-surface-variant"
+                    ? "bg-secondary-container text-on-secondary-container font-semibold"
+                    : "text-on-surface-variant hover:bg-surface-container-low"
                 }`}
               >
                 <span
@@ -352,9 +352,11 @@ export default function SettingsPage() {
               </button>
             ))}
 
+            <div className="h-px bg-outline-variant my-2" />
+
             <Link
               href="/profile/setup"
-              className="flex items-center justify-between p-sm text-on-surface-variant hover:bg-surface-variant rounded-lg transition-all duration-150"
+              className="flex items-center justify-between p-sm text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-all duration-150"
             >
               <div className="flex items-center gap-sm">
                 <span className="material-symbols-outlined">public</span>
@@ -374,7 +376,7 @@ export default function SettingsPage() {
             {activeSection === "profile" && (
               <div>
                 <div className="flex flex-col mb-lg">
-                  <h1 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-background">
+                  <h1 className="text-2xl md:text-3xl font-bold text-on-background">
                     Profile
                   </h1>
                   <p className="font-body-md text-on-surface-variant mt-xs">
@@ -468,7 +470,7 @@ export default function SettingsPage() {
             {activeSection === "account" && (
               <div className="space-y-lg">
                 <div className="flex flex-col">
-                  <h1 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-background">
+                  <h1 className="text-2xl md:text-3xl font-bold text-on-background">
                     Account
                   </h1>
                   <p className="font-body-md text-on-surface-variant mt-xs">
@@ -610,7 +612,7 @@ export default function SettingsPage() {
             {activeSection === "notifications" && (
               <div>
                 <div className="flex flex-col mb-lg">
-                  <h1 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-background">
+                  <h1 className="text-2xl md:text-3xl font-bold text-on-background">
                     Notifications
                   </h1>
                   <p className="font-body-md text-on-surface-variant mt-xs">

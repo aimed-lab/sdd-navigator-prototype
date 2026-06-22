@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -59,6 +58,10 @@ function generateSlug(name: string, uid: string): string {
 }
 
 const STEP_TITLES = ["Basic Info", "Research Interests", "Your Work", "Preview & Publish"];
+const STEP_CAPTIONS = ["Basics", "Interests", "Work", "Visibility"];
+
+const fieldCls =
+  "w-full rounded-lg border border-outline-variant bg-surface-container p-md focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all";
 
 export default function ProfileSetupPage() {
   const { user, displayName, loading } = useAuth();
@@ -155,11 +158,8 @@ export default function ProfileSetupPage() {
 
   if (loading || !user) {
     return (
-      <div className="bg-background min-h-screen">
-        <Navbar />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-        </div>
+      <div className="bg-background min-h-screen flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
       </div>
     );
   }
@@ -306,420 +306,534 @@ export default function ProfileSetupPage() {
   const datasets = works.filter((w) => w.type === "dataset");
 
   return (
-    <div className="bg-background text-on-surface font-body-md min-h-screen">
-      <Navbar />
-      <main className="max-w-[1280px] mx-auto px-gutter py-lg flex flex-col items-center">
-        <div className="w-full max-w-[720px] bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+    <div className="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
+      <main className="flex-grow flex flex-col items-center px-gutter py-xl">
+        <div className="w-full max-w-[720px]">
 
-          {/* Progress indicator */}
-          <div className="px-lg pt-lg pb-md">
-            <div className="flex justify-between items-end mb-sm">
-              <h1 className="font-headline-md text-headline-md text-primary">
-                {STEP_TITLES[step - 1]}
-              </h1>
-              <span className="font-label-sm text-label-sm text-on-surface-variant">
-                Step {step} of 4
-              </span>
-            </div>
-            <div className="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
+          {/* Header */}
+          <header className="mb-xl text-center">
+            <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
+              Complete your profile
+            </h1>
+            <p className="font-body-md text-body-md text-on-surface-variant">
+              Help fellow researchers find and collaborate with you on the SDD Navigator.
+            </p>
+          </header>
+
+          {/* Step indicator */}
+          <nav className="mb-16 px-2">
+            <div className="flex items-center justify-between relative">
+              <div className="absolute top-1/2 left-0 w-full h-1 bg-surface-container-highest -translate-y-1/2 z-0 rounded-full" />
               <div
-                className="bg-primary h-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
+                className="absolute top-1/2 left-0 h-1 bg-primary -translate-y-1/2 z-0 rounded-full transition-all duration-500"
+                style={{ width: `${((step - 1) / 3) * 100}%` }}
               />
-            </div>
-          </div>
-
-          <div className="px-lg pb-lg">
-
-            {/* ── Step 1: Basic Info ───────────────────────────────── */}
-            {step === 1 && (
-              <div className="space-y-md">
-                <div className="space-y-sm">
-                  <label className="block font-label-sm text-label-sm text-on-surface-variant">
-                    Biography
-                  </label>
-                  <textarea
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    className="w-full rounded-lg border border-outline-variant bg-surface p-md min-h-[120px] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors resize-none"
-                    placeholder="Briefly describe your academic background and research focus..."
-                  />
-                </div>
-
-                <div className="space-y-sm">
-                  <label className="block font-label-sm text-label-sm text-on-surface-variant">
-                    Primary Research Focus
-                  </label>
-                  <input
-                    type="text"
-                    value={researchFocus}
-                    onChange={(e) => setResearchFocus(e.target.value)}
-                    className="w-full rounded-lg border border-outline-variant bg-surface p-md focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors"
-                    placeholder="e.g. ADC Drug Discovery, Molecular Modeling…"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-sm">
-                  <div className="space-y-sm">
-                    <label className="block font-label-sm text-label-sm text-on-surface-variant">
-                      LinkedIn URL
-                    </label>
-                    <input
-                      type="url"
-                      value={linkedinUrl}
-                      onChange={(e) => setLinkedinUrl(e.target.value)}
-                      className="w-full rounded-lg border border-outline-variant bg-surface p-md focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors"
-                      placeholder="linkedin.com/in/…"
-                    />
-                  </div>
-                  <div className="space-y-sm">
-                    <label className="block font-label-sm text-label-sm text-on-surface-variant">
-                      Lab Website
-                    </label>
-                    <input
-                      type="url"
-                      value={websiteUrl}
-                      onChange={(e) => setWebsiteUrl(e.target.value)}
-                      className="w-full rounded-lg border border-outline-variant bg-surface p-md focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors"
-                      placeholder="uab.edu/lab/…"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── Step 2: Research Interests ───────────────────────── */}
-            {step === 2 && (
-              <div className="space-y-md">
-                <p className="font-body-md text-on-surface-variant">
-                  Select keywords that best represent your research expertise to help others find
-                  your work.
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-sm">
-                  {INTEREST_OPTIONS.map((interest) => {
-                    const selected = interests.includes(interest);
-                    return (
-                      <button
-                        key={interest}
-                        type="button"
-                        onClick={() => toggleInterest(interest)}
-                        className={`relative flex items-center p-md rounded-lg border cursor-pointer transition-colors text-left ${
-                          selected
-                            ? "border-primary bg-secondary-container text-on-secondary-container"
-                            : "border-outline-variant bg-surface text-on-surface hover:bg-secondary-container/30"
-                        }`}
-                      >
-                        <span className="font-label-sm text-label-sm pr-5">{interest}</span>
-                        {selected && (
-                          <span className="material-symbols-outlined text-primary text-[14px] absolute right-2 top-1/2 -translate-y-1/2">
-                            check_circle
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* ── Step 3: Your Work ────────────────────────────────── */}
-            {step === 3 && (
-              <div className="space-y-lg">
-
-                {/* Papers */}
-                <div className="space-y-sm">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-headline-md text-primary flex items-center gap-xs">
-                      <span className="material-symbols-outlined">article</span> Papers
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => setShowPaper((v) => !v)}
-                      className="flex items-center gap-xs text-primary font-label-sm text-label-sm hover:underline"
+              {STEP_CAPTIONS.map((caption, i) => {
+                const stepNum = i + 1;
+                const isDone = stepNum < step;
+                const isActive = stepNum === step;
+                return (
+                  <div key={caption} className="relative z-10 flex flex-col items-center">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-label-sm text-label-sm transition-colors ${
+                        isDone || isActive
+                          ? "bg-primary text-on-primary"
+                          : "bg-surface-container-highest text-on-surface-variant"
+                      }`}
                     >
-                      <span className="material-symbols-outlined text-sm">add</span> Add Paper
-                    </button>
+                      {isDone ? (
+                        <span className="material-symbols-outlined text-[18px]">check</span>
+                      ) : (
+                        stepNum
+                      )}
+                    </div>
+                    <span
+                      className={`absolute -bottom-7 whitespace-nowrap font-label-sm text-label-sm ${
+                        isDone || isActive ? "text-primary" : "text-on-surface-variant"
+                      }`}
+                    >
+                      {caption}
+                    </span>
                   </div>
-                  {showPaper && (
-                    <div className="p-md bg-surface-container rounded-lg border border-outline-variant space-y-sm">
-                      <input
-                        type="text"
-                        value={paperTitle}
-                        onChange={(e) => setPaperTitle(e.target.value)}
-                        className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                        placeholder="Paper Title"
-                      />
-                      <div className="grid grid-cols-2 gap-sm">
+                );
+              })}
+            </div>
+          </nav>
+
+          {/* Main wizard card */}
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
+            <div className="p-lg">
+              <h2 className="font-headline-md text-headline-md text-primary mb-md">
+                Step {step} of 4: {STEP_TITLES[step - 1]}
+              </h2>
+
+              {/* ── Step 1: Basic Info ───────────────────────────────── */}
+              {step === 1 && (
+                <div className="space-y-md">
+                  <div className="space-y-sm">
+                    <label className="block font-label-sm text-label-sm text-on-surface-variant">
+                      Professional Bio
+                    </label>
+                    <textarea
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      className={`${fieldCls} min-h-[120px] resize-none`}
+                      placeholder="Briefly describe your academic background and current research aims..."
+                    />
+                  </div>
+
+                  <div className="space-y-sm">
+                    <label className="block font-label-sm text-label-sm text-on-surface-variant">
+                      Primary Research Focus
+                    </label>
+                    <input
+                      type="text"
+                      value={researchFocus}
+                      onChange={(e) => setResearchFocus(e.target.value)}
+                      className={fieldCls}
+                      placeholder="e.g. Molecular Pharmacology, Neurobiology"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-sm">
+                    <div className="space-y-sm">
+                      <label className="block font-label-sm text-label-sm text-on-surface-variant">
+                        LinkedIn URL
+                      </label>
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
+                          link
+                        </span>
                         <input
-                          type="text"
-                          value={paperJournal}
-                          onChange={(e) => setPaperJournal(e.target.value)}
-                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                          placeholder="Journal Name"
-                        />
-                        <input
-                          type="number"
-                          value={paperYear}
-                          onChange={(e) => setPaperYear(e.target.value)}
-                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                          placeholder="Year"
+                          type="url"
+                          value={linkedinUrl}
+                          onChange={(e) => setLinkedinUrl(e.target.value)}
+                          className={`${fieldCls} pl-10`}
+                          placeholder="https://linkedin.com/in/username"
                         />
                       </div>
-                      <input
-                        type="url"
-                        value={paperUrl}
-                        onChange={(e) => setPaperUrl(e.target.value)}
-                        className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                        placeholder="Publication URL"
-                      />
+                    </div>
+                    <div className="space-y-sm">
+                      <label className="block font-label-sm text-label-sm text-on-surface-variant">
+                        Lab Website URL
+                      </label>
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
+                          language
+                        </span>
+                        <input
+                          type="url"
+                          value={websiteUrl}
+                          onChange={(e) => setWebsiteUrl(e.target.value)}
+                          className={`${fieldCls} pl-10`}
+                          placeholder="https://labname.edu"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Step 2: Research Interests ───────────────────────── */}
+              {step === 2 && (
+                <div className="space-y-md">
+                  <p className="font-body-md text-body-md text-on-surface-variant">
+                    Select tags that best represent your expertise areas to help others find your
+                    work.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {INTEREST_OPTIONS.map((interest) => {
+                      const selected = interests.includes(interest);
+                      return (
+                        <button
+                          key={interest}
+                          type="button"
+                          onClick={() => toggleInterest(interest)}
+                          className={`px-4 py-2 rounded-full border font-label-sm text-label-sm flex items-center gap-2 transition-colors ${
+                            selected
+                              ? "border-primary text-primary bg-primary/10"
+                              : "border-outline-variant text-on-surface-variant hover:border-primary"
+                          }`}
+                        >
+                          {interest}
+                          {selected && (
+                            <span className="material-symbols-outlined text-[16px]">check</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Step 3: Your Work ────────────────────────────────── */}
+              {step === 3 && (
+                <div className="space-y-lg">
+
+                  {/* Papers */}
+                  <div className="space-y-sm">
+                    <h3 className="font-headline-md text-primary flex items-center gap-2">
+                      <span className="material-symbols-outlined">article</span> Papers
+                    </h3>
+                    {papers.map((w) => (
+                      <WorkRow key={w.clientId} work={w} onRemove={removeWork} />
+                    ))}
+                    {showPaper ? (
+                      <div className="p-md bg-surface-container rounded-lg border border-outline-variant space-y-sm">
+                        <input
+                          type="text"
+                          value={paperTitle}
+                          onChange={(e) => setPaperTitle(e.target.value)}
+                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
+                          placeholder="Paper Title"
+                        />
+                        <div className="grid grid-cols-2 gap-sm">
+                          <input
+                            type="text"
+                            value={paperJournal}
+                            onChange={(e) => setPaperJournal(e.target.value)}
+                            className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
+                            placeholder="Journal Name"
+                          />
+                          <input
+                            type="number"
+                            value={paperYear}
+                            onChange={(e) => setPaperYear(e.target.value)}
+                            className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
+                            placeholder="Year"
+                          />
+                        </div>
+                        <input
+                          type="url"
+                          value={paperUrl}
+                          onChange={(e) => setPaperUrl(e.target.value)}
+                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
+                          placeholder="Publication URL"
+                        />
+                        <div className="flex gap-sm">
+                          <button
+                            type="button"
+                            onClick={addPaper}
+                            className="flex-1 bg-primary text-on-primary p-sm rounded-lg font-label-sm text-label-sm"
+                          >
+                            Save Paper
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowPaper(false)}
+                            className="px-md rounded-lg border border-outline-variant font-label-sm text-label-sm text-on-surface-variant"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
                       <button
                         type="button"
-                        onClick={addPaper}
-                        className="w-full bg-primary text-on-primary p-sm rounded-lg font-label-sm"
+                        onClick={() => setShowPaper(true)}
+                        className="w-full border-2 border-dashed border-outline-variant py-3 rounded-lg text-on-surface-variant font-label-sm text-label-sm flex items-center justify-center gap-2 hover:bg-surface-container transition-colors"
                       >
-                        Save Paper
+                        <span className="material-symbols-outlined">add_circle</span> Add Paper
                       </button>
-                    </div>
-                  )}
-                  {papers.map((w) => (
-                    <WorkRow key={w.clientId} work={w} onRemove={removeWork} />
-                  ))}
-                </div>
+                    )}
+                  </div>
 
-                {/* Tools */}
-                <div className="space-y-sm border-t border-outline-variant pt-md">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-headline-md text-primary flex items-center gap-xs">
+                  {/* Tools */}
+                  <div className="space-y-sm border-t border-outline-variant pt-md">
+                    <h3 className="font-headline-md text-primary flex items-center gap-2">
                       <span className="material-symbols-outlined">build</span> Tools
                     </h3>
-                    <button
-                      type="button"
-                      onClick={() => setShowTool((v) => !v)}
-                      className="flex items-center gap-xs text-primary font-label-sm text-label-sm hover:underline"
-                    >
-                      <span className="material-symbols-outlined text-sm">add</span> Add Tool
-                    </button>
-                  </div>
-                  {showTool && (
-                    <div className="p-md bg-surface-container rounded-lg border border-outline-variant space-y-sm">
-                      <input
-                        type="text"
-                        value={toolTitle}
-                        onChange={(e) => setToolTitle(e.target.value)}
-                        className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                        placeholder="Tool Name"
-                      />
-                      <textarea
-                        value={toolDesc}
-                        onChange={(e) => setToolDesc(e.target.value)}
-                        className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none resize-none"
-                        placeholder="Description"
-                        rows={2}
-                      />
-                      <input
-                        type="url"
-                        value={toolUrl}
-                        onChange={(e) => setToolUrl(e.target.value)}
-                        className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                        placeholder="Repository / Website URL"
-                      />
+                    {tools.map((w) => (
+                      <WorkRow key={w.clientId} work={w} onRemove={removeWork} />
+                    ))}
+                    {showTool ? (
+                      <div className="p-md bg-surface-container rounded-lg border border-outline-variant space-y-sm">
+                        <input
+                          type="text"
+                          value={toolTitle}
+                          onChange={(e) => setToolTitle(e.target.value)}
+                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
+                          placeholder="Tool Name"
+                        />
+                        <textarea
+                          value={toolDesc}
+                          onChange={(e) => setToolDesc(e.target.value)}
+                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none resize-none"
+                          placeholder="Description"
+                          rows={2}
+                        />
+                        <input
+                          type="url"
+                          value={toolUrl}
+                          onChange={(e) => setToolUrl(e.target.value)}
+                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
+                          placeholder="Repository / Website URL"
+                        />
+                        <div className="flex gap-sm">
+                          <button
+                            type="button"
+                            onClick={addTool}
+                            className="flex-1 bg-primary text-on-primary p-sm rounded-lg font-label-sm text-label-sm"
+                          >
+                            Save Tool
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowTool(false)}
+                            className="px-md rounded-lg border border-outline-variant font-label-sm text-label-sm text-on-surface-variant"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
                       <button
                         type="button"
-                        onClick={addTool}
-                        className="w-full bg-primary text-on-primary p-sm rounded-lg font-label-sm"
+                        onClick={() => setShowTool(true)}
+                        className="w-full border-2 border-dashed border-outline-variant py-3 rounded-lg text-on-surface-variant font-label-sm text-label-sm flex items-center justify-center gap-2 hover:bg-surface-container transition-colors"
                       >
-                        Save Tool
+                        <span className="material-symbols-outlined">add_circle</span> Add Tool
                       </button>
-                    </div>
-                  )}
-                  {tools.map((w) => (
-                    <WorkRow key={w.clientId} work={w} onRemove={removeWork} />
-                  ))}
-                </div>
+                    )}
+                  </div>
 
-                {/* Datasets */}
-                <div className="space-y-sm border-t border-outline-variant pt-md">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-headline-md text-primary flex items-center gap-xs">
+                  {/* Datasets */}
+                  <div className="space-y-sm border-t border-outline-variant pt-md">
+                    <h3 className="font-headline-md text-primary flex items-center gap-2">
                       <span className="material-symbols-outlined">database</span> Datasets
                     </h3>
-                    <button
-                      type="button"
-                      onClick={() => setShowDataset((v) => !v)}
-                      className="flex items-center gap-xs text-primary font-label-sm text-label-sm hover:underline"
-                    >
-                      <span className="material-symbols-outlined text-sm">add</span> Add Dataset
-                    </button>
-                  </div>
-                  {showDataset && (
-                    <div className="p-md bg-surface-container rounded-lg border border-outline-variant space-y-sm">
-                      <input
-                        type="text"
-                        value={datasetTitle}
-                        onChange={(e) => setDatasetTitle(e.target.value)}
-                        className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                        placeholder="Dataset Name"
-                      />
-                      <input
-                        type="url"
-                        value={datasetUrl}
-                        onChange={(e) => setDatasetUrl(e.target.value)}
-                        className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                        placeholder="Repository Link"
-                      />
+                    {datasets.map((w) => (
+                      <WorkRow key={w.clientId} work={w} onRemove={removeWork} />
+                    ))}
+                    {showDataset ? (
+                      <div className="p-md bg-surface-container rounded-lg border border-outline-variant space-y-sm">
+                        <input
+                          type="text"
+                          value={datasetTitle}
+                          onChange={(e) => setDatasetTitle(e.target.value)}
+                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
+                          placeholder="Dataset Name"
+                        />
+                        <input
+                          type="url"
+                          value={datasetUrl}
+                          onChange={(e) => setDatasetUrl(e.target.value)}
+                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
+                          placeholder="Repository Link"
+                        />
+                        <div className="flex gap-sm">
+                          <button
+                            type="button"
+                            onClick={addDataset}
+                            className="flex-1 bg-primary text-on-primary p-sm rounded-lg font-label-sm text-label-sm"
+                          >
+                            Save Dataset
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowDataset(false)}
+                            className="px-md rounded-lg border border-outline-variant font-label-sm text-label-sm text-on-surface-variant"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
                       <button
                         type="button"
-                        onClick={addDataset}
-                        className="w-full bg-primary text-on-primary p-sm rounded-lg font-label-sm"
+                        onClick={() => setShowDataset(true)}
+                        className="w-full border-2 border-dashed border-outline-variant py-3 rounded-lg text-on-surface-variant font-label-sm text-label-sm flex items-center justify-center gap-2 hover:bg-surface-container transition-colors"
                       >
-                        Save Dataset
+                        <span className="material-symbols-outlined">add_circle</span> Add Dataset
                       </button>
-                    </div>
-                  )}
-                  {datasets.map((w) => (
-                    <WorkRow key={w.clientId} work={w} onRemove={removeWork} />
-                  ))}
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* ── Step 4: Preview & Publish ────────────────────────── */}
-            {step === 4 && (
-              <div className="space-y-lg">
-                {/* Profile preview card */}
-                <div className="bg-surface rounded-xl border border-outline-variant p-lg shadow-sm">
-                  <div className="flex items-center gap-md mb-md">
-                    <div className="w-20 h-20 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed font-bold text-2xl shrink-0">
-                      {getInitials(displayName || "?")}
+              {/* ── Step 4: Preview & Publish ────────────────────────── */}
+              {step === 4 && (
+                <div className="space-y-lg">
+                  {/* Profile preview card */}
+                  <div className="bg-surface-container rounded-xl border border-outline-variant p-lg">
+                    <div className="flex items-center gap-md mb-md">
+                      <div className="w-20 h-20 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed font-bold text-2xl shrink-0">
+                        {getInitials(displayName || "?")}
+                      </div>
+                      <div>
+                        <h2 className="font-headline-md text-headline-md text-primary">
+                          {displayName}
+                        </h2>
+                        <p className="font-label-sm text-label-sm text-on-surface-variant">
+                          {researchFocus || "Researcher"}
+                        </p>
+                      </div>
                     </div>
+                    {bio && (
+                      <p className="font-body-md text-body-md text-on-surface-variant italic mb-md line-clamp-3">
+                        &ldquo;{bio}&rdquo;
+                      </p>
+                    )}
+                    {interests.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {interests.slice(0, 5).map((i) => (
+                          <span
+                            key={i}
+                            className="px-3 py-0.5 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-semibold uppercase tracking-wider"
+                          >
+                            {i}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {works.length > 0 && (
+                      <div className="flex gap-md mt-md pt-md border-t border-outline-variant text-sm text-on-surface-variant">
+                        {papers.length > 0 && (
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">article</span>
+                            {papers.length} paper{papers.length !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                        {tools.length > 0 && (
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">build</span>
+                            {tools.length} tool{tools.length !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                        {datasets.length > 0 && (
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">database</span>
+                            {datasets.length} dataset{datasets.length !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Public toggle */}
+                  <div className="flex items-center justify-between p-md bg-surface-container-low rounded-xl">
                     <div>
-                      <h2 className="font-headline-md text-primary">{displayName}</h2>
-                      <p className="font-label-sm text-label-sm text-on-surface-variant">
-                        {researchFocus || "Researcher"}
+                      <p className="font-label-sm text-label-sm text-on-surface">
+                        Public Researcher Profile
+                      </p>
+                      <p className="text-[11px] text-on-surface-variant">
+                        Allow other SDD Navigator members to find you.
                       </p>
                     </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isPublic}
+                        onChange={(e) => setIsPublic(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-outline-variant rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white" />
+                    </label>
                   </div>
-                  {bio && (
-                    <p className="font-body-md text-on-surface-variant italic mb-md line-clamp-3">
-                      &ldquo;{bio}&rdquo;
-                    </p>
-                  )}
-                  {interests.length > 0 && (
-                    <div className="flex flex-wrap gap-xs">
-                      {interests.slice(0, 5).map((i) => (
-                        <span
-                          key={i}
-                          className="px-sm py-[2px] bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-semibold uppercase tracking-wider"
-                        >
-                          {i}
-                        </span>
-                      ))}
+
+                  {error && (
+                    <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm">
+                      {error}
                     </div>
                   )}
-                  {works.length > 0 && (
-                    <div className="flex gap-md mt-md pt-md border-t border-outline-variant text-sm text-on-surface-variant">
-                      {papers.length > 0 && (
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm">article</span>
-                          {papers.length} paper{papers.length !== 1 ? "s" : ""}
-                        </span>
-                      )}
-                      {tools.length > 0 && (
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm">build</span>
-                          {tools.length} tool{tools.length !== 1 ? "s" : ""}
-                        </span>
-                      )}
-                      {datasets.length > 0 && (
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm">database</span>
-                          {datasets.length} dataset{datasets.length !== 1 ? "s" : ""}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
 
-                {/* Public toggle */}
-                <div className="flex items-center justify-between p-md bg-surface-container-low rounded-lg">
-                  <div>
-                    <p className="font-label-sm text-label-sm text-on-surface">
-                      Make Profile Public
-                    </p>
-                    <p className="text-[11px] text-on-surface-variant">
-                      Allow other SDD Navigator members to find you.
-                    </p>
+                  <div className="flex flex-col gap-sm">
+                    <button
+                      type="button"
+                      onClick={handlePublish}
+                      disabled={saving}
+                      className="w-full bg-primary text-on-primary py-md rounded-lg font-headline-md hover:bg-primary-container transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {saving && (
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      )}
+                      {saving ? "Saving…" : isPublic ? "Publish Profile" : "Save Draft"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/knowledge-hub")}
+                      className="text-center font-label-sm text-label-sm text-primary hover:underline"
+                    >
+                      Skip for now
+                    </button>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isPublic}
-                      onChange={(e) => setIsPublic(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-outline-variant rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white" />
-                  </label>
                 </div>
+              )}
+            </div>
 
-                {error && (
-                  <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm">
-                    {error}
-                  </div>
-                )}
-
-                <div className="flex flex-col gap-sm">
-                  <button
-                    type="button"
-                    onClick={handlePublish}
-                    disabled={saving}
-                    className="w-full bg-primary text-on-primary py-md rounded-lg font-headline-md hover:opacity-90 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {saving ? "Saving…" : isPublic ? "Publish Profile" : "Save Draft"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/knowledge-hub")}
-                    className="text-center font-label-sm text-label-sm text-primary hover:underline"
-                  >
-                    Skip for now
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Footer navigation (steps 1–3) */}
+            {/* Action footer (steps 1–3 only — step 4 has its own publish controls above) */}
             {step < 4 && (
-              <div className="flex justify-between items-center mt-lg pt-md border-t border-outline-variant">
+              <div className="bg-surface-container border-t border-outline-variant px-lg py-md flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setStep((s) => s - 1)}
-                  className={`font-label-sm text-label-sm font-medium text-on-surface-variant hover:text-primary transition-all flex items-center gap-xs ${
+                  className={`px-4 py-2.5 rounded-lg font-label-sm text-label-sm text-on-surface-variant flex items-center gap-2 hover:bg-surface-container-highest transition-all ${
                     step === 1 ? "invisible" : ""
                   }`}
                 >
-                  <span className="material-symbols-outlined text-sm">arrow_back</span>
-                  Previous
+                  <span className="material-symbols-outlined text-[18px]">arrow_back</span> Back
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setStep((s) => s + 1)}
-                  className="bg-primary text-on-primary px-lg py-md rounded-full font-label-sm text-label-sm hover:opacity-90 transition-all flex items-center gap-xs"
-                >
-                  Continue
-                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                </button>
+                <div className="flex items-center gap-md">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/knowledge-hub")}
+                    className="font-label-sm text-label-sm text-on-surface-variant hover:text-primary px-2 py-2 transition-colors"
+                  >
+                    Skip for now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStep((s) => s + 1)}
+                    className="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-label-sm text-label-sm flex items-center gap-2 hover:bg-primary-container shadow-sm transition-all"
+                  >
+                    {step === 3 ? "Review" : "Next Step"}
+                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
-        </div>
 
-        <p className="mt-lg text-center font-label-sm text-label-sm text-on-surface-variant max-w-[400px]">
-          Need assistance? Visit the{" "}
-          <a href="/knowledge-hub" className="text-primary hover:underline">
-            Knowledge Hub
-          </a>
-          .
-        </p>
+          {/* Profile completion indicator */}
+          <div className="mt-8 flex items-center gap-md justify-center md:justify-start">
+            <div className="w-16 h-16 rounded-full border-4 border-surface-container-highest relative flex items-center justify-center shrink-0">
+              <svg className="absolute inset-0 -rotate-90 w-16 h-16">
+                <circle
+                  className="text-primary"
+                  cx="32"
+                  cy="32"
+                  r="28"
+                  fill="transparent"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  strokeDasharray={176}
+                  strokeDashoffset={176 - (176 * progress) / 100}
+                />
+              </svg>
+              <span className="font-label-sm text-label-sm text-primary">
+                {Math.round(progress)}%
+              </span>
+            </div>
+            <div>
+              <p className="font-label-sm text-label-sm text-primary">
+                {step < 4
+                  ? `Almost there${displayName ? `, ${displayName}` : ""}!`
+                  : `All set${displayName ? `, ${displayName}` : ""}!`}
+              </p>
+              <p className="text-sm text-on-surface-variant">
+                Completing your profile increases discovery by 3x.
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-lg text-center font-label-sm text-label-sm text-on-surface-variant max-w-[400px] mx-auto">
+            Need assistance? Visit the{" "}
+            <a href="/knowledge-hub" className="text-primary hover:underline">
+              Knowledge Hub
+            </a>
+            .
+          </p>
+        </div>
       </main>
       <Footer />
     </div>
@@ -733,16 +847,26 @@ function WorkRow({
   work: WorkItem;
   onRemove: (id: string) => void;
 }) {
+  const subtitle =
+    work.type === "paper"
+      ? [work.journal, work.year].filter(Boolean).join(", ")
+      : work.description;
+
   return (
-    <div className="flex items-center justify-between p-sm bg-surface-container-low rounded-lg border border-outline-variant/50">
-      <span className="text-sm text-on-surface truncate mr-2">{work.title}</span>
+    <div className="flex items-center justify-between p-md bg-surface border border-outline-variant rounded-lg">
+      <div className="min-w-0 mr-2">
+        <p className="font-label-sm text-label-sm text-on-surface truncate">{work.title}</p>
+        {subtitle && (
+          <p className="text-sm text-on-surface-variant truncate">{subtitle}</p>
+        )}
+      </div>
       <button
         type="button"
         onClick={() => onRemove(work.clientId)}
         className="text-on-surface-variant hover:text-error transition-colors shrink-0"
         aria-label="Remove"
       >
-        <span className="material-symbols-outlined text-[18px]">delete</span>
+        <span className="material-symbols-outlined">delete</span>
       </button>
     </div>
   );
