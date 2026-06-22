@@ -38,53 +38,11 @@ const BUDGET_RANGE_OPTIONS = [
 ];
 
 const STEP_CONFIG = [
-  {
-    id: "identify",
-    name: "Identify",
-    icon: "search",
-    position: "top-4 left-1/2 -translate-x-1/2",
-    badge: "AI SCORING",
-    badgePosition: "-top-4 left-1/2 -translate-x-1/2",
-    badgeStyle: "bg-surface-container-highest",
-  },
-  {
-    id: "score",
-    name: "Score",
-    icon: "analytics",
-    position: "right-4 top-1/2 -translate-y-1/2",
-    badge: "RANKING",
-    badgePosition: "-bottom-6 left-1/2 -translate-x-1/2",
-    badgeStyle: "bg-secondary-container text-on-secondary-container shadow-sm",
-  },
-  {
-    id: "assess",
-    name: "Assess",
-    icon: "fact_check",
-    position: "bottom-4 left-1/2 -translate-x-1/2",
-    badge: "PATIENT COHORT",
-    badgePosition: "-bottom-6 left-1/2 -translate-x-1/2",
-    badgeStyle: "bg-surface-container-highest",
-  },
-  {
-    id: "fine-tune",
-    name: "Fine-tune",
-    icon: "tune",
-    position: "left-4 top-1/2 -translate-y-1/2",
-    badge: null,
-    badgePosition: "",
-    badgeStyle: "",
-  },
+  { id: "identify", name: "Identify", icon: "search", badge: "AI SCORING" },
+  { id: "score", name: "Score", icon: "analytics", badge: "RANKING" },
+  { id: "assess", name: "Assess", icon: "fact_check", badge: "PATIENT COHORT" },
+  { id: "fine-tune", name: "Fine-tune", icon: "tune", badge: null },
 ];
-
-const LOOP_CSS = `
-.target-loop-line {
-  stroke-dasharray: 8;
-  animation: target-dash 30s linear infinite;
-}
-@keyframes target-dash {
-  to { stroke-dashoffset: -1000; }
-}
-`;
 
 function normalizeId(id: string) {
   return id.toLowerCase().replace(/[^a-z]/g, "");
@@ -180,7 +138,7 @@ export default function TargetSpacePage() {
   if (view === "roadmap" && roadmap) {
     const activeStep =
       roadmap.steps.find((s) => normalizeId(s.id) === selectedStepId) ?? roadmap.steps[0];
-    const activeStepConfig = STEP_CONFIG.find((s) => s.id === selectedStepId);
+    const activeStepConfig = STEP_CONFIG.find((s) => normalizeId(s.id) === selectedStepId);
     const matchedResearchers = activeStep
       ? matchResearchers(allResearchers, [
           activeStep.name,
@@ -191,7 +149,6 @@ export default function TargetSpacePage() {
 
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <style>{LOOP_CSS}</style>
         <Navbar />
         <RoadmapTopBar
           title={roadmap.title}
@@ -203,81 +160,84 @@ export default function TargetSpacePage() {
         />
         <main className="flex-grow max-w-[1280px] mx-auto w-full px-4 sm:px-margin py-lg">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-            {/* LEFT PANEL: Circular Visualization */}
-            <div className="lg:col-span-7 bg-white rounded-xl shadow-sm border border-outline-variant p-lg relative overflow-hidden flex items-center justify-center min-h-[480px] sm:min-h-[600px]">
-              <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(#00523c_1px,transparent_1px)] [background-size:24px_24px]" />
-              </div>
-              <div className="relative w-full max-w-[500px] aspect-square flex items-center justify-center">
-                <svg className="absolute inset-0 w-full h-full" viewBox="0 0 500 500">
-                  <circle cx="250" cy="250" fill="none" r="160" stroke="#E9ECEF" strokeWidth="2" />
-                  <circle
-                    className="target-loop-line"
-                    cx="250"
-                    cy="250"
-                    fill="none"
-                    r="160"
-                    stroke="url(#target-gradient-primary)"
-                    strokeLinecap="round"
-                    strokeWidth="2"
-                  />
-                  <defs>
-                    <linearGradient id="target-gradient-primary" x1="0%" x2="100%" y1="0%" y2="100%">
-                      <stop offset="0%" stopColor="#1e6b52" />
-                      <stop offset="100%" stopColor="#b4ecd3" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-
-                {/* Center Node */}
-                <div className="z-10 bg-primary text-on-primary w-32 h-32 rounded-full flex flex-col items-center justify-center text-center shadow-xl p-4 ring-8 ring-surface-container">
-                  <span className="material-symbols-outlined text-[32px] mb-1">biotech</span>
-                  <p className="font-label-sm text-[10px] uppercase tracking-widest opacity-80">
-                    Center Node
-                  </p>
-                  <p className="font-headline-md text-[13px] leading-tight font-bold line-clamp-2">
-                    {roadmap.title}
-                  </p>
-                </div>
-
-                {/* Loop Nodes */}
-                {STEP_CONFIG.map((step) => {
-                  const isActive = step.id === selectedStepId;
-                  return (
-                    <button
-                      key={step.id}
-                      type="button"
-                      onClick={() => setSelectedStepId(step.id)}
-                      className={`absolute ${step.position} group`}
-                    >
-                      <div
-                        className={`rounded-full flex flex-col items-center justify-center transition-all ${
-                          isActive
-                            ? "w-24 h-24 bg-primary-container text-on-primary-container shadow-lg ring-4 ring-primary-container/20"
-                            : "w-20 h-20 bg-white border-2 border-outline-variant shadow-sm group-hover:border-primary"
-                        }`}
-                      >
-                        <span
-                          className={`material-symbols-outlined ${
-                            isActive ? "text-[32px]" : "text-primary"
+            {/* LEFT PANEL: Vertical Timeline */}
+            <div className="lg:col-span-7 bg-white rounded-xl shadow-sm border border-outline-variant p-lg sm:p-xl">
+              <div className="relative">
+                <div className="absolute left-4 sm:left-5 top-2 bottom-2 w-0.5 bg-outline-variant" />
+                <div className="space-y-8">
+                  {roadmap.steps.map((step, idx) => {
+                    const isActive = normalizeId(step.id) === selectedStepId;
+                    const config = STEP_CONFIG.find((s) => normalizeId(s.id) === normalizeId(step.id));
+                    return (
+                      <div key={step.id} className="relative pl-12 sm:pl-14">
+                        <div
+                          className={`absolute left-0 top-1 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center z-10 transition-all ${
+                            isActive
+                              ? "bg-primary border-2 border-primary text-on-primary shadow-md ring-4 ring-primary/15"
+                              : "bg-white border-2 border-outline-variant text-on-surface-variant"
                           }`}
                         >
-                          {step.icon}
-                        </span>
-                        <span className={`text-label-sm mt-1 ${isActive ? "font-bold" : ""}`}>
-                          {step.name}
-                        </span>
-                      </div>
-                      {step.badge && (
-                        <span
-                          className={`absolute ${step.badgePosition} ${step.badgeStyle} px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap`}
+                          <span className="material-symbols-outlined text-[18px] sm:text-[20px]">
+                            {config?.icon ?? "circle"}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStepId(normalizeId(step.id))}
+                          className={`w-full text-left bg-white rounded-xl p-lg transition-all ${
+                            isActive
+                              ? "border-2 border-primary shadow-md ring-4 ring-primary/10"
+                              : "border border-outline-variant shadow-sm hover:border-primary/50 hover:shadow-md"
+                          }`}
                         >
-                          {step.badge}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                          <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                            <h3
+                              className={`font-headline-md text-headline-md ${
+                                isActive ? "text-primary" : "text-on-surface"
+                              }`}
+                            >
+                              {idx + 1}. {step.name}
+                            </h3>
+                            {config?.badge && (
+                              <span className="font-label-sm text-label-sm px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant shrink-0">
+                                {config.badge}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-on-surface-variant text-sm leading-relaxed mb-3">
+                            {step.description}
+                          </p>
+                          {step.scoring_criteria.length > 0 && (
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 pt-3 border-t border-outline-variant">
+                              {step.scoring_criteria.slice(0, 3).map((c) => (
+                                <span
+                                  key={c}
+                                  className="flex items-center gap-1 text-label-sm font-label-sm text-secondary"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">
+                                    check_circle
+                                  </span>
+                                  {c}
+                                </span>
+                              ))}
+                              {step.scoring_criteria.length > 3 && (
+                                <span className="text-label-sm font-label-sm text-on-surface-variant">
+                                  +{step.scoring_criteria.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+
+                  {/* Iteration loop marker */}
+                  <div className="relative pl-12 sm:pl-14 flex items-center gap-2 text-on-surface-variant italic text-sm">
+                    <span className="material-symbols-outlined text-[18px]">sync</span>
+                    Iterate: refine scoring and re-assess as new evidence emerges
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -344,35 +304,6 @@ export default function TargetSpacePage() {
                 )}
               </div>
             </div>
-          </div>
-
-          {/* Bottom Strip Navigation */}
-          <div className="mt-lg flex items-center gap-sm overflow-x-auto py-4 no-scrollbar">
-            <span className="text-label-sm text-on-surface-variant font-bold uppercase tracking-widest mr-md whitespace-nowrap">
-              Roadmap Steps:
-            </span>
-            {STEP_CONFIG.map((step) => {
-              const isActive = step.id === selectedStepId;
-              return (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() => setSelectedStepId(step.id)}
-                  className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-bold transition-all whitespace-nowrap ${
-                    isActive
-                      ? "bg-primary text-on-primary shadow-md"
-                      : "bg-white border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary"
-                  }`}
-                >
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      isActive ? "bg-secondary-fixed animate-pulse" : "bg-outline"
-                    }`}
-                  />
-                  {step.name}
-                </button>
-              );
-            })}
           </div>
         </main>
         <Footer />

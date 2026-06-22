@@ -155,61 +155,72 @@ export default function ValidationSpacePage() {
         />
         <main className="flex-grow max-w-[1280px] mx-auto w-full px-4 sm:px-margin py-lg">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
-            {/* LEFT PANEL: Validation Ladder */}
-            <aside className="lg:col-span-5 bg-surface-container-low p-md rounded-xl border border-outline-variant/30">
-              <div className="mb-md flex items-center justify-between gap-2">
+            {/* LEFT PANEL: Vertical Timeline */}
+            <div className="lg:col-span-5 bg-white p-lg rounded-xl border border-outline-variant shadow-sm">
+              <div className="mb-6 flex items-center justify-between gap-2">
                 <h2 className="font-headline-md text-headline-md text-on-surface">
                   Validation Ladder
                 </h2>
                 <span className="font-label-sm text-label-sm text-on-surface-variant italic hidden sm:inline">
-                  Select a level to view details
+                  Select a level
                 </span>
               </div>
-              <div className="relative flex flex-col space-y-3">
-                {[...roadmap.context_levels].reverse().map((level) => {
-                  const isActive = level.level === selectedLevel;
-                  return (
-                    <button
-                      key={level.level}
-                      type="button"
-                      onClick={() => setSelectedLevel(level.level)}
-                      className={`group relative flex items-center gap-md p-3 rounded-lg transition-all duration-300 text-left ${
-                        isActive
-                          ? "bg-amber-500 text-white shadow-lg translate-x-4"
-                          : "bg-white hover:translate-x-1 text-on-surface-variant"
-                      }`}
-                    >
-                      <div
-                        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold border-2 ${
-                          isActive
-                            ? "border-white/50 bg-white/20"
-                            : "border-outline-variant bg-surface-container-high"
-                        }`}
-                      >
-                        {level.level}
-                      </div>
-                      <div className="text-left min-w-0">
+              <div className="relative">
+                <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-outline-variant" />
+                <div className="space-y-6">
+                  {roadmap.context_levels.map((level) => {
+                    const isActive = level.level === selectedLevel;
+                    return (
+                      <div key={level.level} className="relative pl-12">
                         <div
-                          className={`font-headline-md text-[18px] leading-tight ${
-                            isActive ? "text-white" : "text-primary"
+                          className={`absolute left-0 top-1 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-all ${
+                            isActive
+                              ? "bg-amber-500 border-2 border-amber-500 text-white shadow-md ring-4 ring-amber-500/15"
+                              : "bg-white border-2 border-outline-variant text-on-surface-variant"
                           }`}
                         >
-                          {level.name}
+                          {level.level}
                         </div>
-                        <div className="font-label-sm text-[11px] opacity-80 uppercase tracking-tighter truncate">
-                          {level.description}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedLevel(level.level)}
+                          className={`w-full text-left bg-white rounded-xl p-md transition-all ${
+                            isActive
+                              ? "border-2 border-amber-500 shadow-md ring-4 ring-amber-500/10"
+                              : "border border-outline-variant shadow-sm hover:border-amber-500/50 hover:shadow-md"
+                          }`}
+                        >
+                          <h3
+                            className={`font-headline-md text-[18px] leading-tight mb-1 ${
+                              isActive ? "text-amber-600" : "text-primary"
+                            }`}
+                          >
+                            {level.name}
+                          </h3>
+                          <p className="text-on-surface-variant text-sm leading-relaxed mb-2 line-clamp-2">
+                            {level.description}
+                          </p>
+                          <div className="flex flex-wrap gap-x-3 gap-y-1">
+                            {level.cost_range && (
+                              <span className="flex items-center gap-1 text-label-sm font-label-sm text-on-surface-variant">
+                                <span className="material-symbols-outlined text-[14px]">payments</span>
+                                {level.cost_range}
+                              </span>
+                            )}
+                            {level.timeline && (
+                              <span className="flex items-center gap-1 text-label-sm font-label-sm text-on-surface-variant">
+                                <span className="material-symbols-outlined text-[14px]">schedule</span>
+                                {level.timeline}
+                              </span>
+                            )}
+                          </div>
+                        </button>
                       </div>
-                      {isActive && (
-                        <span className="material-symbols-outlined ml-auto shrink-0">
-                          arrow_forward_ios
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </aside>
+            </div>
 
             {/* RIGHT PANEL: Details */}
             <div className="lg:col-span-7 flex flex-col gap-gutter">

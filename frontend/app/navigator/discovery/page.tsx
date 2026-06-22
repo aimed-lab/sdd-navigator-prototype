@@ -46,16 +46,6 @@ const ITERATION_CONFIG = [
   { id: "leadoptimization", name: "Lead Optimization", icon: "biotech" },
 ];
 
-const LOOP_CSS = `
-.discovery-loop-animation {
-  animation: discovery-rotate 20s linear infinite;
-}
-@keyframes discovery-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-`;
-
 function normalizeId(id: string) {
   return id.toLowerCase().replace(/[^a-z]/g, "");
 }
@@ -166,7 +156,6 @@ export default function DiscoverySpacePage() {
 
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <style>{LOOP_CSS}</style>
         <Navbar />
         <RoadmapTopBar
           title={roadmap.title}
@@ -205,113 +194,107 @@ export default function DiscoverySpacePage() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-            {/* LEFT PANEL: Visualization */}
-            <div className="lg:col-span-7 bg-surface-container-lowest rounded-xl border border-outline-variant p-lg relative overflow-hidden flex flex-col items-center justify-center min-h-[480px] lg:min-h-[600px]">
-              {/* Background decorative rings */}
-              <div className="absolute inset-0 opacity-5 pointer-events-none">
-                <div className="discovery-loop-animation absolute -top-1/2 -left-1/2 w-full h-full border border-dashed border-primary rounded-full" />
-                <div
-                  className="discovery-loop-animation absolute -bottom-1/2 -right-1/2 w-full h-full border border-dashed border-primary rounded-full"
-                  style={{ animationDirection: "reverse" }}
-                />
-              </div>
-
-              {/* Iterate badge */}
-              <div className="absolute top-4 sm:top-8 left-1/2 -translate-x-1/2 bg-primary-container/10 border border-primary-container/30 px-4 py-2 rounded-full flex items-center gap-2 whitespace-nowrap z-10">
-                <span className="material-symbols-outlined text-primary-container text-[18px]">sync</span>
-                <span className="text-primary-container font-label-sm text-label-sm">
-                  ITERATE UNTIL CANDIDATE FOUND
-                </span>
-              </div>
-
-              {/* Entry points | Main nodes | Exit point — grid columns so none can overlap */}
-              <div className="grid grid-cols-1 lg:grid-cols-[160px_minmax(0,1fr)_160px] items-center gap-6 w-full z-10 mt-20 lg:mt-0">
-                {/* Entry Points (desktop) */}
-                <div className="hidden lg:flex flex-col gap-4">
-                  <p className="text-label-sm font-label-sm text-outline uppercase tracking-widest text-center">
+            {/* LEFT PANEL: Vertical Timeline */}
+            <div className="lg:col-span-7 bg-white rounded-xl shadow-sm border border-outline-variant p-lg sm:p-xl">
+              {/* Entry points */}
+              {roadmap.entry_points?.length > 0 && (
+                <div className="mb-8">
+                  <p className="text-label-sm font-label-sm text-outline uppercase tracking-widest mb-3">
                     Entry Points
                   </p>
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap gap-2">
                     {roadmap.entry_points.map((ep) => (
-                      <div key={ep} className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-secondary shrink-0" />
-                        <span className="text-label-sm font-label-sm text-on-surface-variant">{ep}</span>
-                      </div>
+                      <span
+                        key={ep}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant text-label-sm font-label-sm"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0d9488] shrink-0" />
+                        {ep}
+                      </span>
                     ))}
                   </div>
                 </div>
+              )}
 
-                {/* Main iterative nodes */}
-                <div className="relative mx-auto w-full max-w-md flex items-center justify-center gap-10 lg:justify-between lg:gap-0">
-                  <svg
-                    className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-32 pointer-events-none"
-                    viewBox="0 0 400 100"
-                  >
-                    <path d="M 50,40 Q 200,-10 350,40" fill="none" stroke="#1d6a51" strokeDasharray="6 4" strokeWidth="2">
-                      <animate attributeName="stroke-dashoffset" dur="5s" from="100" repeatCount="indefinite" to="0" />
-                    </path>
-                    <path d="M 350,60 Q 200,110 50,60" fill="none" stroke="#1d6a51" strokeDasharray="6 4" strokeWidth="2">
-                      <animate attributeName="stroke-dashoffset" dur="5s" from="0" repeatCount="indefinite" to="100" />
-                    </path>
-                    <polygon fill="#1d6a51" points="350,40 340,35 342,45" />
-                    <polygon fill="#1d6a51" points="50,60 60,65 58,55" />
-                  </svg>
-
-                  {ITERATION_CONFIG.map((iter) => {
-                    const isActive = iter.id === selectedIterationId;
+              <div className="relative">
+                <div className="absolute left-4 sm:left-5 top-2 bottom-2 w-0.5 bg-outline-variant" />
+                <div className="space-y-8">
+                  {roadmap.iterations.map((iter, idx) => {
+                    const isActive = normalizeId(iter.id) === selectedIterationId;
+                    const config = ITERATION_CONFIG.find(
+                      (c) => c.id === normalizeId(iter.id)
+                    );
                     return (
-                      <button
-                        key={iter.id}
-                        type="button"
-                        onClick={() => setSelectedIterationId(iter.id)}
-                        className={`group w-36 h-36 md:w-48 md:h-48 rounded-full bg-white border-2 flex flex-col items-center justify-center p-4 md:p-6 text-center transition-all hover:scale-105 active:scale-95 shadow-lg ${
-                          isActive ? "border-primary ring-4 ring-primary-container/20" : "border-outline-variant"
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-primary text-3xl md:text-4xl mb-2">
-                          {iter.icon}
-                        </span>
-                        <span className="font-headline-md text-headline-md text-primary leading-tight">
-                          {iter.name.split(" ").map((word, i) => (
-                            <span key={i}>
-                              {word}
-                              <br />
-                            </span>
-                          ))}
-                        </span>
-                      </button>
+                      <div key={iter.id} className="relative pl-12 sm:pl-14">
+                        <div
+                          className={`absolute left-0 top-1 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center z-10 transition-all ${
+                            isActive
+                              ? "bg-[#0d9488] border-2 border-[#0d9488] text-white shadow-md ring-4 ring-[#0d9488]/15"
+                              : "bg-white border-2 border-outline-variant text-on-surface-variant"
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[18px] sm:text-[20px]">
+                            {config?.icon ?? "circle"}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedIterationId(normalizeId(iter.id))}
+                          className={`w-full text-left bg-white rounded-xl p-lg transition-all ${
+                            isActive
+                              ? "border-2 border-[#0d9488] shadow-md ring-4 ring-[#0d9488]/10"
+                              : "border border-outline-variant shadow-sm hover:border-[#0d9488]/50 hover:shadow-md"
+                          }`}
+                        >
+                          <h3
+                            className={`font-headline-md text-headline-md mb-2 ${
+                              isActive ? "text-[#0d9488]" : "text-on-surface"
+                            }`}
+                          >
+                            {idx + 1}. {iter.name}
+                          </h3>
+                          <p className="text-on-surface-variant text-sm leading-relaxed mb-3">
+                            {iter.description}
+                          </p>
+                          {((iter.tools_and_software?.length ?? 0) > 0 ||
+                            (iter.cro_partners?.length ?? 0) > 0) && (
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 pt-3 border-t border-outline-variant">
+                              {(iter.tools_and_software?.length ?? 0) > 0 && (
+                                <span className="flex items-center gap-1 text-label-sm font-label-sm text-on-surface-variant">
+                                  <span className="material-symbols-outlined text-[16px]">science</span>
+                                  {iter.tools_and_software.length} tool
+                                  {iter.tools_and_software.length === 1 ? "" : "s"}
+                                </span>
+                              )}
+                              {(iter.cro_partners?.length ?? 0) > 0 && (
+                                <span className="flex items-center gap-1 text-label-sm font-label-sm text-on-surface-variant">
+                                  <span className="material-symbols-outlined text-[16px]">domain</span>
+                                  {iter.cro_partners.length} CRO partner
+                                  {iter.cro_partners.length === 1 ? "" : "s"}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </button>
+                      </div>
                     );
                   })}
-                </div>
 
-                {/* Exit Point (desktop) */}
-                <div className="hidden lg:flex flex-col items-center gap-4">
-                  <p className="text-label-sm font-label-sm text-outline uppercase tracking-widest text-center">
-                    Exit Point
-                  </p>
-                  <div className="w-16 h-1 bg-primary-container/20 rounded-full" />
-                  <div className="p-4 bg-primary text-on-primary rounded-xl shadow-xl flex flex-col items-center gap-2 max-w-[140px] text-center">
-                    <span className="material-symbols-outlined">check_circle</span>
-                    <span className="font-label-sm text-label-sm font-bold">Synthesis Ready Candidate</span>
+                  {/* Iteration loop marker */}
+                  <div className="relative pl-12 sm:pl-14 flex items-center gap-2 text-on-surface-variant italic text-sm">
+                    <span className="material-symbols-outlined text-[18px]">sync</span>
+                    Iterate until candidate found
                   </div>
-                </div>
-              </div>
 
-              {/* Mobile: entry points + exit point */}
-              <div className="lg:hidden flex flex-col items-center gap-4 mt-8 w-full px-2">
-                <div className="flex flex-wrap justify-center gap-2">
-                  {roadmap.entry_points.map((ep) => (
-                    <span
-                      key={ep}
-                      className="px-3 py-1 rounded-full bg-surface-container text-on-surface-variant text-label-sm font-label-sm"
-                    >
-                      {ep}
-                    </span>
-                  ))}
-                </div>
-                <div className="px-4 py-2 bg-primary text-on-primary rounded-xl shadow-md flex items-center gap-2 text-center">
-                  <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                  <span className="font-label-sm text-label-sm font-bold">Synthesis Ready Candidate</span>
+                  {/* End node */}
+                  <div className="relative pl-12 sm:pl-14">
+                    <div className="absolute left-0 top-1 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary border-2 border-primary text-on-primary flex items-center justify-center z-10">
+                      <span className="material-symbols-outlined text-[18px] sm:text-[20px]">check_circle</span>
+                    </div>
+                    <div className="bg-primary text-on-primary rounded-xl p-lg flex items-center gap-2">
+                      <span className="font-headline-md text-headline-md">Synthesis-Ready Candidate</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
