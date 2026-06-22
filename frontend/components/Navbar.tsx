@@ -52,28 +52,19 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-4">
           {!loading && user ? (
             <>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center shrink-0">
-                  <span className="text-on-secondary-container text-xs font-bold uppercase">
-                    {displayName.charAt(0) || "U"}
-                  </span>
-                </div>
-                <span className="text-on-surface-variant text-sm font-medium truncate max-w-[160px]">
-                  {displayName}
-                </span>
-              </div>
               <Link
                 href="/settings"
-                className="text-on-surface-variant text-sm font-medium hover:text-primary-container transition-colors"
+                aria-label="Settings"
+                title="Settings"
+                className="p-2 rounded-full text-on-surface-variant hover:text-primary-container hover:bg-surface-container-low transition-colors"
               >
-                Settings
+                <span className="material-symbols-outlined">settings</span>
               </Link>
-              <Link
-                href="/profile/setup"
-                className="text-on-surface-variant text-sm font-medium hover:text-primary-container transition-colors"
-              >
-                Public Profile
-              </Link>
+              <div className="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center shrink-0">
+                <span className="text-on-secondary-container text-xs font-bold uppercase">
+                  {displayName.charAt(0) || "U"}
+                </span>
+              </div>
               <button
                 onClick={handleLogout}
                 className="px-5 py-2 min-h-[44px] rounded-full border border-outline text-primary font-semibold hover:bg-surface-container-low transition-all active:scale-95 text-sm"
