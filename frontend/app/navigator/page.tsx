@@ -123,58 +123,127 @@ export default function NavigatorPage() {
         </nav>
 
         {/* Hero */}
-        <div className="mb-xl text-center md:text-left">
-          <h1 className="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface mb-sm">
+        <div className="mb-xl text-center space-y-sm">
+          <h1 className="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface max-w-3xl mx-auto">
             Where are you in your research journey?
           </h1>
-          <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto md:mx-0">
+          <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">
             Select your research space to get a personalized AI-driven
             roadmap. Our ecosystem bridges the gap between hypothesis and
             clinical validation.
           </p>
         </div>
 
-        {/* Space cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-          {SPACES.map((space) => (
-            <Link
-              key={space.key}
-              href={space.href}
-              className="group relative bg-surface-container-lowest border border-outline-variant rounded-xl p-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col h-full"
-            >
-              <div
-                className="mb-md p-sm rounded-lg inline-flex"
-                style={{ backgroundColor: space.iconBg }}
+        {/* Section A: explicit space selection */}
+        <div className="mb-xl">
+          <div className="flex items-center gap-4 mb-lg">
+            <span className="font-label-sm text-label-sm text-secondary-fixed-dim bg-primary px-3 py-1 rounded-full shrink-0">
+              Section A
+            </span>
+            <h2 className="text-sm font-semibold text-on-surface-variant uppercase tracking-widest whitespace-nowrap">
+              I know my space
+            </h2>
+            <div className="h-px flex-grow bg-outline-variant" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+            {SPACES.map((space) => (
+              <Link
+                key={space.key}
+                href={space.href}
+                className="group relative bg-surface-container-lowest border border-outline-variant rounded-xl p-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-primary flex flex-col h-full overflow-hidden"
               >
-                <span className={`material-symbols-outlined text-[32px] ${space.iconColor}`}>
-                  {space.icon}
+                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <span
+                    className={`material-symbols-outlined text-[96px] ${space.iconColor}`}
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    {space.icon}
+                  </span>
+                </div>
+
+                <div
+                  className="relative mb-md p-sm rounded-lg inline-flex w-12 h-12 items-center justify-center"
+                  style={{ backgroundColor: space.iconBg }}
+                >
+                  <span className={`material-symbols-outlined text-[32px] ${space.iconColor}`}>
+                    {space.icon}
+                  </span>
+                </div>
+                <div className={`relative mb-xs font-label-sm text-label-sm uppercase tracking-widest ${space.categoryColor}`}>
+                  {space.category}
+                </div>
+                <h3 className="relative font-headline-md text-headline-md text-on-surface mb-sm">
+                  {space.title}
+                </h3>
+                <p className="relative text-on-surface-variant font-body-md mb-md flex-grow">
+                  {space.description}
+                </p>
+                <div className="relative bg-surface-container-low rounded-lg p-sm mb-lg border border-outline-variant/30">
+                  <span className="font-label-sm text-label-sm block mb-xs text-on-surface-variant">
+                    WHAT YOU MIGHT HAVE:
+                  </span>
+                  <p className="text-label-sm text-on-surface font-medium">
+                    {space.have}
+                  </p>
+                </div>
+                <div className="relative flex items-center justify-between mt-auto">
+                  <span className={`flex items-center gap-1 font-bold font-body-md group-hover:translate-x-2 transition-transform duration-300 ${space.ctaColor}`}>
+                    Select {space.title}
+                    <span className="material-symbols-outlined">arrow_forward</span>
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Section B: guided placement (placeholder — not yet implemented) */}
+        <div>
+          <div className="flex items-center gap-4 mb-lg">
+            <span className="font-label-sm text-label-sm text-secondary-fixed-dim bg-primary px-3 py-1 rounded-full shrink-0">
+              Section B
+            </span>
+            <h2 className="text-sm font-semibold text-on-surface-variant uppercase tracking-widest whitespace-nowrap">
+              Uncertain path
+            </h2>
+            <div className="h-px flex-grow bg-outline-variant" />
+          </div>
+
+          <div
+            aria-disabled="true"
+            className="relative w-full flex flex-col md:flex-row items-center justify-between gap-6 bg-surface-container-lowest p-lg rounded-xl border border-outline-variant overflow-hidden opacity-70 cursor-default"
+          >
+            <span className="absolute top-4 right-4 font-label-sm text-label-sm text-on-surface-variant bg-surface-container-low border border-outline-variant px-3 py-1 rounded-full">
+              Coming soon
+            </span>
+            <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+              <div className="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant shrink-0">
+                <span
+                  className="material-symbols-outlined text-3xl"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  psychology
                 </span>
               </div>
-              <div className={`mb-xs font-label-sm text-label-sm uppercase tracking-widest ${space.categoryColor}`}>
-                {space.category}
-              </div>
-              <h3 className="font-headline-md text-headline-md text-on-surface mb-sm">
-                {space.title}
-              </h3>
-              <p className="text-on-surface-variant font-body-md mb-md flex-grow">
-                {space.description}
-              </p>
-              <div className="bg-surface-container-low rounded-lg p-sm mb-lg border border-outline-variant/30">
-                <span className="font-label-sm text-label-sm block mb-xs text-on-surface-variant">
-                  WHAT YOU MIGHT HAVE:
-                </span>
-                <p className="text-label-sm text-on-surface font-medium">
-                  {space.have}
+              <div className="max-w-xl">
+                <h3 className="font-headline-md text-headline-md text-on-surface mb-xs">
+                  Help me figure it out
+                </h3>
+                <p className="text-on-surface-variant font-body-md">
+                  Not sure where to begin? Soon you&rsquo;ll be able to engage
+                  with our research AI to analyze your current data points
+                  and determine the most effective entry point.
                 </p>
               </div>
-              <div className="flex items-center justify-between mt-auto">
-                <span className={`flex items-center gap-1 font-bold font-body-md group-hover:translate-x-2 transition-transform duration-300 ${space.ctaColor}`}>
-                  Select {space.title}
-                  <span className="material-symbols-outlined">arrow_right_alt</span>
-                </span>
+            </div>
+            <div className="shrink-0">
+              <div className="px-lg py-sm bg-surface-container-low text-on-surface-variant font-bold rounded-lg flex items-center gap-2">
+                <span className="font-label-sm text-label-sm">Start AI Guidance</span>
+                <span className="material-symbols-outlined text-[18px]">smart_toy</span>
               </div>
-            </Link>
-          ))}
+            </div>
+          </div>
         </div>
       </main>
       <Footer />
