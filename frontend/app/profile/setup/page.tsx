@@ -321,11 +321,11 @@ export default function ProfileSetupPage() {
           </header>
 
           {/* Step indicator */}
-          <nav className="mb-16 px-2">
-            <div className="flex items-center justify-between relative">
-              <div className="absolute top-1/2 left-0 w-full h-1 bg-surface-container-highest -translate-y-1/2 z-0 rounded-full" />
+          <nav className="mb-10 sm:mb-12 px-2">
+            <div className="flex items-stretch justify-between relative">
+              <div className="absolute top-5 left-0 w-full h-1 bg-surface-container-highest -translate-y-1/2 z-0 rounded-full" />
               <div
-                className="absolute top-1/2 left-0 h-1 bg-primary -translate-y-1/2 z-0 rounded-full transition-all duration-500"
+                className="absolute top-5 left-0 h-1 bg-primary -translate-y-1/2 z-0 rounded-full transition-all duration-500"
                 style={{ width: `${((step - 1) / 3) * 100}%` }}
               />
               {STEP_CAPTIONS.map((caption, i) => {
@@ -333,7 +333,7 @@ export default function ProfileSetupPage() {
                 const isDone = stepNum < step;
                 const isActive = stepNum === step;
                 return (
-                  <div key={caption} className="relative z-10 flex flex-col items-center">
+                  <div key={caption} className="relative z-10 flex-1 flex flex-col items-center gap-2">
                     <div
                       className={`w-10 h-10 rounded-full flex items-center justify-center font-label-sm text-label-sm transition-colors ${
                         isDone || isActive
@@ -348,7 +348,7 @@ export default function ProfileSetupPage() {
                       )}
                     </div>
                     <span
-                      className={`absolute -bottom-7 whitespace-nowrap font-label-sm text-label-sm ${
+                      className={`text-center leading-tight font-label-sm text-label-sm ${
                         isDone || isActive ? "text-primary" : "text-on-surface-variant"
                       }`}
                     >
@@ -487,7 +487,7 @@ export default function ProfileSetupPage() {
                           className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
                           placeholder="Paper Title"
                         />
-                        <div className="grid grid-cols-2 gap-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-sm">
                           <input
                             type="text"
                             value={paperJournal}
