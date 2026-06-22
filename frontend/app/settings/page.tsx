@@ -294,7 +294,7 @@ export default function SettingsPage() {
     <div className="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex flex-1 max-w-[1280px] mx-auto w-full">
+      <main className="flex flex-col md:flex-row flex-1 max-w-[1280px] mx-auto w-full min-w-0">
         {/* Mobile section tabs — the design has no mobile treatment for the
             sidebar (it's `hidden md:flex`), so this is an addition to keep
             the page usable on small screens, matching the tab-bar pattern
