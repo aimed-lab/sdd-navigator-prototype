@@ -223,11 +223,21 @@ function DiscoverTab({ user }: { user: unknown }) {
       .then(({ data }) => setInterests(data?.interests ?? []));
   }, [user]);
 
+  // Guards against out-of-order responses clobbering newer ones — e.g. React
+  // Strict Mode double-invokes the mount effect below in dev, firing two
+  // default (non-refresh) requests, and either can still be in flight when
+  // the user clicks Refresh. Each call gets the next sequence number; only
+  // the response matching the *current* (most recently dispatched) number is
+  // ever committed to state, so a slower, older request can never overwrite
+  // a newer one — including an explicit Refresh — no matter which resolves last.
+  const requestSeqRef = useRef(0);
+
   // Live fetch, with a short server-side cache per scope (see /api/discover) so
   // reloading the tab shows the same feed instead of refetching every time.
   // A typed search term overrides interest-scoping for this query; an empty
   // search falls back to interest-scoped (logged in) or general (anonymous).
   const loadFeed = useCallback((force: boolean) => {
+    const seq = ++requestSeqRef.current;
     if (force) setRefreshing(true);
     else setLoading(true);
 
@@ -243,16 +253,16 @@ function DiscoverTab({ user }: { user: unknown }) {
     fetch(`/api/discover${qs ? `?${qs}` : ""}`)
       .then((r) => r.json())
       .then((data: { items: DiscoverItem[]; personalized?: boolean; fromCache?: boolean; cachedAt?: number }) => {
+        if (seq !== requestSeqRef.current) return; // superseded by a newer request — discard
         setItems(data.items ?? []);
         setPersonalized(Boolean(data.personalized));
         setFromCache(Boolean(data.fromCache));
         setCachedAt(data.cachedAt ?? null);
-        setLoading(false);
-        setRefreshing(false);
       })
-      .catch(() => {
-        setLoading(false);
-        setRefreshing(false);
+      .catch(() => {})
+      .finally(() => {
+        if (force) setRefreshing(false);
+        else setLoading(false);
       });
   }, [debouncedSearch, interests]);
 
