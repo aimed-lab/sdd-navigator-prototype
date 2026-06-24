@@ -55,21 +55,38 @@ const TYPE_CONFIG: Record<
   string,
   { color: string; bg: string; label: string }
 > = {
-  paper:    { color: "#1E88E5", bg: "#E3F2FD", label: "Paper" },
-  patent:   { color: "#8E24AA", bg: "#F3E5F5", label: "Patent" },
-  grant:    { color: "#FFA000", bg: "#FFF8E1", label: "Grant" },
-  trial:    { color: "#388E3C", bg: "#E8F5E9", label: "Trial" },
-  preprint: { color: "#00796B", bg: "#E0F2F1", label: "Preprint" },
+  paper: { color: "#1E88E5", bg: "#E3F2FD", label: "Paper" },
+  grant: { color: "#FFA000", bg: "#FFF8E1", label: "Grant" },
+  trial: { color: "#388E3C", bg: "#E8F5E9", label: "Trial" },
+  tool:  { color: "#8E24AA", bg: "#F3E5F5", label: "Tool" },
 };
 
 const DISCOVER_FILTERS = [
-  { value: "all",      label: "All" },
-  { value: "paper",    label: "Papers" },
-  { value: "patent",   label: "Patents" },
-  { value: "grant",    label: "Grants" },
-  { value: "trial",    label: "Trials" },
-  { value: "preprint", label: "Preprints" },
+  { value: "all",   label: "All" },
+  { value: "paper", label: "Papers" },
+  { value: "grant", label: "Grants" },
+  { value: "trial", label: "Trials" },
+  { value: "tool",  label: "Tools" },
 ] as const;
+
+// Debounce a free-text search query before it triggers a live re-fetch.
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const handle = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(handle);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+function formatCacheAge(cachedAt: number | null): string | null {
+  if (!cachedAt) return null;
+  const minutes = Math.floor((Date.now() - cachedAt) / 60_000);
+  if (minutes < 1) return "Updated just now";
+  if (minutes < 60) return `Updated ${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `Updated ${hours}h ago`;
+}
 
 // ── Skeleton card ─────────────────────────────────────────────────────────────
 
@@ -129,9 +146,23 @@ function DiscoverCard({ item }: { item: DiscoverItem }) {
         <h3 className="font-bold text-on-surface mb-2 line-clamp-2 hover:text-primary transition-colors cursor-pointer leading-snug">
           {item.title}
         </h3>
-        <p className="text-on-surface-variant text-sm mb-4 line-clamp-2 leading-relaxed">
+        <p className="text-on-surface-variant text-sm mb-3 line-clamp-2 leading-relaxed">
           {item.description}
         </p>
+        <div className="flex items-center gap-0.5 mb-3" title={`Relevance: ${item.relevance}/5`}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <span
+              key={i}
+              className="material-symbols-outlined text-[14px]"
+              style={{
+                color: i < item.relevance ? cfg.color : "#d1d5db",
+                fontVariationSettings: i < item.relevance ? "'FILL' 1" : "'FILL' 0",
+              }}
+            >
+              star
+            </span>
+          ))}
+        </div>
         <div className="flex flex-wrap gap-1.5">
           {item.tags.map((tag) => (
             <span
@@ -163,36 +194,76 @@ function DiscoverCard({ item }: { item: DiscoverItem }) {
 // ── Discover tab ──────────────────────────────────────────────────────────────
 
 function DiscoverTab({ user }: { user: unknown }) {
-  const [items, setItems]     = useState<DiscoverItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter]   = useState("all");
-  const [search, setSearch]   = useState("");
-  const [page, setPage]       = useState(1);
+  const [items, setItems]             = useState<DiscoverItem[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [refreshing, setRefreshing]   = useState(false);
+  const [filter, setFilter]           = useState("all");
+  const [search, setSearch]           = useState("");
+  const [page, setPage]               = useState(1);
+  const [interests, setInterests]     = useState<string[]>([]);
+  const [personalized, setPersonalized] = useState(false);
+  const [fromCache, setFromCache]     = useState(false);
+  const [cachedAt, setCachedAt]       = useState<number | null>(null);
   const PAGE_SIZE = 9;
 
+  const debouncedSearch = useDebouncedValue(search, 500);
+
+  // Pull the signed-in user's interests so the live fetch can scope to them.
   useEffect(() => {
-    fetch("/api/discover")
+    if (!user) {
+      setInterests([]);
+      return;
+    }
+    const uid = (user as { id: string }).id;
+    supabase
+      .from("users")
+      .select("interests")
+      .eq("id", uid)
+      .maybeSingle()
+      .then(({ data }) => setInterests(data?.interests ?? []));
+  }, [user]);
+
+  // Live fetch, with a short server-side cache per scope (see /api/discover) so
+  // reloading the tab shows the same feed instead of refetching every time.
+  // A typed search term overrides interest-scoping for this query; an empty
+  // search falls back to interest-scoped (logged in) or general (anonymous).
+  const loadFeed = useCallback((force: boolean) => {
+    if (force) setRefreshing(true);
+    else setLoading(true);
+
+    const params = new URLSearchParams();
+    if (debouncedSearch.trim()) {
+      params.set("q", debouncedSearch.trim());
+    } else if (interests.length > 0) {
+      params.set("interests", interests.join(","));
+    }
+    if (force) params.set("refresh", "1");
+    const qs = params.toString();
+
+    fetch(`/api/discover${qs ? `?${qs}` : ""}`)
       .then((r) => r.json())
-      .then((data: { items: DiscoverItem[] }) => {
+      .then((data: { items: DiscoverItem[]; personalized?: boolean; fromCache?: boolean; cachedAt?: number }) => {
         setItems(data.items ?? []);
+        setPersonalized(Boolean(data.personalized));
+        setFromCache(Boolean(data.fromCache));
+        setCachedAt(data.cachedAt ?? null);
         setLoading(false);
+        setRefreshing(false);
       })
-      .catch(() => setLoading(false));
-  }, []);
+      .catch(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
+  }, [debouncedSearch, interests]);
 
-  // Reset pagination when filter or search changes
-  useEffect(() => { setPage(1); }, [filter, search]);
+  useEffect(() => { loadFeed(false); }, [loadFeed]);
 
-  const filtered = items.filter((item) => {
-    const matchFilter = filter === "all" || item.type === filter;
-    const q = search.toLowerCase().trim();
-    const matchSearch =
-      !q ||
-      item.title.toLowerCase().includes(q) ||
-      item.description.toLowerCase().includes(q) ||
-      item.tags.some((t) => t.toLowerCase().includes(q));
-    return matchFilter && matchSearch;
-  });
+  // Reset pagination whenever a new result set comes in or the type filter changes
+  useEffect(() => { setPage(1); }, [filter, debouncedSearch]);
+
+  // Search already drives the live query above — the type pills are a fast,
+  // client-side filter over whatever the live fetch returned.
+  const filtered = items.filter((item) => filter === "all" || item.type === filter);
 
   const shown   = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = shown.length < filtered.length;
@@ -221,6 +292,35 @@ function DiscoverTab({ user }: { user: unknown }) {
       {/* Search & filters */}
       <section className="px-gutter max-w-[1280px] mx-auto mb-8">
         <div className="space-y-4 md:space-y-6">
+          {/* Personalization + cache-age indicators, and a manual refresh control */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              {personalized && (
+                <div className="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-full">
+                  <span className="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
+                  <span className="text-[11px] font-bold text-primary">Personalized to your interests</span>
+                </div>
+              )}
+              {fromCache && formatCacheAge(cachedAt) && (
+                <span className="text-[11px] text-on-surface-variant">
+                  {formatCacheAge(cachedAt)} · showing cached results
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => loadFeed(true)}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-on-surface-variant text-[11px] font-bold hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+            >
+              <span
+                className={`material-symbols-outlined text-[14px] ${refreshing ? "animate-spin" : ""}`}
+              >
+                refresh
+              </span>
+              {refreshing ? "Refreshing…" : "Refresh"}
+            </button>
+          </div>
+
           {/* Search bar */}
           <div className="relative w-full">
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">
@@ -230,9 +330,12 @@ function DiscoverTab({ user }: { user: unknown }) {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search papers, patents, grants, trials, preprints..."
+              placeholder="Search papers, grants, trials, tools..."
               className="w-full pl-12 pr-12 py-4 bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all shadow-sm font-body-md text-body-md"
             />
+            {loading && (
+              <span className="absolute right-12 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+            )}
             {search && (
               <button
                 onClick={() => setSearch("")}
