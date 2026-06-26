@@ -8,6 +8,7 @@ import RoadmapTopBar from "@/components/navigator/RoadmapTopBar";
 import ProvidersList from "@/components/navigator/ProvidersList";
 import CROPartnersList from "@/components/navigator/CROPartnersList";
 import ResearchersWhoCanHelp from "@/components/navigator/ResearchersWhoCanHelp";
+import LiveResearchRadar from "@/components/navigator/LiveResearchRadar";
 import { fetchPublicResearchers, matchResearchers } from "@/lib/navigatorResearchers";
 import { downloadDiscoveryRoadmapPDF } from "@/lib/navigatorPdf";
 import type { DiscoveryRoadmap, ResearcherMini } from "@/types/navigator";
@@ -324,6 +325,13 @@ export default function DiscoverySpacePage() {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Live Research Radar — separate request from generate-roadmap, scoped to
+              the researcher's typed target; loads independently beside the already-
+              rendered roadmap above. */}
+          <div className="mt-xl">
+            <LiveResearchRadar query={form.target} />
           </div>
 
           {/* Academic context bento grid */}
