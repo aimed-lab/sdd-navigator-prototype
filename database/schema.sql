@@ -144,20 +144,30 @@ CREATE POLICY "edges_select_public"
 -- =============================================================================
 -- TABLE: providers
 -- =============================================================================
--- Institutional service providers referenced on the Navigator roadmap page.
--- UNUSED by the frontend as of this writing — provider data is currently
--- hardcoded in the app. This table is kept as a placeholder for when
--- provider data moves to the database.
+-- Service-provider directory for the Navigator.
+--   type = 'internal'  → UAB SPARC (computational / dry-lab; free to UAB).
+--   type = 'external'  → CROs and other wet-lab services SPARC doesn't do;
+--                        pricing/timeline filled in on onboarding.
+-- NOT yet wired into the Navigator — the roadmap still LLM-generates providers
+-- in /api/generate-roadmap. This table is seeded and schema-ready for that move.
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS public.providers (
-    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        TEXT        NOT NULL,
-    stage       INTEGER                 -- 1-5 drug discovery stage (nullable = all stages)
-                    CHECK (stage BETWEEN 1 AND 5),
-    description TEXT,
-    website     TEXT,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                 UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    name               TEXT        NOT NULL,
+    type               TEXT        NOT NULL DEFAULT 'external'   -- 'internal' (SPARC) | 'external' (CRO)
+                           CHECK (type IN ('internal', 'external')),
+    stage              INTEGER                 -- 1-5 drug discovery stage (nullable = all stages)
+                           CHECK (stage BETWEEN 1 AND 5),
+    description        TEXT,
+    capabilities       TEXT[]      NOT NULL DEFAULT '{}',   -- service areas / what they do
+    tools              TEXT[]      NOT NULL DEFAULT '{}',   -- software/methods (SPARC's suite)
+    estimated_cost     TEXT,                                -- pricing (external CROs, on onboarding)
+    estimated_timeline TEXT,                                -- timeline (external CROs, on onboarding)
+    is_free            BOOLEAN     NOT NULL DEFAULT false,  -- free to UAB researchers?
+    website            TEXT,
+    contact_email      TEXT,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE public.providers ENABLE ROW LEVEL SECURITY;
@@ -166,6 +176,23 @@ ALTER TABLE public.providers ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "providers_select_public"
     ON public.providers FOR SELECT
     USING (true);
+
+-- Seed: UAB SPARC only — the one real internal provider. External CROs are
+-- LLM-generated per project in /api/generate-roadmap, not stored here.
+INSERT INTO public.providers
+    (name, type, description, capabilities, tools, is_free, estimated_cost, estimated_timeline, website, contact_email)
+SELECT
+    'UAB SPARC',
+    'internal',
+    'Systems Pharmacology AI Research Center at UAB. Provides computational drug-discovery and systems-pharmacology analysis services — pathway and gene-set enrichment, protein-interaction network analysis, network-based biomarker prioritization, single-cell/spatial biomarker discovery, and multi-omics visualization — delivered using the lab''s in-house tool suite.',
+    ARRAY['Pathway & gene-set enrichment analysis','Protein-interaction network analysis','Network-based biomarker prioritization','Single-cell & spatial biomarker discovery','Multi-omics visualization','Drug repositioning / network pharmacology'],
+    ARRAY['PAGER','HAPPI','BEERE','GeneTerrain','WINNER','ProteoLens','C2-Maps','Mondrian Map'],
+    false,
+    '$1,000',
+    '2–4 weeks',
+    'https://sites.uab.edu/sparc',
+    NULL
+WHERE NOT EXISTS (SELECT 1 FROM public.providers WHERE name = 'UAB SPARC');
 
 
 -- =============================================================================
