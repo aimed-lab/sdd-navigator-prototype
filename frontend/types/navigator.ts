@@ -66,12 +66,25 @@ export type CROPartner = {
   free: false;
 };
 
+// How UAB SPARC specifically helps at ONE roadmap step. The LLM selects the
+// relevant subset of SPARC's REAL capabilities/tools (it may not invent any);
+// the server then re-validates that subset against the DB arrays before this
+// reaches the client. `relevant: false` → SPARC doesn't fit this step, show nothing.
+export type SparcStepContribution = {
+  relevant: boolean;
+  capabilities: string[];
+  tools: string[];
+  how: string;
+};
+
 export type DiscoveryIteration = {
   id: string; // hit-finding | lead-optimization
   name: string;
   description: string;
   tools_and_software: Provider[];
   cro_partners: CROPartner[];
+  // Step-specific SPARC contribution (grounded in `providers`, validated server-side).
+  sparc?: SparcStepContribution;
 };
 
 export type DiscoveryRoadmap = {

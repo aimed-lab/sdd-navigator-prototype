@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { InternalProvider, SparcStepContribution } from "@/types/navigator";
 
 // Real internal providers (SPARC) live in the `providers` table — read here
 // server-side and grafted onto the roadmap so SPARC is grounded in the DB,
@@ -24,6 +25,66 @@ async function fetchInternalProviders() {
   } catch {
     return [];
   }
+}
+
+// Build the grounding addendum injected into the discovery prompt so the LLM
+// can decide, per iteration, WHICH of SPARC's real capabilities/tools apply.
+// The capabilities/tools lists below are the ONLY values the model may use —
+// this is reinforced server-side by sanitizeSparc(), which drops anything not
+// present verbatim in the DB arrays, so even a misbehaving model can't invent.
+function buildSparcGrounding(sparc: InternalProvider | null): string {
+  if (!sparc) return "";
+  const caps = (sparc.capabilities ?? []).filter(Boolean);
+  const tools = (sparc.tools ?? []).filter(Boolean);
+  if (caps.length === 0 && tools.length === 0) return "";
+
+  return `
+
+UAB SPARC — INTERNAL PROVIDER, STEP-SPECIFIC RELEVANCE (grounded data — DO NOT INVENT):
+SPARC is UAB's real internal drug-discovery support center. These are its ONLY real capabilities and tools:
+Capabilities: ${caps.join("; ")}
+Tools: ${tools.join("; ")}
+
+For EACH object in the "iterations" array, add a "sparc" field describing how SPARC specifically helps at THAT iteration:
+  "sparc": { "relevant": boolean, "capabilities": ["subset of the capabilities above"], "tools": ["subset of the tools above"], "how": "1-2 sentences on how SPARC helps at THIS specific step" }
+
+HARD RULES for the "sparc" field:
+- You may ONLY copy capability/tool strings VERBATIM from the two lists above. NEVER invent, rename, paraphrase, abbreviate, or add new capabilities, tools, or providers for SPARC.
+- Pick only the subset genuinely relevant to that specific iteration. Different iterations (e.g. hit-finding vs lead-optimization) MUST get different selections — choose what actually applies to each, not the same list for both.
+- "how" must explain SPARC's role at THAT step specifically, referencing the selected capabilities/tools.
+- If SPARC genuinely does not help at an iteration, set "relevant": false with empty "capabilities"/"tools" arrays and an empty "how". Do not force a fit.`;
+}
+
+// Re-validate the LLM-selected SPARC subset against the REAL DB arrays. Any
+// capability/tool not present verbatim (case-insensitive) in SPARC's actual
+// arrays is dropped — this is the hard grounding guarantee that the model
+// cannot invent tools/capabilities, regardless of what it returned.
+function sanitizeSparc(
+  raw: unknown,
+  sparc: InternalProvider | null,
+): SparcStepContribution | undefined {
+  if (!sparc) return undefined;
+  const r = (raw ?? {}) as Record<string, unknown>;
+
+  const pick = (value: unknown, allowed: string[]): string[] => {
+    if (!Array.isArray(value)) return [];
+    const canonical = new Map(allowed.map((a) => [a.toLowerCase().trim(), a]));
+    const out: string[] = [];
+    for (const v of value) {
+      if (typeof v !== "string") continue;
+      const hit = canonical.get(v.toLowerCase().trim());
+      if (hit && !out.includes(hit)) out.push(hit);
+    }
+    return out;
+  };
+
+  const capabilities = pick(r.capabilities, sparc.capabilities ?? []);
+  const tools = pick(r.tools, sparc.tools ?? []);
+  const how = typeof r.how === "string" ? r.how.trim() : "";
+  // Relevant only if the model said so AND at least one grounded item survived.
+  const relevant = r.relevant === true && (capabilities.length > 0 || tools.length > 0);
+
+  return { relevant, capabilities, tools, how: relevant ? how : "" };
 }
 
 const TARGET_SYSTEM_PROMPT = `You are an expert in biological target assessment for drug discovery at UAB SPARC.
@@ -210,6 +271,11 @@ export async function POST(req: NextRequest) {
 
   const { space } = body as { space?: string };
 
+  // Fetch SPARC first — its real capabilities/tools must be in hand BEFORE the
+  // LLM call so we can inject them as grounding for the per-step selection.
+  const internalProviders: InternalProvider[] = await fetchInternalProviders();
+  const sparc: InternalProvider | null = internalProviders[0] ?? null;
+
   let systemPrompt: string;
   let userMessage: string | null;
 
@@ -219,7 +285,9 @@ export async function POST(req: NextRequest) {
       userMessage = buildTargetUserMessage(body);
       break;
     case "discovery":
-      systemPrompt = DISCOVERY_SYSTEM_PROMPT;
+      // Discovery is the only space that renders SPARC per-iteration, so it's
+      // the only one that gets the grounding addendum.
+      systemPrompt = DISCOVERY_SYSTEM_PROMPT + buildSparcGrounding(sparc);
       userMessage = buildDiscoveryUserMessage(body);
       break;
     case "validation":
@@ -265,22 +333,27 @@ export async function POST(req: NextRequest) {
   const groqData = await groqRes.json();
   const content: string = groqData.choices?.[0]?.message?.content ?? "";
 
-  // Real internal providers (SPARC) from the DB — added to the LLM roadmap.
-  const internalProviders = await fetchInternalProviders();
+  // Graft the real SPARC provider onto the roadmap and, for discovery, replace
+  // each iteration's LLM-returned `sparc` with a DB-validated, grounded subset.
+  function finalizeRoadmap(roadmap: Record<string, unknown>) {
+    roadmap.internal_providers = internalProviders;
+    if (space === "discovery" && Array.isArray(roadmap.iterations)) {
+      for (const iter of roadmap.iterations as Record<string, unknown>[]) {
+        iter.sparc = sanitizeSparc(iter.sparc, sparc);
+      }
+    }
+    return roadmap;
+  }
 
   // Parse JSON — handle cases where the model wraps it in markdown fences
   const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
   try {
-    const roadmap = JSON.parse(cleaned);
-    roadmap.internal_providers = internalProviders;
-    return NextResponse.json(roadmap);
+    return NextResponse.json(finalizeRoadmap(JSON.parse(cleaned)));
   } catch {
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) {
       try {
-        const roadmap = JSON.parse(match[0]);
-        roadmap.internal_providers = internalProviders;
-        return NextResponse.json(roadmap);
+        return NextResponse.json(finalizeRoadmap(JSON.parse(match[0])));
       } catch {
         // fall through
       }
