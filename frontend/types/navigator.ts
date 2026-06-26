@@ -8,6 +8,20 @@ export type Provider = {
   free: boolean;
 };
 
+// Internal UAB provider (e.g. SPARC) read from the `providers` table.
+// NOTE: the live table has no description/website columns — `speciality`
+// holds the description and `contact` holds the URL.
+export type InternalProvider = {
+  name: string;
+  speciality: string | null;
+  capabilities: string[] | null;
+  tools: string[] | null;
+  estimated_cost: string | null;
+  estimated_timeline: string | null;
+  is_free: boolean | null;
+  contact: string | null;
+};
+
 export type ResearcherMini = {
   id: string;
   name: string;
@@ -67,6 +81,9 @@ export type DiscoveryRoadmap = {
   prioritized_molecules: PrioritizedMolecule[];
   entry_points: string[];
   iterations: DiscoveryIteration[];
+  // Real internal providers (SPARC) from the DB — injected server-side by
+  // /api/generate-roadmap, NOT produced by the LLM.
+  internal_providers?: InternalProvider[];
 };
 
 // ── Validation Space ────────────────────────────────────────────────────────

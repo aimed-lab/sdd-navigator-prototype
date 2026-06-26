@@ -1,5 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Real internal providers (SPARC) live in the `providers` table — read here
+// server-side and grafted onto the roadmap so SPARC is grounded in the DB,
+// while external CROs stay LLM-generated. Public-read RLS → anon key is fine.
+// Fully isolated in try/catch: any failure returns [] and never blocks the
+// roadmap. NOTE: live table has no description/website cols — `speciality`
+// holds the description, `contact` holds the URL.
+async function fetchInternalProviders() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return [];
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/providers?type=eq.internal` +
+        `&select=name,speciality,capabilities,tools,estimated_cost,estimated_timeline,is_free,contact`,
+      {
+        headers: { apikey: key, Authorization: `Bearer ${key}` },
+        cache: "no-store",
+      },
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
 const TARGET_SYSTEM_PROMPT = `You are an expert in biological target assessment for drug discovery at UAB SPARC.
 Generate a target ranking and assessment roadmap.
 Return ONLY valid JSON, no markdown, no explanation, in this exact shape:
@@ -239,16 +265,22 @@ export async function POST(req: NextRequest) {
   const groqData = await groqRes.json();
   const content: string = groqData.choices?.[0]?.message?.content ?? "";
 
+  // Real internal providers (SPARC) from the DB — added to the LLM roadmap.
+  const internalProviders = await fetchInternalProviders();
+
   // Parse JSON — handle cases where the model wraps it in markdown fences
   const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
   try {
     const roadmap = JSON.parse(cleaned);
+    roadmap.internal_providers = internalProviders;
     return NextResponse.json(roadmap);
   } catch {
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) {
       try {
-        return NextResponse.json(JSON.parse(match[0]));
+        const roadmap = JSON.parse(match[0]);
+        roadmap.internal_providers = internalProviders;
+        return NextResponse.json(roadmap);
       } catch {
         // fall through
       }

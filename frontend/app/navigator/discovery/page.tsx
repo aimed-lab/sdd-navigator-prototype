@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import RoadmapTopBar from "@/components/navigator/RoadmapTopBar";
 import ProvidersList from "@/components/navigator/ProvidersList";
 import CROPartnersList from "@/components/navigator/CROPartnersList";
+import InternalProviderCard from "@/components/navigator/InternalProviderCard";
 import ResearchersWhoCanHelp from "@/components/navigator/ResearchersWhoCanHelp";
 import LiveResearchRadar from "@/components/navigator/LiveResearchRadar";
 import { fetchPublicResearchers, matchResearchers } from "@/lib/navigatorResearchers";
@@ -320,6 +321,8 @@ export default function DiscoverySpacePage() {
                           title="Research Tools & Software"
                         />
                       )}
+                      {/* Real SPARC (from DB) — shown above the LLM-generated CROs */}
+                      <InternalProviderCard providers={roadmap.internal_providers ?? []} />
                       <CROPartnersList partners={activeIteration.cro_partners ?? []} />
                       <ResearchersWhoCanHelp researchers={matchedResearchers} />
                     </div>
