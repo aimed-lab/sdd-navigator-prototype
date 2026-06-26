@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
+import { track } from "@/lib/posthog";
 
 const SPACES = [
   {
@@ -52,6 +54,10 @@ const SPACES = [
 
 export default function NavigatorPage() {
   const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    track("navigator_opened"); // fire-and-forget on page load
+  }, []);
 
   if (authLoading) {
     return (

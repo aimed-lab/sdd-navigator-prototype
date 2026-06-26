@@ -1,6 +1,7 @@
 "use client";
 
 import type { Provider } from "@/types/navigator";
+import { track } from "@/lib/posthog";
 
 export default function ProvidersList({
   providers,
@@ -40,6 +41,7 @@ export default function ProvidersList({
             </p>
             <button
               onClick={() => {
+                track("provider_connect_clicked"); // fire-and-forget, before any navigation
                 if (!provider.website) {
                   window.open("mailto:sparc@uab.edu");
                   return;

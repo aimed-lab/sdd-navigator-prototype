@@ -11,6 +11,7 @@ import ResearchersWhoCanHelp from "@/components/navigator/ResearchersWhoCanHelp"
 import LiveResearchRadar from "@/components/navigator/LiveResearchRadar";
 import { fetchPublicResearchers, matchResearchers } from "@/lib/navigatorResearchers";
 import { downloadDiscoveryRoadmapPDF } from "@/lib/navigatorPdf";
+import { track } from "@/lib/posthog";
 import type { DiscoveryRoadmap, ResearcherMini } from "@/types/navigator";
 
 // ── Static config ─────────────────────────────────────────────────────────────
@@ -121,6 +122,7 @@ export default function DiscoverySpacePage() {
         setError(data.error ?? "Failed to generate roadmap. Please try again.");
         return;
       }
+      track("roadmap_generated"); // fire-and-forget; only after a successful response
       setRoadmap(data as DiscoveryRoadmap);
       setSelectedIterationId("hitfinding");
       setView("roadmap");

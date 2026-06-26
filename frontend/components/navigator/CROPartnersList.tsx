@@ -1,6 +1,7 @@
 "use client";
 
 import type { CROPartner } from "@/types/navigator";
+import { track } from "@/lib/posthog";
 
 export default function CROPartnersList({ partners }: { partners: CROPartner[] }) {
   if (!partners || partners.length === 0) return null;
@@ -39,6 +40,7 @@ export default function CROPartnersList({ partners }: { partners: CROPartner[] }
             </div>
             <button
               onClick={() => {
+                track("provider_connect_clicked"); // fire-and-forget, before any navigation
                 if (!partner.website) {
                   window.open("mailto:sparc@uab.edu");
                   return;

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { track } from "@/lib/posthog";
 
 const AFFILIATIONS = ["Researcher", "Laboratory Head", "Institutional Admin", "Graduate Student"];
 
@@ -70,6 +71,7 @@ export default function RegisterPage() {
       });
     }
 
+    track("account_created"); // fire-and-forget; never blocks the redirect
     router.push("/knowledge-hub");
   }
 
