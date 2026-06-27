@@ -145,11 +145,14 @@ CREATE POLICY "edges_select_public"
 -- TABLE: providers
 -- =============================================================================
 -- Service-provider directory for the Navigator.
---   type = 'internal'  → UAB SPARC (computational / dry-lab; free to UAB).
---   type = 'external'  → CROs and other wet-lab services SPARC doesn't do;
---                        pricing/timeline filled in on onboarding.
--- NOT yet wired into the Navigator — the roadmap still LLM-generates providers
--- in /api/generate-roadmap. This table is seeded and schema-ready for that move.
+--   type = 'internal'  → UAB SPARC (computational / dry-lab).
+--   type = 'external'  → CROs and other wet-lab services SPARC doesn't do.
+-- The internal (SPARC) rows are wired into the Navigator: /api/generate-roadmap
+-- reads them and the LLM selects, per roadmap step, which SPARC capabilities/
+-- tools are relevant (see SparcStepCard). SPARC is modelled as ONE row PER
+-- service area (speciality) — each row carries its own capability, in-house
+-- tools, price and turnaround — so the roadmap can match the right service to
+-- the right step. External CROs are still LLM-generated per project, not stored.
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS public.providers (
@@ -157,16 +160,15 @@ CREATE TABLE IF NOT EXISTS public.providers (
     name               TEXT        NOT NULL,
     type               TEXT        NOT NULL DEFAULT 'external'   -- 'internal' (SPARC) | 'external' (CRO)
                            CHECK (type IN ('internal', 'external')),
-    stage              INTEGER                 -- 1-5 drug discovery stage (nullable = all stages)
-                           CHECK (stage BETWEEN 1 AND 5),
-    description        TEXT,
+    speciality         TEXT,                                -- headline service area for this row
     capabilities       TEXT[]      NOT NULL DEFAULT '{}',   -- service areas / what they do
-    tools              TEXT[]      NOT NULL DEFAULT '{}',   -- software/methods (SPARC's suite)
-    estimated_cost     TEXT,                                -- pricing (external CROs, on onboarding)
-    estimated_timeline TEXT,                                -- timeline (external CROs, on onboarding)
+    tools              TEXT[]      NOT NULL DEFAULT '{}',   -- in-house software / methods
+    estimated_cost     TEXT,                                -- typical price for this service
+    estimated_timeline TEXT,                                -- typical turnaround for this service
     is_free            BOOLEAN     NOT NULL DEFAULT false,  -- free to UAB researchers?
-    website            TEXT,
-    contact_email      TEXT,
+    verified           BOOLEAN     NOT NULL DEFAULT false,  -- confirmed real internal provider
+    stage_tags         TEXT[],                              -- drug-discovery stage labels (nullable)
+    contact            TEXT,                                -- website URL or email (read by the app)
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -177,22 +179,74 @@ CREATE POLICY "providers_select_public"
     ON public.providers FOR SELECT
     USING (true);
 
--- Seed: UAB SPARC only — the one real internal provider. External CROs are
--- LLM-generated per project in /api/generate-roadmap, not stored here.
+-- Seed: UAB SPARC — the one real internal provider, modelled as six rows, one
+-- per service area (speciality). Each row carries its own capability, in-house
+-- tools, price and turnaround. This mirrors the live database exactly. External
+-- CROs are LLM-generated per project in /api/generate-roadmap, not stored here.
 INSERT INTO public.providers
-    (name, type, description, capabilities, tools, is_free, estimated_cost, estimated_timeline, website, contact_email)
-SELECT
-    'UAB SPARC',
-    'internal',
-    'Systems Pharmacology AI Research Center at UAB. Provides computational drug-discovery and systems-pharmacology analysis services — pathway and gene-set enrichment, protein-interaction network analysis, network-based biomarker prioritization, single-cell/spatial biomarker discovery, and multi-omics visualization — delivered using the lab''s in-house tool suite.',
-    ARRAY['Pathway & gene-set enrichment analysis','Protein-interaction network analysis','Network-based biomarker prioritization','Single-cell & spatial biomarker discovery','Multi-omics visualization','Drug repositioning / network pharmacology'],
-    ARRAY['PAGER','HAPPI','BEERE','GeneTerrain','WINNER','ProteoLens','C2-Maps','Mondrian Map'],
-    false,
-    '$1,000',
-    '2–4 weeks',
-    'https://sites.uab.edu/sparc',
-    NULL
-WHERE NOT EXISTS (SELECT 1 FROM public.providers WHERE name = 'UAB SPARC');
+    (name, type, speciality, capabilities, tools, estimated_cost, estimated_timeline, is_free, verified, contact)
+SELECT v.name, v.type, v.speciality, v.capabilities, v.tools,
+       v.estimated_cost, v.estimated_timeline, v.is_free, v.verified, v.contact
+FROM (VALUES
+    ('UAB SPARC', 'internal', 'Pathway & gene-set enrichment analysis',
+        ARRAY['Pathway & gene-set enrichment analysis'], ARRAY['PAGER','PAGED','HPD'],
+        '$1,200', '2–3 weeks', false, true, 'https://sites.uab.edu/sparc'),
+    ('UAB SPARC', 'internal', 'Protein-interaction network analysis',
+        ARRAY['Protein-interaction network analysis'], ARRAY['HAPPI','ProteoLens'],
+        '$1,500', '2–4 weeks', false, true, 'https://sites.uab.edu/sparc'),
+    ('UAB SPARC', 'internal', 'Network-based biomarker prioritization',
+        ARRAY['Network-based biomarker prioritization'], ARRAY['WINNER','WIPER','BEERE'],
+        '$1,800', '3–4 weeks', false, true, 'https://sites.uab.edu/sparc'),
+    ('UAB SPARC', 'internal', 'Single-cell & spatial biomarker discovery',
+        ARRAY['Single-cell & spatial biomarker discovery'], ARRAY['PGC','SpatialRSP'],
+        '$2,000', '3–5 weeks', false, true, 'https://sites.uab.edu/sparc'),
+    ('UAB SPARC', 'internal', 'Multi-omics visualization',
+        ARRAY['Multi-omics visualization'], ARRAY['GeneTerrain','Mondrian Map'],
+        '$1,000', '1–2 weeks', false, true, 'https://sites.uab.edu/sparc'),
+    ('UAB SPARC', 'internal', 'Drug repositioning / network pharmacology',
+        ARRAY['Drug repositioning / network pharmacology'], ARRAY['C2-Maps','HOMER'],
+        '$1,600', '2–4 weeks', false, true, 'https://sites.uab.edu/sparc')
+) AS v(name, type, speciality, capabilities, tools,
+       estimated_cost, estimated_timeline, is_free, verified, contact)
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.providers WHERE name = 'UAB SPARC' AND type = 'internal'
+);
+
+
+-- =============================================================================
+-- TABLE: discovery_items
+-- =============================================================================
+-- Research signals (papers, preprints, grants, trials, patents, repos, news)
+-- collected from external APIs by the Python Discovery engine (discover.py),
+-- deduped + relevance-ranked, then upserted by dedup_key. Independent of the
+-- podcast pipeline. Written only by the service-role key; openly readable.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.discovery_items (
+    id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    type           TEXT        NOT NULL,                 -- paper | preprint | grant | trial | patent | repo | news
+    title          TEXT        NOT NULL,
+    description    TEXT        DEFAULT '',
+    source         TEXT        NOT NULL,                 -- PubMed | OpenAlex | Crossref | NIH Reporter | ...
+    url            TEXT,
+    published_date DATE,
+    score          SMALLINT    NOT NULL DEFAULT 1,       -- relevance score 1-5
+    topics         TEXT[]      NOT NULL DEFAULT '{}',
+    dedup_key      TEXT        NOT NULL UNIQUE,          -- stable idempotent upsert key
+    raw            JSONB       NOT NULL DEFAULT '{}',     -- original source payload
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    collected_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.discovery_items ENABLE ROW LEVEL SECURITY;
+
+-- Public read — the Discovery feed is openly browsable.
+CREATE POLICY "discovery_items_select_public"
+    ON public.discovery_items FOR SELECT
+    USING (true);
+
+-- Only the service-role key (backend Discovery engine) may write rows.
+-- (RLS denies anon/authenticated writes by default — no explicit policy needed.)
 
 
 -- =============================================================================
@@ -250,5 +304,8 @@ CREATE INDEX IF NOT EXISTS idx_edges_source              ON public.edges (source
 CREATE INDEX IF NOT EXISTS idx_edges_target              ON public.edges (target_id);
 CREATE INDEX IF NOT EXISTS idx_comments_wiki_id          ON public.comments (wiki_id);
 CREATE INDEX IF NOT EXISTS idx_comments_user_id          ON public.comments (user_id);
+CREATE INDEX IF NOT EXISTS idx_providers_type            ON public.providers (type);
+CREATE INDEX IF NOT EXISTS idx_discovery_items_type      ON public.discovery_items (type);
+CREATE INDEX IF NOT EXISTS idx_discovery_items_collected ON public.discovery_items (collected_at DESC);
 
 
