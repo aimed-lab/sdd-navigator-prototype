@@ -18,6 +18,9 @@ type RawDiscoverItem = Omit<DiscoverItem, "relevance">;
 const DEFAULT_QUERY = "drug discovery AI";
 const FETCH_TIMEOUT_MS = 8000;
 const PER_SOURCE_CAP = 6;
+// When multiple terms are active we fan out 6 sources per term, so cap the
+// number of active terms to keep the total fetch count bounded and fast.
+const MAX_ACTIVE_TERMS = 3;
 
 // ── Date helpers ────────────────────────────────────────────────────────────────
 
@@ -78,10 +81,10 @@ function scoreRelevance(item: RawDiscoverItem, queryTerms: string[]): number {
 // stay on the Python collection engine (backend/agent/discover_collect.py) for the
 // scheduled digest — they're skipped here so they never delay the live page.
 
-async function fetchPubMed(term: string): Promise<RawDiscoverItem[]> {
+async function fetchPubMed(term: string, cap: number): Promise<RawDiscoverItem[]> {
   const searchUrl =
     "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi" +
-    `?db=pubmed&term=${encodeURIComponent(term)}&retmax=${PER_SOURCE_CAP}&sort=date&retmode=json`;
+    `?db=pubmed&term=${encodeURIComponent(term)}&retmax=${cap}&sort=date&retmode=json`;
   const searchRes = await fetch(searchUrl, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!searchRes.ok) throw new Error(`PubMed esearch ${searchRes.status}`);
   const searchData = (await searchRes.json()) as { esearchresult?: { idlist?: string[] } };
@@ -121,10 +124,10 @@ async function fetchPubMed(term: string): Promise<RawDiscoverItem[]> {
     });
 }
 
-async function fetchOpenAlex(term: string): Promise<RawDiscoverItem[]> {
+async function fetchOpenAlex(term: string, cap: number): Promise<RawDiscoverItem[]> {
   const url =
     `https://api.openalex.org/works?search=${encodeURIComponent(term)}` +
-    `&per-page=${PER_SOURCE_CAP}&sort=publication_date:desc`;
+    `&per-page=${cap}&sort=publication_date:desc`;
   const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!res.ok) throw new Error(`OpenAlex ${res.status}`);
   const data = (await res.json()) as {
@@ -167,10 +170,10 @@ async function fetchOpenAlex(term: string): Promise<RawDiscoverItem[]> {
     });
 }
 
-async function fetchCrossref(term: string): Promise<RawDiscoverItem[]> {
+async function fetchCrossref(term: string, cap: number): Promise<RawDiscoverItem[]> {
   const url =
     `https://api.crossref.org/works?query=${encodeURIComponent(term)}` +
-    `&rows=${PER_SOURCE_CAP}&sort=published&order=desc`;
+    `&rows=${cap}&sort=published&order=desc`;
   const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!res.ok) throw new Error(`Crossref ${res.status}`);
   const data = (await res.json()) as {
@@ -207,11 +210,11 @@ async function fetchCrossref(term: string): Promise<RawDiscoverItem[]> {
     });
 }
 
-async function fetchGrantsGov(term: string): Promise<RawDiscoverItem[]> {
+async function fetchGrantsGov(term: string, cap: number): Promise<RawDiscoverItem[]> {
   const res = await fetch("https://api.grants.gov/v1/api/search2", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ keyword: term, oppStatuses: "forecasted|posted", rows: PER_SOURCE_CAP }),
+    body: JSON.stringify({ keyword: term, oppStatuses: "forecasted|posted", rows: cap }),
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Grants.gov ${res.status}`);
@@ -247,10 +250,10 @@ async function fetchGrantsGov(term: string): Promise<RawDiscoverItem[]> {
     });
 }
 
-async function fetchClinicalTrials(term: string): Promise<RawDiscoverItem[]> {
+async function fetchClinicalTrials(term: string, cap: number): Promise<RawDiscoverItem[]> {
   const url =
     "https://clinicaltrials.gov/api/v2/studies" +
-    `?query.term=${encodeURIComponent(term)}&pageSize=${PER_SOURCE_CAP}&sort=LastUpdatePostDate:desc`;
+    `?query.term=${encodeURIComponent(term)}&pageSize=${cap}&sort=LastUpdatePostDate:desc`;
   const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!res.ok) throw new Error(`ClinicalTrials.gov ${res.status}`);
   const data = (await res.json()) as {
@@ -288,14 +291,14 @@ async function fetchClinicalTrials(term: string): Promise<RawDiscoverItem[]> {
     .filter((i) => i.id !== "ct-");
 }
 
-async function fetchGitHubTools(term: string): Promise<RawDiscoverItem[]> {
+async function fetchGitHubTools(term: string, cap: number): Promise<RawDiscoverItem[]> {
   const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
   if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
 
   const q = `${term} stars:>=5`;
   const url =
     `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}` +
-    `&sort=stars&order=desc&per_page=${PER_SOURCE_CAP}`;
+    `&sort=stars&order=desc&per_page=${cap}`;
   const res = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!res.ok) throw new Error(`GitHub search ${res.status}`);
   const data = (await res.json()) as {
@@ -335,9 +338,11 @@ async function fetchGitHubTools(term: string): Promise<RawDiscoverItem[]> {
 // external cache service. It's a comfort window over the live fetch, not a
 // source of truth: a redeploy or serverless cold start just means the next
 // request repopulates it, which is fine since the live fetch is still the
-// fallback. Keyed by the resolved scope (the interest/search term actually
-// used, or the general default for anonymous users), so each scope gets its
-// own cached feed independent of who's asking.
+// fallback. Keyed by the resolved scope — the sorted+joined set of active
+// terms (the interest terms or single search term actually used, or the
+// general default for anonymous users) — so each distinct combination of
+// terms gets its own cached feed independent of who's asking, and the same
+// combination (in any order) reuses one entry.
 const DISCOVER_CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4h — tune here (spec range: 3-6h)
 const DISCOVER_CACHE_PRUNE_AFTER_MS = DISCOVER_CACHE_TTL_MS * 6; // bound Map growth from one-off searches
 
@@ -352,13 +357,13 @@ function pruneDiscoverCache(now: number) {
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 //
-// Progressive rendering note: all six sources are fetched in parallel via
-// Promise.allSettled and the response is returned once they've all settled
-// (each is individually fast/reliable, so the slowest one bounds the total).
-// To upgrade to true progressive rendering later, swap this for a
-// ReadableStream/NDJSON response that pushes each source's items as its
-// promise resolves, and have the client append incrementally instead of
-// waiting for the single JSON payload.
+// Progressive rendering note: every source is fetched in parallel via
+// Promise.allSettled (6 sources × up to MAX_ACTIVE_TERMS terms) and the
+// response is returned once they've all settled (each is individually
+// fast/reliable, so the slowest one bounds the total). To upgrade to true
+// progressive rendering later, swap this for a ReadableStream/NDJSON response
+// that pushes each source's items as its promise resolves, and have the client
+// append incrementally instead of waiting for the single JSON payload.
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -370,29 +375,64 @@ export async function GET(request: NextRequest) {
   const forceRefresh = params.get("refresh") === "1";
 
   const personalized = !qOverride && interests.length > 0;
-  const term = qOverride || interests[0] || DEFAULT_QUERY;
-  const queryTerms = term.toLowerCase().split(/\s+/).filter(Boolean);
-  const cacheKey = term.toLowerCase();
+
+  // Resolve the active terms. A typed search still scopes to that one term
+  // (unchanged). Otherwise blend the user's interests — capped at
+  // MAX_ACTIVE_TERMS so the fan-out stays bounded — falling back to the
+  // general default for anonymous users. Deduped case-insensitively.
+  let activeTerms: string[];
+  if (qOverride) {
+    activeTerms = [qOverride];
+  } else if (interests.length > 0) {
+    const seen = new Set<string>();
+    activeTerms = [];
+    for (const t of interests) {
+      const key = t.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      activeTerms.push(t);
+      if (activeTerms.length >= MAX_ACTIVE_TERMS) break;
+    }
+  } else {
+    activeTerms = [DEFAULT_QUERY];
+  }
+
+  // Per-term fairness: shrink the per-source cap as more terms fan out so no
+  // single term floods the feed. The merge + score/sort below then surfaces
+  // the best across all terms. Single-term queries keep the full cap (6), so
+  // typed search and anonymous default behave exactly as before.
+  const perSourceCap = Math.max(3, Math.ceil(PER_SOURCE_CAP / activeTerms.length));
+
+  // Score against the union of every active term's words, so an item matching
+  // any active term gets the relevance bump (not just the first term's words).
+  const queryTerms = activeTerms.join(" ").toLowerCase().split(/\s+/).filter(Boolean);
+  // Cache key = sorted, joined set of active terms, so the same combination
+  // (in any order) reuses one entry and different combinations stay distinct.
+  const cacheKey = activeTerms.map((t) => t.toLowerCase()).sort().join("|");
 
   const now = Date.now();
   const cached = discoverCache.get(cacheKey);
   const cacheIsFresh = !!cached && now - cached.cachedAt < DISCOVER_CACHE_TTL_MS;
 
+  const queryLabel = activeTerms.join(", ");
+
   if (!forceRefresh && cacheIsFresh) {
     return NextResponse.json(
-      { items: cached!.items, personalized, query: term, cachedAt: cached!.cachedAt, fromCache: true },
+      { items: cached!.items, personalized, query: queryLabel, cachedAt: cached!.cachedAt, fromCache: true },
       { headers: { "Cache-Control": "private, no-store" } }
     );
   }
 
-  const results = await Promise.allSettled([
-    fetchPubMed(term),
-    fetchOpenAlex(term),
-    fetchCrossref(term),
-    fetchGrantsGov(term),
-    fetchClinicalTrials(term),
-    fetchGitHubTools(term),
-  ]);
+  const results = await Promise.allSettled(
+    activeTerms.flatMap((t) => [
+      fetchPubMed(t, perSourceCap),
+      fetchOpenAlex(t, perSourceCap),
+      fetchCrossref(t, perSourceCap),
+      fetchGrantsGov(t, perSourceCap),
+      fetchClinicalTrials(t, perSourceCap),
+      fetchGitHubTools(t, perSourceCap),
+    ])
+  );
 
   const seen = new Set<string>();
   const items: DiscoverItem[] = [];
@@ -414,7 +454,7 @@ export async function GET(request: NextRequest) {
   discoverCache.set(cacheKey, { items, cachedAt: now });
 
   return NextResponse.json(
-    { items, personalized, query: term, cachedAt: now, fromCache: false },
+    { items, personalized, query: queryLabel, cachedAt: now, fromCache: false },
     // Caching is handled by our own scope-keyed store above, not HTTP/CDN caching —
     // that would otherwise fight with `refresh=1` bypassing the cache on demand.
     { headers: { "Cache-Control": "private, no-store" } }

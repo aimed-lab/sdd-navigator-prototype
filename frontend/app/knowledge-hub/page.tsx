@@ -60,6 +60,20 @@ const DISCOVER_FILTERS = [
   { value: "tool",  label: "Tools" },
 ] as const;
 
+// Curated drug-discovery topics offered as one-click feed scopes. Each value is
+// passed verbatim as the `q` scope to /api/discover, so they read as real search
+// terms. Merged at render time with the signed-in user's saved interests.
+const DISCOVER_TOPICS = [
+  "PHGDH inhibitors",
+  "Alzheimer's disease",
+  "Oncology targets",
+  "ADMET / pharmacokinetics",
+  "CRISPR screens",
+  "Protein-protein interactions",
+  "Antibody design",
+  "Multi-omics biomarkers",
+] as const;
+
 // Debounce a free-text search query before it triggers a live re-fetch.
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -87,6 +101,7 @@ function DiscoverTab({ user }: { user: unknown }) {
   const [refreshing, setRefreshing]   = useState(false);
   const [filter, setFilter]           = useState("all");
   const [search, setSearch]           = useState("");
+  const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [page, setPage]               = useState(1);
   const [interests, setInterests]     = useState<string[]>([]);
   const [personalized, setPersonalized] = useState(false);
@@ -132,6 +147,8 @@ function DiscoverTab({ user }: { user: unknown }) {
     const params = new URLSearchParams();
     if (debouncedSearch.trim()) {
       params.set("q", debouncedSearch.trim());
+    } else if (activeTopic) {
+      params.set("q", activeTopic);
     } else if (interests.length > 0) {
       params.set("interests", interests.join(","));
     }
@@ -152,12 +169,34 @@ function DiscoverTab({ user }: { user: unknown }) {
         if (force) setRefreshing(false);
         else setLoading(false);
       });
-  }, [debouncedSearch, interests]);
+  }, [debouncedSearch, activeTopic, interests]);
 
   useEffect(() => { loadFeed(false); }, [loadFeed]);
 
   // Reset pagination whenever a new result set comes in or the type filter changes
-  useEffect(() => { setPage(1); }, [filter, debouncedSearch]);
+  useEffect(() => { setPage(1); }, [filter, debouncedSearch, activeTopic]);
+
+  // Topic chips = curated list UNION the user's saved interests, deduped
+  // case-insensitively (curated wins on a tie, preserving its display casing).
+  const topicChips = (() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const t of [...DISCOVER_TOPICS, ...interests]) {
+      const key = t.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(t);
+    }
+    return out;
+  })();
+
+  // Clicking a topic sets it as the feed scope; clicking the active one again
+  // deselects (back to interest-scoped / default). Picking a topic clears any
+  // typed search so precedence (search > topic > interests) stays unambiguous.
+  const onTopicClick = (topic: string) => {
+    setActiveTopic((current) => (current === topic ? null : topic));
+    setSearch("");
+  };
 
   // Search already drives the live query above — the type pills are a fast,
   // client-side filter over whatever the live fetch returned.
@@ -227,7 +266,12 @@ function DiscoverTab({ user }: { user: unknown }) {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                // Typing a free-text search takes precedence over a picked topic;
+                // clear the topic so the active scope is unambiguous.
+                if (e.target.value.trim()) setActiveTopic(null);
+              }}
               placeholder="Search papers, grants, trials, tools..."
               className="w-full pl-12 pr-12 py-4 bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all shadow-sm font-body-md text-body-md"
             />
@@ -243,6 +287,35 @@ function DiscoverTab({ user }: { user: unknown }) {
                 <span className="material-symbols-outlined">close</span>
               </button>
             )}
+          </div>
+
+          {/* Topic chips — pick a topic to scope the live feed (search > topic > interests) */}
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant mb-2">
+              Customize your feed
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {topicChips.map((topic) => {
+                const selected = activeTopic === topic;
+                return (
+                  <button
+                    key={topic}
+                    onClick={() => onTopicClick(topic)}
+                    aria-pressed={selected}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full font-medium font-label-sm text-label-sm transition-all ${
+                      selected
+                        ? "bg-primary text-white border border-primary shadow-sm"
+                        : "border border-outline-variant text-on-surface-variant hover:bg-surface-container-high"
+                    }`}
+                  >
+                    {selected && (
+                      <span className="material-symbols-outlined text-[14px]">check</span>
+                    )}
+                    {topic}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Filter pills */}
