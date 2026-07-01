@@ -293,6 +293,43 @@ CREATE POLICY "comments_delete_own"
 
 
 -- =============================================================================
+-- TABLE: saved_items
+-- =============================================================================
+-- Per-user bookmarks of Discovery feed items. item_data stores the whole
+-- DiscoverItem payload as JSONB so the "Saved" view can re-render cards without
+-- re-fetching the live external sources. UNIQUE (user_id, item_id) prevents the
+-- same item being saved twice. Fully private — users only ever see their own.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.saved_items (
+    id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id    UUID        NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+    item_id    TEXT        NOT NULL,                 -- DiscoverItem.id (e.g. "pubmed-12345")
+    item_data  JSONB       NOT NULL DEFAULT '{}',    -- the full DiscoverItem, for re-render
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (user_id, item_id)                        -- can't bookmark the same item twice
+);
+
+ALTER TABLE public.saved_items ENABLE ROW LEVEL SECURITY;
+
+-- Users can read, insert, and delete only their OWN saved items.
+CREATE POLICY "saved_items_select_own"
+    ON public.saved_items FOR SELECT
+    TO authenticated
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "saved_items_insert_own"
+    ON public.saved_items FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "saved_items_delete_own"
+    ON public.saved_items FOR DELETE
+    TO authenticated
+    USING (auth.uid() = user_id);
+
+
+-- =============================================================================
 -- INDEXES
 -- =============================================================================
 -- Additional indexes on columns used in frequent queries / filters.
@@ -307,5 +344,6 @@ CREATE INDEX IF NOT EXISTS idx_comments_user_id          ON public.comments (use
 CREATE INDEX IF NOT EXISTS idx_providers_type            ON public.providers (type);
 CREATE INDEX IF NOT EXISTS idx_discovery_items_type      ON public.discovery_items (type);
 CREATE INDEX IF NOT EXISTS idx_discovery_items_collected ON public.discovery_items (collected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_saved_items_user           ON public.saved_items (user_id, created_at DESC);
 
 

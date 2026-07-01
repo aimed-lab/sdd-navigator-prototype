@@ -109,6 +109,8 @@ function DiscoverTab({ user }: { user: unknown }) {
   const [cachedAt, setCachedAt]       = useState<number | null>(null);
   const [showPersonalize, setShowPersonalize] = useState(false);
   const [newChip, setNewChip]         = useState("");
+  const [savedIds, setSavedIds]       = useState<Set<string>>(new Set());
+  const [savedItems, setSavedItems]   = useState<DiscoverItem[]>([]);
   const PAGE_SIZE = 9;
 
   const debouncedSearch = useDebouncedValue(search, 500);
@@ -126,6 +128,28 @@ function DiscoverTab({ user }: { user: unknown }) {
       .eq("id", uid)
       .maybeSingle()
       .then(({ data }) => setInterests(data?.interests ?? []));
+  }, [user]);
+
+  // Load the user's saved items once so bookmark state is correct across
+  // sessions and the "Saved" view can render straight from stored item_data
+  // (no re-fetch of the live sources). Cleared on logout.
+  useEffect(() => {
+    if (!user) {
+      setSavedIds(new Set());
+      setSavedItems([]);
+      return;
+    }
+    const uid = (user as { id: string }).id;
+    supabase
+      .from("saved_items")
+      .select("item_id, item_data")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        const rows = (data ?? []) as { item_id: string; item_data: DiscoverItem }[];
+        setSavedIds(new Set(rows.map((r) => r.item_id)));
+        setSavedItems(rows.map((r) => r.item_data).filter(Boolean));
+      });
   }, [user]);
 
   // Guards against out-of-order responses clobbering newer ones — e.g. React
@@ -204,6 +228,33 @@ function DiscoverTab({ user }: { user: unknown }) {
     saveInterests(interests.filter((i) => i !== kw));
   };
 
+  // Optimistic, fire-and-forget bookmark toggle. UI updates immediately; the
+  // Supabase write persists it. The unique (user_id, item_id) constraint makes
+  // a duplicate insert a no-op-level error we can safely ignore.
+  const toggleSave = useCallback((item: DiscoverItem) => {
+    if (!user) return;
+    const uid = (user as { id: string }).id;
+    const isSaved = savedIds.has(item.id);
+
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (isSaved) next.delete(item.id);
+      else next.add(item.id);
+      return next;
+    });
+    setSavedItems((prev) =>
+      isSaved
+        ? prev.filter((i) => i.id !== item.id)
+        : prev.some((i) => i.id === item.id) ? prev : [item, ...prev],
+    );
+
+    if (isSaved) {
+      supabase.from("saved_items").delete().eq("user_id", uid).eq("item_id", item.id).then(() => {});
+    } else {
+      supabase.from("saved_items").insert({ user_id: uid, item_id: item.id, item_data: item }).then(() => {});
+    }
+  }, [user, savedIds]);
+
   // One-click curated scopes. The signed-in user's own interests are managed
   // separately as editable chips (see "Your interests" below), so they're no
   // longer merged in here — this list stays the fixed "explore more" set.
@@ -217,12 +268,18 @@ function DiscoverTab({ user }: { user: unknown }) {
     setSearch("");
   };
 
-  // Search already drives the live query above — the type pills are a fast,
+  // "Saved" is a special pill that shows the user's bookmarked items straight
+  // from saved_items (no live fetch). Otherwise the type pills are a fast,
   // client-side filter over whatever the live fetch returned.
-  const filtered = items.filter((item) => filter === "all" || item.type === filter);
+  const savedView = filter === "saved";
+  const filtered = savedView
+    ? savedItems
+    : items.filter((item) => filter === "all" || item.type === filter);
 
   const shown   = filtered.slice(0, page * PAGE_SIZE);
-  const hasMore = shown.length < filtered.length;
+  const hasMore  = shown.length < filtered.length;
+  // The live-fetch skeleton only applies to live views, never the saved list.
+  const viewLoading = loading && !savedView;
 
   return (
     <>
@@ -432,6 +489,25 @@ function DiscoverTab({ user }: { user: unknown }) {
                 {f.label}
               </button>
             ))}
+            {/* Saved view — logged-in only; renders bookmarked items from the DB */}
+            {Boolean(user) && (
+              <button
+                onClick={() => setFilter("saved")}
+                className={`flex items-center gap-1.5 px-5 py-2 rounded-full font-medium font-label-sm text-label-sm transition-all ${
+                  savedView
+                    ? "bg-primary text-white shadow-sm"
+                    : "border border-outline-variant text-on-surface-variant hover:bg-surface-container-high"
+                }`}
+              >
+                <span
+                  className="material-symbols-outlined text-[16px]"
+                  style={{ fontVariationSettings: savedView ? "'FILL' 1" : "'FILL' 0" }}
+                >
+                  bookmark
+                </span>
+                Saved{savedIds.size > 0 ? ` (${savedIds.size})` : ""}
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -439,7 +515,7 @@ function DiscoverTab({ user }: { user: unknown }) {
       {/* Discovery grid */}
       <section className="px-gutter max-w-[1280px] mx-auto pb-xl">
         {/* Loading skeletons */}
-        {loading && (
+        {viewLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonCard key={i} />
@@ -448,32 +524,40 @@ function DiscoverTab({ user }: { user: unknown }) {
         )}
 
         {/* No results */}
-        {!loading && shown.length === 0 && (
+        {!viewLoading && shown.length === 0 && (
           <div className="py-20 flex flex-col items-center justify-center text-center">
             <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">
-              search_off
+              {savedView ? "bookmark" : "search_off"}
             </span>
             <h3 className="font-headline-md text-headline-md text-on-surface mb-2">
-              No results found
+              {savedView ? "No saved items yet" : "No results found"}
             </h3>
             <p className="text-on-surface-variant mb-6">
-              Try adjusting your filters or search keywords.
+              {savedView
+                ? "Tap the bookmark on any card to save it here for later."
+                : "Try adjusting your filters or search keywords."}
             </p>
             <button
               onClick={() => { setFilter("all"); setSearch(""); }}
               className="px-8 py-3 bg-primary text-white rounded-full font-bold shadow-sm hover:bg-primary-container transition-all"
             >
-              Clear all filters
+              {savedView ? "Back to feed" : "Clear all filters"}
             </button>
           </div>
         )}
 
         {/* Cards */}
-        {!loading && shown.length > 0 && (
+        {!viewLoading && shown.length > 0 && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {shown.map((item) => (
-                <DiscoverCard key={item.id} item={item} />
+                <DiscoverCard
+                  key={item.id}
+                  item={item}
+                  canSave={Boolean(user)}
+                  saved={savedIds.has(item.id)}
+                  onToggleSave={toggleSave}
+                />
               ))}
             </div>
 

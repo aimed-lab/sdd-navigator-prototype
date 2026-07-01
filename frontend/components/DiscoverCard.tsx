@@ -40,7 +40,20 @@ export function SkeletonCard() {
   );
 }
 
-export function DiscoverCard({ item }: { item: DiscoverItem }) {
+export function DiscoverCard({
+  item,
+  canSave = false,
+  saved = false,
+  onToggleSave,
+}: {
+  item: DiscoverItem;
+  // Save/bookmark is opt-in: surfaces that pass these (the Discover tab, for a
+  // logged-in user) get a toggle; others (e.g. the Navigator radar) render as
+  // before. canSave gates visibility so logged-out users never see the button.
+  canSave?: boolean;
+  saved?: boolean;
+  onToggleSave?: (item: DiscoverItem) => void;
+}) {
   const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.paper;
   const abbr = item.source
     .split(/\s+/)
@@ -62,8 +75,28 @@ export function DiscoverCard({ item }: { item: DiscoverItem }) {
           >
             {cfg.label}
           </span>
-          <div className="w-6 h-6 rounded bg-surface-container-high flex items-center justify-center text-[10px] font-bold text-on-surface-variant shadow-inner shrink-0">
-            {abbr}
+          <div className="flex items-center gap-2 shrink-0">
+            {canSave && onToggleSave && (
+              <button
+                onClick={() => onToggleSave(item)}
+                aria-label={saved ? "Remove from saved" : "Save item"}
+                aria-pressed={saved}
+                className="w-6 h-6 flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors"
+              >
+                <span
+                  className="material-symbols-outlined text-[20px]"
+                  style={{
+                    color: saved ? cfg.color : undefined,
+                    fontVariationSettings: saved ? "'FILL' 1" : "'FILL' 0",
+                  }}
+                >
+                  bookmark
+                </span>
+              </button>
+            )}
+            <div className="w-6 h-6 rounded bg-surface-container-high flex items-center justify-center text-[10px] font-bold text-on-surface-variant shadow-inner">
+              {abbr}
+            </div>
           </div>
         </div>
         <h3 className="font-bold text-on-surface mb-2 line-clamp-2 hover:text-primary transition-colors cursor-pointer leading-snug">
