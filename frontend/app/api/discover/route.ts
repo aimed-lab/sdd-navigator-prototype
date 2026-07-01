@@ -75,6 +75,85 @@ function scoreRelevance(item: RawDiscoverItem, queryTerms: string[]): number {
   return Math.max(1, Math.min(5, Math.round(score)));
 }
 
+// ── Quality filter ───────────────────────────────────────────────────────────
+// Applied to each fetched item BEFORE dedupe/score, per-source in the combine
+// step so one over-aggressive rule can never empty the whole feed. Every rule
+// is conservative: when in doubt, keep the item.
+
+// Crossref `type` values that aren't research articles (book front-matter,
+// chapters, indices, etc.). Preferred signal — checked at fetch time where the
+// raw API field is available; the title-pattern check below is the fallback.
+const CROSSREF_NON_ARTICLE_TYPES = new Set([
+  "book", "book-chapter", "book-part", "book-section", "book-component",
+  "book-set", "book-series", "edited-book", "monograph", "reference-book",
+  "reference-entry", "other-front-matter", "back-matter", "front-matter",
+]);
+
+// Obvious book front-matter titles (case-insensitive, exact) + "Chapter N …".
+const FRONT_MATTER_EXACT = new Set([
+  "index", "contents", "table of contents", "preface", "foreword",
+  "conclusion", "references", "bibliography", "appendix",
+]);
+const CHAPTER_RE = /^chapter\s+\d+\b/i;
+
+function looksLikeFrontMatter(title: string): boolean {
+  const t = title.trim().toLowerCase();
+  if (FRONT_MATTER_EXACT.has(t)) return true;
+  if (CHAPTER_RE.test(t)) return true;
+  return false;
+}
+
+// Non-biomedical domain terms that show up in pure keyword-collision junk
+// (e.g. "inhibitor of coal oxidation", "anti-corrosion steel"). Kept narrow
+// and unambiguous so we never clip real biomedical work.
+const NON_BIOMED_TERMS = [
+  "coal", "corrosion", "anti-corrosion", "anticorrosion",
+  "steel", "alloy", "asphalt", "bitumen", "concrete", "masonry",
+  "petroleum", "crude oil", "gasoline", "diesel", "lubricant",
+  "hydrate agglomeration", "wax deposition", "scale inhibitor", "welding",
+  "galvaniz", "cathodic protection", "froth flotation",
+];
+
+// Biomedical anchors — presence of any of these overrides a non-biomed hit,
+// so genuinely biomedical work (e.g. "pulmonary surfactant") is never dropped.
+const BIOMED_TERMS = [
+  "cell", "protein", "gene", "genom", "enzyme", "cancer", "tumor", "tumour",
+  "disease", "patient", "clinical", "therap", "receptor", "molecular",
+  "biolog", "neuro", "brain", "alzheimer", "parkinson", "metaboli", "kinase",
+  "mutation", "pathway", "in vivo", "in vitro", "mouse", "mice", " rat ",
+  "human", "tissue", "blood", "immune", "antibody", "pharmac", "medic",
+  "health", "drug", "peptide", "antigen", "vaccine", "pathogen", "bacteri",
+  "virus", "viral", "biomarker", "physiolog", "clinic",
+];
+
+function isOffDomain(text: string): boolean {
+  const hasNonBiomed = NON_BIOMED_TERMS.some((t) => text.includes(t));
+  if (!hasNonBiomed) return false; // nothing suspicious — keep
+  const hasBiomed = BIOMED_TERMS.some((t) => text.includes(t));
+  return !hasBiomed; // drop only when clearly off-domain with no biomedical anchor
+}
+
+const FUTURE_DATE_TOLERANCE_MS = 60 * 86_400_000; // ~60 days
+
+function passesQualityFilter(item: RawDiscoverItem): boolean {
+  // 1. Book front-matter masquerading as papers (title-pattern fallback; the
+  //    Crossref `type` filter at fetch time is the primary guard).
+  if (item.type === "paper" && looksLikeFrontMatter(item.title)) return false;
+
+  // 2. Date sanity — drop far-future placeholder dates for papers/tools/trials.
+  //    Grants stay lenient: Grants.gov forecasted opportunities are legitimately
+  //    dated in the future.
+  if (item.type !== "grant") {
+    const t = new Date(item.dateISO).getTime();
+    if (!isNaN(t) && t - Date.now() > FUTURE_DATE_TOLERANCE_MS) return false;
+  }
+
+  // 3. Biomedical relevance guard — cut obvious off-domain keyword collisions.
+  if (isOffDomain(`${item.title} ${item.description}`.toLowerCase())) return false;
+
+  return true;
+}
+
 // ── Source fetchers ───────────────────────────────────────────────────────────
 // Fast + reliable only — PubMed, OpenAlex, Crossref, Grants.gov, ClinicalTrials.gov,
 // GitHub. Slower/blockable sources (Semantic Scholar, news RSS, bioRxiv, patents)
@@ -180,6 +259,7 @@ async function fetchCrossref(term: string, cap: number): Promise<RawDiscoverItem
     message?: {
       items?: {
         title?: string[];
+        type?: string;
         DOI?: string;
         URL?: string;
         "container-title"?: string[];
@@ -190,6 +270,9 @@ async function fetchCrossref(term: string, cap: number): Promise<RawDiscoverItem
 
   return (data.message?.items ?? [])
     .filter((w) => (w.title ?? [])[0])
+    // Primary front-matter guard: drop non-article Crossref types (books,
+    // chapters, indices). The title-pattern fallback lives in passesQualityFilter.
+    .filter((w) => !CROSSREF_NON_ARTICLE_TYPES.has((w.type ?? "").toLowerCase()))
     .map((w) => {
       const parts = w.issued?.["date-parts"]?.[0] ?? [];
       const isoDate = parts.length
@@ -439,6 +522,7 @@ export async function GET(request: NextRequest) {
   for (const r of results) {
     if (r.status !== "fulfilled") continue; // per-source isolation — one failure never breaks the rest
     for (const raw of r.value) {
+      if (!passesQualityFilter(raw)) continue; // drop junk before dedupe/score
       const key = dedupeKey(raw);
       if (seen.has(key)) continue;
       seen.add(key);
