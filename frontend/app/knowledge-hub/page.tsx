@@ -107,6 +107,8 @@ function DiscoverTab({ user }: { user: unknown }) {
   const [personalized, setPersonalized] = useState(false);
   const [fromCache, setFromCache]     = useState(false);
   const [cachedAt, setCachedAt]       = useState<number | null>(null);
+  const [showPersonalize, setShowPersonalize] = useState(false);
+  const [newChip, setNewChip]         = useState("");
   const PAGE_SIZE = 9;
 
   const debouncedSearch = useDebouncedValue(search, 500);
@@ -176,19 +178,36 @@ function DiscoverTab({ user }: { user: unknown }) {
   // Reset pagination whenever a new result set comes in or the type filter changes
   useEffect(() => { setPage(1); }, [filter, debouncedSearch, activeTopic]);
 
-  // Topic chips = curated list UNION the user's saved interests, deduped
-  // case-insensitively (curated wins on a tie, preserving its display casing).
-  const topicChips = (() => {
-    const seen = new Set<string>();
-    const out: string[] = [];
-    for (const t of [...DISCOVER_TOPICS, ...interests]) {
-      const key = t.trim().toLowerCase();
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
-      out.push(t);
-    }
-    return out;
-  })();
+  // Persist the user's interests to users.interests and re-scope the feed.
+  // Clearing search/topic makes the interest-driven (multi-term) feed the active
+  // scope so the change is immediately visible; setInterests re-fires loadFeed.
+  const saveInterests = useCallback((next: string[]) => {
+    setInterests(next);
+    setActiveTopic(null);
+    setSearch("");
+    if (!user) return;
+    const uid = (user as { id: string }).id;
+    // Fire-and-forget: the feed already re-scoped locally; a failed write just
+    // means it won't persist across reloads, which isn't worth blocking the UI.
+    supabase.from("users").update({ interests: next }).eq("id", uid).then(() => {});
+  }, [user]);
+
+  const addInterest = (raw: string) => {
+    const kw = raw.trim();
+    if (!kw) return;
+    if (interests.some((i) => i.toLowerCase() === kw.toLowerCase())) { setNewChip(""); return; }
+    saveInterests([...interests, kw]);
+    setNewChip("");
+  };
+
+  const removeInterest = (kw: string) => {
+    saveInterests(interests.filter((i) => i !== kw));
+  };
+
+  // One-click curated scopes. The signed-in user's own interests are managed
+  // separately as editable chips (see "Your interests" below), so they're no
+  // longer merged in here — this list stays the fixed "explore more" set.
+  const topicChips = DISCOVER_TOPICS;
 
   // Clicking a topic sets it as the feed scope; clicking the active one again
   // deselects (back to interest-scoped / default). Picking a topic clears any
@@ -222,6 +241,86 @@ function DiscoverTab({ user }: { user: unknown }) {
                 Sign in to personalize
               </button>
             </Link>
+          </div>
+        </section>
+      )}
+
+      {/* Personalization prompt — signed-in users who haven't set interests yet */}
+      {user && interests.length === 0 && (
+        <section className="px-gutter max-w-[1280px] mx-auto mb-8">
+          <div className="bg-primary p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-6 shadow-md">
+            <div className="text-white text-center md:text-left">
+              <h2 className="font-headline-md text-headline-md mb-1">Personalize your feed</h2>
+              <p className="font-body-md text-body-md opacity-90">
+                Answer three quick questions and we&apos;ll tune your Discover feed to your research with AI.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowPersonalize(true)}
+              className="shrink-0 whitespace-nowrap px-8 py-3 bg-white text-primary font-bold rounded-lg hover:bg-surface-container-low transition-colors shadow-sm flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+              Personalize your feed
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Editable interest chips — the user's saved interests that drive the
+          multi-term feed. Remove one or add your own; both re-scope instantly. */}
+      {user && interests.length > 0 && (
+        <section className="px-gutter max-w-[1280px] mx-auto mb-8">
+          <div className="bg-secondary-container/40 border border-secondary-container rounded-xl p-5">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
+                <h3 className="font-bold text-on-surface text-body-md">Your interests</h3>
+                <span className="text-[11px] text-on-surface-variant">— your feed blends these</span>
+              </div>
+              <button
+                onClick={() => setShowPersonalize(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-primary text-primary text-[11px] font-bold hover:bg-primary/5 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+                Redo with AI
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2 items-center">
+              {interests.map((kw) => (
+                <span
+                  key={kw}
+                  className="flex items-center gap-1.5 pl-4 pr-2 py-2 rounded-full bg-primary text-white font-medium font-label-sm text-label-sm shadow-sm"
+                >
+                  {kw}
+                  <button
+                    onClick={() => removeInterest(kw)}
+                    aria-label={`Remove ${kw}`}
+                    className="flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </span>
+              ))}
+              {/* Add-your-own input */}
+              <div className="flex items-center gap-1 rounded-full border border-outline-variant bg-surface-container-lowest pl-3 pr-1 py-1">
+                <input
+                  type="text"
+                  value={newChip}
+                  onChange={(e) => setNewChip(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addInterest(newChip); } }}
+                  placeholder="Add a topic…"
+                  className="bg-transparent outline-none text-label-sm w-32 placeholder:text-on-surface-variant"
+                />
+                <button
+                  onClick={() => addInterest(newChip)}
+                  disabled={!newChip.trim()}
+                  aria-label="Add topic"
+                  className="flex items-center justify-center w-7 h-7 rounded-full text-primary hover:bg-primary/10 transition-colors disabled:opacity-40"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add</span>
+                </button>
+              </div>
+            </div>
           </div>
         </section>
       )}
@@ -292,7 +391,7 @@ function DiscoverTab({ user }: { user: unknown }) {
           {/* Topic chips — pick a topic to scope the live feed (search > topic > interests) */}
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant mb-2">
-              Customize your feed
+              Explore more topics
             </p>
             <div className="flex flex-wrap gap-2">
               {topicChips.map((topic) => {
@@ -391,7 +490,177 @@ function DiscoverTab({ user }: { user: unknown }) {
           </>
         )}
       </section>
+
+      {/* Guided AI personalization form */}
+      {showPersonalize && (
+        <PersonalizeModal
+          onClose={() => setShowPersonalize(false)}
+          onSaved={(keywords) => {
+            saveInterests(keywords); // replace with the freshly extracted set + re-scope
+            setShowPersonalize(false);
+          }}
+        />
+      )}
     </>
+  );
+}
+
+// ── Guided personalization modal ────────────────────────────────────────────────
+//
+// Three short questions → /api/extract-interests (Groq) → clean keyword array.
+// It's a form, not a chatbot: the parent saves the result to users.interests and
+// the existing multi-term feed engine re-scopes automatically.
+
+function PersonalizeModal({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void;
+  onSaved: (keywords: string[]) => void;
+}) {
+  const [mounted, setMounted]       = useState(false);
+  const [field, setField]           = useState("");
+  const [working, setWorking]       = useState("");
+  const [topics, setTopics]         = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError]           = useState<string | null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  const canSubmit = Boolean(field.trim() || working.trim() || topics.trim());
+
+  const submit = async () => {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/extract-interests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ field: field.trim(), working: working.trim(), topics: topics.trim() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { keywords?: string[]; error?: string };
+      if (!res.ok || !Array.isArray(data.keywords) || data.keywords.length === 0) {
+        throw new Error(data.error || "Couldn't extract keywords. Please try again.");
+      }
+      onSaved(data.keywords);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 flex items-center justify-center p-4"
+      style={{ zIndex: 999999, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
+      onClick={submitting ? undefined : onClose}
+    >
+      <div
+        className="w-full max-w-lg bg-white rounded-2xl overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="h-1.5 w-full bg-primary" />
+        <div className="p-8">
+          <div className="flex justify-between items-start mb-1">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">auto_awesome</span>
+              <h2 className="font-headline-md text-headline-md text-on-surface leading-tight">
+                Personalize your feed
+              </h2>
+            </div>
+            <button
+              onClick={onClose}
+              disabled={submitting}
+              className="text-outline hover:text-on-surface transition-colors p-1 shrink-0 disabled:opacity-40"
+              aria-label="Close"
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <p className="font-body-md text-body-md text-on-surface-variant mb-6">
+            Answer a few questions — AI turns them into search keywords that scope your Discover feed.
+          </p>
+
+          <div className="space-y-5">
+            <div>
+              <label className="block text-label-sm font-bold text-on-surface mb-1.5">
+                What&apos;s your field?
+              </label>
+              <input
+                type="text"
+                value={field}
+                onChange={(e) => setField(e.target.value)}
+                placeholder="e.g. computational biology, medicinal chemistry"
+                className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md"
+              />
+            </div>
+            <div>
+              <label className="block text-label-sm font-bold text-on-surface mb-1.5">
+                What are you working on right now?
+              </label>
+              <textarea
+                value={working}
+                onChange={(e) => setWorking(e.target.value)}
+                rows={2}
+                placeholder="e.g. finding inhibitors for PHGDH in Alzheimer's disease"
+                className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md resize-none"
+              />
+            </div>
+            <div>
+              <label className="block text-label-sm font-bold text-on-surface mb-1.5">
+                Any specific topics you want to follow? <span className="font-normal text-on-surface-variant">(optional)</span>
+              </label>
+              <textarea
+                value={topics}
+                onChange={(e) => setTopics(e.target.value)}
+                rows={2}
+                placeholder="e.g. protein aggregation, tau phosphorylation, CRISPR screens"
+                className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md resize-none"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <p className="mt-4 text-body-sm text-error flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[16px]">error</span>
+              {error}
+            </p>
+          )}
+
+          <div className="flex gap-3 pt-6">
+            <button
+              onClick={submit}
+              disabled={!canSubmit || submitting}
+              className="flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-primary text-white hover:bg-primary-container transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
+            >
+              {submitting ? (
+                <>
+                  <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  Extracting keywords…
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+                  Generate my feed
+                </>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              disabled={submitting}
+              className="px-6 py-3 rounded-xl font-bold text-sm border border-outline-variant hover:bg-surface-container-low transition-colors text-on-surface-variant disabled:opacity-40"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
