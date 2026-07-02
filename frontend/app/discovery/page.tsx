@@ -446,7 +446,7 @@ function DiscoverTab({ user }: { user: unknown }) {
               </p>
             </div>
           </div>
-          <Link href="/login?callbackUrl=/knowledge-hub" className="shrink-0">
+          <Link href="/login?callbackUrl=/discovery" className="shrink-0">
             <button className="px-8 py-2 bg-primary text-on-primary text-sm font-medium rounded-full hover:opacity-90 transition-all active:scale-95">
               Log in
             </button>

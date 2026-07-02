@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
+import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -44,52 +44,36 @@ function researcherAvatarColor(name: string) {
   return RESEARCHER_AVATAR_COLORS[name.charCodeAt(0) % RESEARCHER_AVATAR_COLORS.length];
 }
 
-// ── Profile banner ────────────────────────────────────────────────────────────
+// ── "Be one of the first" invitation card — real link to /profile/setup ──────────
+// Used both as the trailing grid cell and as the empty-directory state (when there
+// are zero public researchers). Never seeds fake profiles.
 
-function ProfileBanner({ user }: { user: unknown }) {
-  const [isPublic, setIsPublic] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    const uid = (user as { id: string }).id;
-    supabase
-      .from("users")
-      .select("is_public")
-      .eq("id", uid)
-      .maybeSingle()
-      .then(({ data }) => {
-        setIsPublic(data?.is_public ?? false);
-      });
-  }, [user]);
-
-  if (!user || isPublic === null || isPublic === true) return null;
-
+function InvitationCard() {
   return (
-    <section className="px-gutter max-w-[1280px] mx-auto mb-6">
-      <div className="flex items-center justify-between gap-4 px-5 py-3 bg-secondary-container/30 border border-secondary-container rounded-xl">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary">person_search</span>
-          <p className="text-sm text-on-surface font-medium">
-            Want other researchers to find you?{" "}
-            <span className="text-on-surface-variant">Complete your researcher profile.</span>
-          </p>
+    <Link href="/profile/setup" className="h-full">
+      <div className="bg-surface-container-highest/30 border-2 border-dashed border-outline-variant rounded-xl p-6 flex flex-col items-center justify-center text-center min-h-[320px] h-full hover:bg-surface-container transition-colors">
+        <div className="w-16 h-16 rounded-full bg-surface-container-lowest border border-outline-variant flex items-center justify-center mb-6">
+          <span className="material-symbols-outlined text-primary text-[32px]">person_add</span>
         </div>
-        <Link href="/profile/setup">
-          <button className="shrink-0 px-4 py-2 bg-primary text-white text-xs font-bold rounded-full hover:opacity-90 transition-all">
-            Set up profile →
-          </button>
-        </Link>
+        <h3 className="font-headline-md text-headline-md text-on-surface mb-2">Be one of the first</h3>
+        <p className="font-body-md text-body-md text-on-surface-variant max-w-sm mb-6">
+          Create your researcher profile and help build the network for the future of AI drug discovery.
+        </p>
+        <span className="text-primary text-sm font-bold flex items-center gap-1 hover:underline">
+          Get Started
+          <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+        </span>
       </div>
-    </section>
+    </Link>
   );
 }
 
-// ── Researchers Tab ───────────────────────────────────────────────────────────
+// ── Researchers directory ─────────────────────────────────────────────────────
 
 const AFFILIATION_FILTERS = ["All", "Academic", "Industry", "Student"] as const;
 type AffiliationFilter = (typeof AFFILIATION_FILTERS)[number];
 
-function ResearchersTab() {
+function ResearchersTab({ user }: { user: unknown }) {
   const [researchers, setResearchers] = useState<ResearcherCard[]>([]);
   const [workCounts, setWorkCounts] = useState<Map<string, WorkCount>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -144,59 +128,79 @@ function ResearchersTab() {
     return matchSearch && matchAff;
   });
 
-  if (loading) {
-    return (
-      <section className="px-gutter max-w-[1280px] mx-auto pb-xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-xl border border-outline-variant/40 p-lg animate-pulse h-64"
-            />
-          ))}
-        </div>
-      </section>
-    );
-  }
+  const filtersActive = Boolean(search) || affFilter !== "All";
 
   return (
     <>
-      {/* Search + filter bar */}
-      <section className="px-gutter max-w-[1280px] mx-auto mb-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-md">
-          <div className="relative w-full md:max-w-xl">
-            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">
-              search
-            </span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, institution, or research area…"
-              className="w-full pl-12 pr-4 py-3 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md shadow-sm"
-            />
-          </div>
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-            {AFFILIATION_FILTERS.map((f) => (
+      {/* Search & filters */}
+      <section className="mb-10 space-y-6">
+        <div className="relative max-w-2xl">
+          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">
+            search
+          </span>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, research area, affiliation…"
+            className="w-full pl-12 pr-4 py-4 bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-outline font-body-md text-body-md"
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mr-2">
+            Filters:
+          </span>
+          {AFFILIATION_FILTERS.map((f) => {
+            const active = affFilter === f;
+            return (
               <button
                 key={f}
-                onClick={() => setAffFilter(f)}
-                className={`shrink-0 px-4 py-1.5 rounded-full font-label-sm text-label-sm border transition-all ${
-                  affFilter === f
-                    ? "bg-primary text-white border-primary"
-                    : "bg-white text-on-surface-variant border-outline-variant hover:border-primary hover:text-primary"
+                // Clicking the active non-"All" chip toggles it back off (design's ✕),
+                // preserving the existing single-select semantics.
+                onClick={() => setAffFilter(active && f !== "All" ? "All" : f)}
+                className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-1 transition-colors ${
+                  active
+                    ? "bg-secondary text-on-secondary shadow-sm"
+                    : "border border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary"
                 }`}
               >
                 {f}
+                {active && f !== "All" && (
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                )}
               </button>
-            ))}
-          </div>
+            );
+          })}
+          {filtersActive && (
+            <button
+              onClick={() => { setSearch(""); setAffFilter("All"); }}
+              className="ml-auto text-primary text-sm font-medium hover:underline"
+            >
+              Clear all
+            </button>
+          )}
         </div>
       </section>
 
       {/* Grid */}
-      <section className="px-gutter max-w-[1280px] mx-auto pb-xl">
-        {filtered.length === 0 && (
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 h-[280px] animate-pulse"
+            />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        researchers.length === 0 ? (
+          // Directory is genuinely empty — honest "be the first", never fake profiles
+          <div className="max-w-md mx-auto">
+            <InvitationCard />
+          </div>
+        ) : (
+          // Results excluded by the current search/filter
           <div className="py-20 flex flex-col items-center justify-center text-center">
             <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">
               person_search
@@ -204,167 +208,171 @@ function ResearchersTab() {
             <h3 className="font-headline-md text-headline-md text-on-surface mb-2">
               No researchers found
             </h3>
-            <p className="text-on-surface-variant mb-6">
-              Try adjusting your search or filter.
-            </p>
+            <p className="text-on-surface-variant mb-6">Try adjusting your search or filter.</p>
             <button
               onClick={() => { setSearch(""); setAffFilter("All"); }}
-              className="px-8 py-3 bg-primary text-white rounded-full font-bold shadow-sm hover:opacity-90"
+              className="px-8 py-3 bg-primary text-on-primary rounded-full text-sm font-medium shadow-sm hover:opacity-90 transition-all active:scale-95"
             >
               Clear filters
             </button>
           </div>
-        )}
-
-        {filtered.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
-            {filtered.map((r) => {
-              const color = researcherAvatarColor(r.name);
-              const counts = workCounts.get(r.id) ?? { papers: 0, tools: 0, datasets: 0 };
-              return (
-                <div
-                  key={r.id}
-                  className="bg-white border border-outline-variant/40 rounded-xl p-lg flex flex-col transition-all duration-300 hover:shadow-md hover:border-primary"
-                >
-                  <div className="flex items-start justify-between mb-md">
-                    <div
-                      className={`w-16 h-16 rounded-full ${color.bg} ${color.text} flex items-center justify-center font-bold text-headline-md font-headline-md ring-4 ring-primary-fixed/20`}
-                    >
-                      {researcherInitials(r.name)}
-                    </div>
+        )
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filtered.map((r) => {
+            const color = researcherAvatarColor(r.name);
+            const counts = workCounts.get(r.id) ?? { papers: 0, tools: 0, datasets: 0 };
+            const interests = r.interests ?? [];
+            return (
+              <article
+                key={r.id}
+                className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 hover:shadow-[0px_8px_24px_rgba(0,0,0,0.08)] transition-all group flex flex-col"
+              >
+                {/* Header — avatar + name/focus/institution, linking to the profile */}
+                <Link href={`/researchers/${r.profile_slug}`} className="flex gap-4 mb-4">
+                  <div
+                    className={`w-20 h-20 rounded-xl ${color.bg} ${color.text} flex items-center justify-center font-bold font-headline-md text-headline-md flex-shrink-0 border border-outline-variant`}
+                  >
+                    {researcherInitials(r.name)}
                   </div>
-
-                  <h3 className="font-headline-md text-headline-md text-on-surface mb-xs">
-                    {r.name}
-                  </h3>
-                  <p className="font-body-md text-body-md text-on-surface-variant mb-md leading-snug">
-                    {r.institution || r.affiliation || "Independent Researcher"}
-                  </p>
-
-                  {r.research_focus && (
-                    <div className="mb-md">
-                      <p className="font-label-sm text-label-sm text-primary uppercase tracking-wider mb-xs">
-                        Research Focus
-                      </p>
-                      <p
-                        className="font-body-md text-body-md text-on-surface font-medium line-clamp-2"
-                        title={r.research_focus ?? undefined}
-                      >
+                  <div className="flex-grow min-w-0">
+                    <h3 className="font-headline-md text-headline-md text-on-surface group-hover:text-primary transition-colors line-clamp-1">
+                      {r.name}
+                    </h3>
+                    {r.research_focus && (
+                      <p className="text-sm font-semibold text-primary mb-1 line-clamp-1" title={r.research_focus}>
                         {r.research_focus}
                       </p>
-                    </div>
-                  )}
+                    )}
+                    <p className="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[16px]">account_balance</span>
+                      <span className="line-clamp-1">
+                        {r.institution || r.affiliation || "Independent Researcher"}
+                      </span>
+                    </p>
+                  </div>
+                </Link>
 
-                  {(r.interests?.length ?? 0) > 0 && (
-                    <div className="flex flex-wrap gap-xs mb-lg">
-                      {(r.interests ?? []).slice(0, 3).map((interest) => (
-                        <span
-                          key={interest}
-                          className="px-3 py-1 rounded bg-secondary-fixed-dim/20 text-secondary font-label-sm text-label-sm"
-                        >
-                          {interest}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                {/* Interest tags */}
+                {interests.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {interests.slice(0, 3).map((interest) => (
+                      <span
+                        key={interest}
+                        className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-label-sm text-label-sm"
+                      >
+                        {interest}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
-                  {(counts.papers > 0 || counts.tools > 0) && (
-                    <div className="flex items-center gap-md border-t border-outline-variant/30 pt-md mb-lg">
-                      {counts.papers > 0 && (
-                        <div className="flex items-center gap-xs">
-                          <span className="material-symbols-outlined text-outline text-[18px]">
-                            article
-                          </span>
-                          <span className="font-label-sm text-label-sm text-on-surface-variant">
-                            {counts.papers} paper{counts.papers !== 1 ? "s" : ""}
-                          </span>
-                        </div>
-                      )}
-                      {counts.tools > 0 && (
-                        <div className="flex items-center gap-xs">
-                          <span className="material-symbols-outlined text-outline text-[18px]">
-                            build
-                          </span>
-                          <span className="font-label-sm text-label-sm text-on-surface-variant">
-                            {counts.tools} tool{counts.tools !== 1 ? "s" : ""}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                {/* Bio */}
+                {r.bio && (
+                  <p className="font-body-md text-body-md text-on-surface-variant mb-6 flex-grow line-clamp-3">
+                    {r.bio}
+                  </p>
+                )}
 
-                  <div className="mt-auto grid grid-cols-2 gap-sm">
-                    <Link href={`/researchers/${r.profile_slug}`}>
-                      <button className="w-full py-2.5 border border-primary text-primary rounded-lg font-bold font-label-sm text-label-sm hover:bg-primary/5 transition-colors">
-                        View Profile
-                      </button>
-                    </Link>
+                {/* Real work counts from researcher_works */}
+                {(counts.papers > 0 || counts.tools > 0) && (
+                  <div className="flex items-center gap-4 mb-4 text-on-surface-variant">
+                    {counts.papers > 0 && (
+                      <span className="flex items-center gap-1 font-label-sm text-label-sm">
+                        <span className="material-symbols-outlined text-[18px]">article</span>
+                        {counts.papers} paper{counts.papers !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                    {counts.tools > 0 && (
+                      <span className="flex items-center gap-1 font-label-sm text-label-sm">
+                        <span className="material-symbols-outlined text-[18px]">build</span>
+                        {counts.tools} tool{counts.tools !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Connect — gated: real mailto when logged in, soft prompt when out */}
+                <div className="mt-auto">
+                  {user ? (
                     <button
                       onClick={() => window.open("mailto:" + r.email)}
-                      className="w-full py-2.5 bg-primary text-on-primary rounded-lg font-bold font-label-sm text-label-sm shadow-sm hover:opacity-90 transition-opacity"
+                      className="w-full bg-primary text-on-primary px-8 py-2.5 rounded-lg text-sm font-medium hover:bg-primary-container hover:text-on-primary-container transition-colors active:scale-95"
                     >
                       Connect
                     </button>
-                  </div>
+                  ) : (
+                    <Link href="/login?callbackUrl=/researchers" className="block">
+                      <button className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border border-primary/40 text-primary text-sm font-medium hover:bg-primary/5 transition-colors active:scale-[0.98]">
+                        <span
+                          className="material-symbols-outlined text-[18px]"
+                          style={{ fontVariationSettings: "'FILL' 1" }}
+                        >
+                          lock
+                        </span>
+                        Log in to connect
+                      </button>
+                    </Link>
+                  )}
                 </div>
-              );
-            })}
+              </article>
+            );
+          })}
 
-            {/* Sparse-state CTA — encourages researchers to set up a public profile */}
-            <Link href="/profile/setup">
-              <div className="bg-surface-container-low border border-dashed border-outline-variant rounded-xl p-lg flex flex-col items-center justify-center text-center h-full hover:bg-surface-container transition-colors">
-                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mb-md shadow-sm">
-                  <span className="material-symbols-outlined text-primary">add</span>
-                </div>
-                <h3 className="font-headline-md text-headline-md text-on-surface mb-2">Are you a researcher?</h3>
-                <p className="font-body-md text-body-md text-on-surface-variant mb-lg max-w-[240px]">
-                  Create your public profile to connect with peers and showcase your latest findings.
-                </p>
-                <button className="px-6 py-2 rounded-full bg-white border border-outline-variant text-primary font-label-sm text-label-sm hover:border-primary transition-all">
-                  Get Started
-                </button>
-              </div>
-            </Link>
-          </div>
-        )}
-      </section>
+          {/* Trailing invitation card — encourages setting up a public profile */}
+          <InvitationCard />
+        </div>
+      )}
     </>
   );
 }
 
 // ── Route ─────────────────────────────────────────────────────────────────────
 //
-// Standalone /researchers index route. Structurally lifted verbatim from the
-// Researchers tab in /knowledge-hub (which still exists in parallel this step).
-// Coexists with the dynamic app/researchers/[slug]/page.tsx profile pages — the
-// index (page.tsx) serves /researchers, [slug] serves /researchers/<slug>.
-// The `user` prop for ProfileBanner is sourced from a local useAuth() call.
+// Standalone /researchers index route, reskinned to
+// /design/researchers-directory-logged-in.html (+ logged-out variant).
+// RESTYLE ONLY — all state, fetching, and behavior are unchanged from the
+// knowledge-hub extraction, except the (newly added, per design) logged-out
+// "Log in to connect" gate. Coexists with app/researchers/[slug]/page.tsx.
 
 export default function ResearchersPage() {
   const { user } = useAuth();
 
   return (
-    <div className="bg-background text-on-background min-h-screen">
-      <Navbar />
+    <div className="bg-background text-on-background min-h-screen flex flex-col">
+      <Nav />
 
-      <main className="min-h-screen">
-        {/* Hero */}
-        <section className="py-8 md:py-xl px-gutter max-w-[1280px] mx-auto">
-          <div className="max-w-3xl">
-            <h1 className="text-[28px] md:font-display-lg md:text-display-lg mb-3 md:mb-4 text-primary font-bold">
-              Researchers
-            </h1>
-            <p className="text-base md:font-body-lg md:text-body-lg text-on-surface-variant leading-relaxed">
-              Explore the frontier of pharmaceutical innovation. Discover the latest research, deep-dive into
-              podcasts, and visualize the clinical discovery network.
+      <main className="flex-1 w-full max-w-[1280px] mx-auto px-gutter py-10">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+          <div>
+            <h1 className="text-[32px] leading-[40px] font-semibold text-on-surface mb-2">Researchers</h1>
+            <p className="font-body-lg text-body-lg text-on-surface-variant">
+              Find collaborators across UAB, SPARC, and beyond
             </p>
           </div>
-        </section>
+          <Link href={user ? "/profile/setup" : "/register"} className="shrink-0">
+            <button className="bg-primary text-on-primary px-6 py-3 rounded-xl text-sm font-medium hover:opacity-90 transition-all active:scale-95 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[20px]">
+                {user ? "edit_square" : "person_add"}
+              </span>
+              {user ? "Edit your profile" : "Create your profile"}
+            </button>
+          </Link>
+        </div>
 
-        {/* Profile setup banner — only for logged-in users without a public profile */}
-        <ProfileBanner user={user} />
+        {/* Talent Knowledge Graph — honest "coming soon", not a working control */}
+        <div className="mb-10 p-4 bg-secondary-container/20 border border-secondary-fixed-dim/50 rounded-xl flex items-center gap-3">
+          <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>
+            info
+          </span>
+          <p className="text-sm text-on-secondary-container">
+            Collaborator matching is powered by the Talent Knowledge Graph{" "}
+            <span className="font-bold">(coming soon)</span>. For now, browse and connect directly.
+          </p>
+        </div>
 
-        <ResearchersTab />
+        <ResearchersTab user={user} />
       </main>
 
       <Footer />

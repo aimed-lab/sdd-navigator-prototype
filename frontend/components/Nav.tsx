@@ -20,7 +20,7 @@ import { useAuth } from "@/context/AuthContext";
 // those real routes exist.
 const NAV_LINKS = [
   { href: "/",                              label: "Home" },
-  { href: "/knowledge-hub",                 label: "Discovery" },
+  { href: "/discovery",                     label: "Discovery" },
   { href: "/knowledge-hub?tab=podcast",     label: "Podcast" },
   { href: "/knowledge-hub?tab=researchers", label: "Researchers" },
 ] as const;
