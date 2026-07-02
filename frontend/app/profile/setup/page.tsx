@@ -1,34 +1,28 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
-const INTEREST_OPTIONS = [
-  "Antibody-Drug Conjugates",
-  "GLP-1 Receptor Agonists",
-  "ADMET Profiling",
-  "Pharmacokinetics",
-  "CRISPR/Cas9",
-  "Medicinal Chemistry",
-  "In Silico Modeling",
-  "Toxicology",
-  "Proteomics",
-  "Genomics",
-  "Bioinformatics",
-  "Molecular Biology",
-  "Drug Delivery Systems",
-  "Clinical Trials",
-  "Biomarkers",
-  "AI/ML in Drug Discovery",
-  "Oncology",
-  "Structural Biology",
-  "Target Identification",
-  "Lead Optimization",
-  "Precision Medicine",
-];
+// ─────────────────────────────────────────────────────────────────────────────
+// Single shared create/edit researcher-profile form (design:
+// /design/researcher-profile-editor.html). One flat scrolling form — NOT a
+// wizard. Opened from BOTH the Researchers header and Settings; single source
+// of truth. Data plumbing is intentionally FROZEN: preload existing `users` +
+// `researcher_works` on mount, and save = update `users` + delete-and-reinsert
+// `researcher_works`. Only the UI layer + the new fields changed.
+//
+// PENDING COLUMNS: Title/Role, Google Scholar, ORCID, and GitHub have no
+// columns on `users` yet. Their inputs are wired below but deliberately kept
+// OUT of the preload select and the update payload — selecting/writing a
+// missing column makes PostgREST fail the whole request and would break save.
+// Once the SQL in the handoff notes is applied, enable them at the two spots
+// marked `TODO(after SQL)`.
+// ─────────────────────────────────────────────────────────────────────────────
 
 type WorkItem = {
   clientId: string;
@@ -57,52 +51,56 @@ function generateSlug(name: string, uid: string): string {
   return `${base}-${uid.slice(0, 6)}`;
 }
 
-const STEP_TITLES = ["Basic Info", "Research Interests", "Your Work", "Preview & Publish"];
-const STEP_CAPTIONS = ["Basics", "Interests", "Work", "Visibility"];
+function makeId() {
+  return `${Date.now()}-${Math.random()}`;
+}
 
-const fieldCls =
-  "w-full rounded-lg border border-outline-variant bg-surface-container p-md focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all";
+// Shared field styles
+const inputCls =
+  "w-full bg-surface border border-outline-variant rounded-[10px] px-4 py-2.5 font-body-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors";
+const rowInputCls =
+  "w-full bg-surface-container-low border border-transparent rounded-lg px-3 py-2 font-label-md text-label-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors";
+const labelCls = "block font-label-sm text-label-sm text-on-surface-variant mb-1.5 ml-1";
+const sectionCls =
+  "bg-surface-container-lowest p-6 md:p-8 rounded-xl border border-outline-variant";
+const sectionTitleCls =
+  "font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant";
+const addBtnCls =
+  "flex items-center gap-2 text-primary font-label-md text-label-md hover:opacity-70 transition-opacity";
 
 export default function ProfileSetupPage() {
   const { user, displayName, loading } = useAuth();
   const router = useRouter();
 
-  const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Step 1
+  // Basics (name + affiliation persist; titleRole is PENDING a column)
+  const [name, setName] = useState("");
+  const [titleRole, setTitleRole] = useState(""); // PENDING column — not persisted yet
+  const [affiliation, setAffiliation] = useState("");
+
+  // About
   const [bio, setBio] = useState("");
   const [researchFocus, setResearchFocus] = useState("");
-  const [linkedinUrl, setLinkedinUrl] = useState("");
-  const [websiteUrl, setWebsiteUrl] = useState("");
 
-  // Step 2
+  // Research Areas
   const [interests, setInterests] = useState<string[]>([]);
+  const [newArea, setNewArea] = useState("");
 
-  // Step 3 — accumulated works
+  // Work (papers / tools / datasets) — editable repeatable rows
   const [works, setWorks] = useState<WorkItem[]>([]);
 
-  // Paper mini-form
-  const [showPaper, setShowPaper] = useState(false);
-  const [paperTitle, setPaperTitle] = useState("");
-  const [paperJournal, setPaperJournal] = useState("");
-  const [paperYear, setPaperYear] = useState("");
-  const [paperUrl, setPaperUrl] = useState("");
+  // Online presence (linkedin + website persist; scholar/orcid/github PENDING columns)
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [scholarUrl, setScholarUrl] = useState(""); // PENDING column
+  const [orcidUrl, setOrcidUrl] = useState(""); // PENDING column
+  const [githubUrl, setGithubUrl] = useState(""); // PENDING column
 
-  // Tool mini-form
-  const [showTool, setShowTool] = useState(false);
-  const [toolTitle, setToolTitle] = useState("");
-  const [toolDesc, setToolDesc] = useState("");
-  const [toolUrl, setToolUrl] = useState("");
-
-  // Dataset mini-form
-  const [showDataset, setShowDataset] = useState(false);
-  const [datasetTitle, setDatasetTitle] = useState("");
-  const [datasetUrl, setDatasetUrl] = useState("");
-
-  // Step 4
+  // Visibility
   const [isPublic, setIsPublic] = useState(true);
+  const [profileSlug, setProfileSlug] = useState<string | null>(null);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -111,17 +109,25 @@ export default function ProfileSetupPage() {
     }
   }, [user, loading, router]);
 
-  // Pre-populate existing profile fields
+  // Pre-populate existing profile fields (create AND edit share this form).
   useEffect(() => {
     if (!user) return;
 
+    // NOTE: pending columns (title, scholar_url, orcid_url, github_url) are
+    // intentionally excluded — selecting a missing column fails the request.
+    // TODO(after SQL): add `, title, scholar_url, orcid_url, github_url` here.
     supabase
       .from("users")
-      .select("bio, research_focus, linkedin_url, website_url, interests, is_public")
+      .select("name, affiliation, bio, research_focus, linkedin_url, website_url, interests, is_public, profile_slug")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (!data) return;
+        if (!data) {
+          setName(displayName || "");
+          return;
+        }
+        setName(data.name || displayName || "");
+        if (data.affiliation) setAffiliation(data.affiliation);
         if (data.bio) setBio(data.bio);
         if (data.research_focus) setResearchFocus(data.research_focus);
         if (data.linkedin_url) setLinkedinUrl(data.linkedin_url);
@@ -130,11 +136,14 @@ export default function ProfileSetupPage() {
         // is_public is NOT NULL in the DB, so this only falls back to the
         // current default (true) when the row itself has no value for it.
         setIsPublic(data.is_public ?? true);
+        setProfileSlug(data.profile_slug ?? null);
+        // TODO(after SQL): setTitleRole(data.title ?? ""); setScholarUrl(...);
+        // setOrcidUrl(...); setGithubUrl(...);
       });
 
     // Pre-populate previously published works so editing/removing them on
-    // re-publish actually reconciles against what's already saved, instead
-    // of starting from an empty list and only ever appending.
+    // re-save actually reconciles against what's already saved, instead of
+    // starting from an empty list and only ever appending.
     supabase
       .from("researcher_works")
       .select("id, type, title, journal, year, url, description")
@@ -154,7 +163,7 @@ export default function ProfileSetupPage() {
           }))
         );
       });
-  }, [user]);
+  }, [user, displayName]);
 
   if (loading || !user) {
     return (
@@ -164,118 +173,89 @@ export default function ProfileSetupPage() {
     );
   }
 
-  const progress = (step / 4) * 100;
-
-  function toggleInterest(interest: string) {
-    setInterests((prev) =>
-      prev.includes(interest) ? prev.filter((i) => i !== interest) : [...prev, interest]
-    );
+  // ── Research areas ──────────────────────────────────────────────────────────
+  function addArea() {
+    const v = newArea.trim();
+    if (!v || interests.includes(v)) {
+      setNewArea("");
+      return;
+    }
+    setInterests((prev) => [...prev, v]);
+    setNewArea("");
   }
 
-  function makeId() {
-    return `${Date.now()}-${Math.random()}`;
+  function removeArea(area: string) {
+    setInterests((prev) => prev.filter((i) => i !== area));
   }
 
-  function addPaper() {
-    if (!paperTitle.trim()) return;
+  // ── Repeatable work rows ────────────────────────────────────────────────────
+  function addWork(type: WorkItem["type"]) {
     setWorks((prev) => [
       ...prev,
-      {
-        clientId: makeId(),
-        type: "paper",
-        title: paperTitle,
-        journal: paperJournal,
-        year: paperYear,
-        url: paperUrl,
-        description: "",
-      },
+      { clientId: makeId(), type, title: "", journal: "", year: "", url: "", description: "" },
     ]);
-    setPaperTitle("");
-    setPaperJournal("");
-    setPaperYear("");
-    setPaperUrl("");
-    setShowPaper(false);
   }
 
-  function addTool() {
-    if (!toolTitle.trim()) return;
-    setWorks((prev) => [
-      ...prev,
-      {
-        clientId: makeId(),
-        type: "tool",
-        title: toolTitle,
-        journal: "",
-        year: "",
-        url: toolUrl,
-        description: toolDesc,
-      },
-    ]);
-    setToolTitle("");
-    setToolDesc("");
-    setToolUrl("");
-    setShowTool(false);
-  }
-
-  function addDataset() {
-    if (!datasetTitle.trim()) return;
-    setWorks((prev) => [
-      ...prev,
-      {
-        clientId: makeId(),
-        type: "dataset",
-        title: datasetTitle,
-        journal: "",
-        year: "",
-        url: datasetUrl,
-        description: "",
-      },
-    ]);
-    setDatasetTitle("");
-    setDatasetUrl("");
-    setShowDataset(false);
+  function updateWork(clientId: string, patch: Partial<WorkItem>) {
+    setWorks((prev) => prev.map((w) => (w.clientId === clientId ? { ...w, ...patch } : w)));
   }
 
   function removeWork(clientId: string) {
     setWorks((prev) => prev.filter((w) => w.clientId !== clientId));
   }
 
-  async function handlePublish() {
+  // ── Save (frozen plumbing: update users + delete-and-reinsert works) ────────
+  async function save(makePublic: boolean) {
     if (!user) return;
     setSaving(true);
     setError(null);
 
     try {
-      const name = displayName || user.email?.split("@")[0] || "researcher";
-      const profileSlug = isPublic ? generateSlug(name, user.id) : null;
+      const effectiveName = name.trim() || displayName || user.email?.split("@")[0] || "researcher";
+
+      // Slug preservation: keep an existing slug verbatim so editing the name
+      // never breaks a live profile URL. Only mint a slug on first publish
+      // when none exists yet.
+      let slug = profileSlug;
+      if (makePublic && !slug) {
+        slug = generateSlug(effectiveName, user.id);
+      }
 
       const { error: updateErr } = await supabase
         .from("users")
         .update({
+          name: effectiveName,
+          affiliation: affiliation || null,
           bio: bio || null,
           research_focus: researchFocus || null,
           linkedin_url: linkedinUrl || null,
           website_url: websiteUrl || null,
           interests,
-          is_public: isPublic,
-          profile_slug: profileSlug,
+          is_public: makePublic,
+          profile_slug: slug,
+          // TODO(after SQL): title: titleRole || null, scholar_url: scholarUrl || null,
+          // orcid_url: orcidUrl || null, github_url: githubUrl || null,
         })
         .eq("id", user.id);
 
       if (updateErr) throw new Error(updateErr.message);
 
-      // Reconcile researcher_works against the current `works` state instead
-      // of blindly appending: delete this user's existing rows, then
-      // reinsert the current set. This makes edits/removals take effect and
-      // prevents duplicate rows from accumulating on repeat publishes.
+      setIsPublic(makePublic);
+      setProfileSlug(slug);
+
+      // Reconcile researcher_works against the current `works` state: delete
+      // this user's existing rows, then reinsert the current set. Blank rows
+      // (no title) are dropped so empty repeatable rows never persist.
+      const savableWorks = works.filter((w) => w.title.trim());
+
       const { error: deleteErr } = await supabase
         .from("researcher_works")
         .delete()
         .eq("user_id", user.id);
       if (deleteErr) throw new Error(deleteErr.message);
 
-      if (works.length > 0) {
-        const rows = works.map((w) => ({
+      if (savableWorks.length > 0) {
+        const rows = savableWorks.map((w) => ({
           user_id: user.id,
           type: w.type,
           title: w.title,
@@ -284,16 +264,14 @@ export default function ProfileSetupPage() {
           url: w.url || null,
           description: w.description || null,
         }));
-        const { error: worksErr } = await supabase
-          .from("researcher_works")
-          .insert(rows);
+        const { error: worksErr } = await supabase.from("researcher_works").insert(rows);
         if (worksErr) throw new Error(worksErr.message);
       }
 
-      if (isPublic && profileSlug) {
-        router.push(`/researchers/${profileSlug}`);
+      if (makePublic && slug) {
+        router.push(`/researchers/${slug}`);
       } else {
-        router.push("/knowledge-hub");
+        router.push("/researchers");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save profile. Please try again.");
@@ -306,533 +284,440 @@ export default function ProfileSetupPage() {
   const datasets = works.filter((w) => w.type === "dataset");
 
   return (
-    <div className="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
-      <main className="flex-grow flex flex-col items-center px-gutter py-xl">
-        <div className="w-full max-w-[720px]">
+    <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col">
+      <Nav />
+      <main className="flex-grow px-margin-mobile md:px-margin-desktop py-xl">
+        <div className="max-w-[760px] mx-auto">
 
           {/* Header */}
-          <header className="mb-xl text-center">
-            <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
-              Complete your profile
-            </h1>
-            <p className="font-body-md text-body-md text-on-surface-variant">
-              Help fellow researchers find and collaborate with you on the SDD Navigator.
-            </p>
+          <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+            <div>
+              <h1 className="font-headline-lg text-headline-lg text-primary mb-2">
+                Edit your researcher profile
+              </h1>
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                This information appears on your public profile in the Researchers directory.
+              </p>
+            </div>
+            <div className="flex items-center gap-4 shrink-0">
+              {profileSlug && (
+                <Link
+                  href={`/researchers/${profileSlug}`}
+                  className="font-label-md text-label-md text-primary hover:underline underline-offset-4"
+                >
+                  View public profile
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={() => save(isPublic)}
+                disabled={saving}
+                className="bg-primary text-on-primary px-6 py-2.5 rounded-xl font-label-md text-label-md hover:bg-primary-container transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {saving && (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                )}
+                {saving ? "Saving…" : "Save profile"}
+              </button>
+            </div>
           </header>
 
-          {/* Step indicator */}
-          <nav className="mb-10 sm:mb-12 px-2">
-            <div className="flex items-stretch justify-between relative">
-              <div className="absolute top-5 left-0 w-full h-1 bg-surface-container-highest -translate-y-1/2 z-0 rounded-full" />
-              <div
-                className="absolute top-5 left-0 h-1 bg-primary -translate-y-1/2 z-0 rounded-full transition-all duration-500"
-                style={{ width: `${((step - 1) / 3) * 100}%` }}
-              />
-              {STEP_CAPTIONS.map((caption, i) => {
-                const stepNum = i + 1;
-                const isDone = stepNum < step;
-                const isActive = stepNum === step;
-                return (
-                  <div key={caption} className="relative z-10 flex-1 flex flex-col items-center gap-2">
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center font-label-sm text-label-sm transition-colors ${
-                        isDone || isActive
-                          ? "bg-primary text-on-primary"
-                          : "bg-surface-container-highest text-on-surface-variant"
-                      }`}
-                    >
-                      {isDone ? (
-                        <span className="material-symbols-outlined text-[18px]">check</span>
-                      ) : (
-                        stepNum
-                      )}
-                    </div>
-                    <span
-                      className={`text-center leading-tight font-label-sm text-label-sm ${
-                        isDone || isActive ? "text-primary" : "text-on-surface-variant"
-                      }`}
-                    >
-                      {caption}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </nav>
+          <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
 
-          {/* Main wizard card */}
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
-            <div className="p-lg">
-              <h2 className="font-headline-md text-headline-md text-primary mb-md">
-                Step {step} of 4: {STEP_TITLES[step - 1]}
-              </h2>
-
-              {/* ── Step 1: Basic Info ───────────────────────────────── */}
-              {step === 1 && (
-                <div className="space-y-md">
-                  <div className="space-y-sm">
-                    <label className="block font-label-sm text-label-sm text-on-surface-variant">
-                      Professional Bio
-                    </label>
-                    <textarea
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      className={`${fieldCls} min-h-[120px] resize-none`}
-                      placeholder="Briefly describe your academic background and current research aims..."
-                    />
-                  </div>
-
-                  <div className="space-y-sm">
-                    <label className="block font-label-sm text-label-sm text-on-surface-variant">
-                      Primary Research Focus
-                    </label>
+            {/* ── Basics ─────────────────────────────────────────────────── */}
+            <section className={sectionCls}>
+              <h2 className={`${sectionTitleCls} mb-6`}>Basics</h2>
+              <div className="flex flex-col md:flex-row gap-8 items-start">
+                <div className="w-28 h-28 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed font-bold text-3xl shrink-0">
+                  {getInitials(name || displayName || "?")}
+                </div>
+                <div className="flex-1 space-y-4 w-full">
+                  <div>
+                    <label className={labelCls}>Full name</label>
                     <input
                       type="text"
-                      value={researchFocus}
-                      onChange={(e) => setResearchFocus(e.target.value)}
-                      className={fieldCls}
-                      placeholder="e.g. Molecular Pharmacology, Neurobiology"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className={inputCls}
+                      placeholder="e.g. Dr. Sarah Chen"
                     />
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-sm">
-                    <div className="space-y-sm">
-                      <label className="block font-label-sm text-label-sm text-on-surface-variant">
-                        LinkedIn URL
-                      </label>
-                      <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
-                          link
-                        </span>
-                        <input
-                          type="url"
-                          value={linkedinUrl}
-                          onChange={(e) => setLinkedinUrl(e.target.value)}
-                          className={`${fieldCls} pl-10`}
-                          placeholder="https://linkedin.com/in/username"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-sm">
-                      <label className="block font-label-sm text-label-sm text-on-surface-variant">
-                        Lab Website URL
-                      </label>
-                      <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
-                          language
-                        </span>
-                        <input
-                          type="url"
-                          value={websiteUrl}
-                          onChange={(e) => setWebsiteUrl(e.target.value)}
-                          className={`${fieldCls} pl-10`}
-                          placeholder="https://labname.edu"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── Step 2: Research Interests ───────────────────────── */}
-              {step === 2 && (
-                <div className="space-y-md">
-                  <p className="font-body-md text-body-md text-on-surface-variant">
-                    Select tags that best represent your expertise areas to help others find your
-                    work.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {INTEREST_OPTIONS.map((interest) => {
-                      const selected = interests.includes(interest);
-                      return (
-                        <button
-                          key={interest}
-                          type="button"
-                          onClick={() => toggleInterest(interest)}
-                          className={`px-4 py-2 rounded-full border font-label-sm text-label-sm flex items-center gap-2 transition-colors ${
-                            selected
-                              ? "border-primary text-primary bg-primary/10"
-                              : "border-outline-variant text-on-surface-variant hover:border-primary"
-                          }`}
-                        >
-                          {interest}
-                          {selected && (
-                            <span className="material-symbols-outlined text-[16px]">check</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* ── Step 3: Your Work ────────────────────────────────── */}
-              {step === 3 && (
-                <div className="space-y-lg">
-
-                  {/* Papers */}
-                  <div className="space-y-sm">
-                    <h3 className="font-headline-md text-primary flex items-center gap-2">
-                      <span className="material-symbols-outlined">article</span> Papers
-                    </h3>
-                    {papers.map((w) => (
-                      <WorkRow key={w.clientId} work={w} onRemove={removeWork} />
-                    ))}
-                    {showPaper ? (
-                      <div className="p-md bg-surface-container rounded-lg border border-outline-variant space-y-sm">
-                        <input
-                          type="text"
-                          value={paperTitle}
-                          onChange={(e) => setPaperTitle(e.target.value)}
-                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                          placeholder="Paper Title"
-                        />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-sm">
-                          <input
-                            type="text"
-                            value={paperJournal}
-                            onChange={(e) => setPaperJournal(e.target.value)}
-                            className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                            placeholder="Journal Name"
-                          />
-                          <input
-                            type="number"
-                            value={paperYear}
-                            onChange={(e) => setPaperYear(e.target.value)}
-                            className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                            placeholder="Year"
-                          />
-                        </div>
-                        <input
-                          type="url"
-                          value={paperUrl}
-                          onChange={(e) => setPaperUrl(e.target.value)}
-                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                          placeholder="Publication URL"
-                        />
-                        <div className="flex gap-sm">
-                          <button
-                            type="button"
-                            onClick={addPaper}
-                            className="flex-1 bg-primary text-on-primary p-sm rounded-lg font-label-sm text-label-sm"
-                          >
-                            Save Paper
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setShowPaper(false)}
-                            className="px-md rounded-lg border border-outline-variant font-label-sm text-label-sm text-on-surface-variant"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowPaper(true)}
-                        className="w-full border-2 border-dashed border-outline-variant py-3 rounded-lg text-on-surface-variant font-label-sm text-label-sm flex items-center justify-center gap-2 hover:bg-surface-container transition-colors"
-                      >
-                        <span className="material-symbols-outlined">add_circle</span> Add Paper
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Tools */}
-                  <div className="space-y-sm border-t border-outline-variant pt-md">
-                    <h3 className="font-headline-md text-primary flex items-center gap-2">
-                      <span className="material-symbols-outlined">build</span> Tools
-                    </h3>
-                    {tools.map((w) => (
-                      <WorkRow key={w.clientId} work={w} onRemove={removeWork} />
-                    ))}
-                    {showTool ? (
-                      <div className="p-md bg-surface-container rounded-lg border border-outline-variant space-y-sm">
-                        <input
-                          type="text"
-                          value={toolTitle}
-                          onChange={(e) => setToolTitle(e.target.value)}
-                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                          placeholder="Tool Name"
-                        />
-                        <textarea
-                          value={toolDesc}
-                          onChange={(e) => setToolDesc(e.target.value)}
-                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none resize-none"
-                          placeholder="Description"
-                          rows={2}
-                        />
-                        <input
-                          type="url"
-                          value={toolUrl}
-                          onChange={(e) => setToolUrl(e.target.value)}
-                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                          placeholder="Repository / Website URL"
-                        />
-                        <div className="flex gap-sm">
-                          <button
-                            type="button"
-                            onClick={addTool}
-                            className="flex-1 bg-primary text-on-primary p-sm rounded-lg font-label-sm text-label-sm"
-                          >
-                            Save Tool
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setShowTool(false)}
-                            className="px-md rounded-lg border border-outline-variant font-label-sm text-label-sm text-on-surface-variant"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowTool(true)}
-                        className="w-full border-2 border-dashed border-outline-variant py-3 rounded-lg text-on-surface-variant font-label-sm text-label-sm flex items-center justify-center gap-2 hover:bg-surface-container transition-colors"
-                      >
-                        <span className="material-symbols-outlined">add_circle</span> Add Tool
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Datasets */}
-                  <div className="space-y-sm border-t border-outline-variant pt-md">
-                    <h3 className="font-headline-md text-primary flex items-center gap-2">
-                      <span className="material-symbols-outlined">database</span> Datasets
-                    </h3>
-                    {datasets.map((w) => (
-                      <WorkRow key={w.clientId} work={w} onRemove={removeWork} />
-                    ))}
-                    {showDataset ? (
-                      <div className="p-md bg-surface-container rounded-lg border border-outline-variant space-y-sm">
-                        <input
-                          type="text"
-                          value={datasetTitle}
-                          onChange={(e) => setDatasetTitle(e.target.value)}
-                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                          placeholder="Dataset Name"
-                        />
-                        <input
-                          type="url"
-                          value={datasetUrl}
-                          onChange={(e) => setDatasetUrl(e.target.value)}
-                          className="w-full rounded-lg border border-outline-variant bg-surface p-sm focus:border-primary outline-none"
-                          placeholder="Repository Link"
-                        />
-                        <div className="flex gap-sm">
-                          <button
-                            type="button"
-                            onClick={addDataset}
-                            className="flex-1 bg-primary text-on-primary p-sm rounded-lg font-label-sm text-label-sm"
-                          >
-                            Save Dataset
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setShowDataset(false)}
-                            className="px-md rounded-lg border border-outline-variant font-label-sm text-label-sm text-on-surface-variant"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowDataset(true)}
-                        className="w-full border-2 border-dashed border-outline-variant py-3 rounded-lg text-on-surface-variant font-label-sm text-label-sm flex items-center justify-center gap-2 hover:bg-surface-container transition-colors"
-                      >
-                        <span className="material-symbols-outlined">add_circle</span> Add Dataset
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* ── Step 4: Preview & Publish ────────────────────────── */}
-              {step === 4 && (
-                <div className="space-y-lg">
-                  {/* Profile preview card */}
-                  <div className="bg-surface-container rounded-xl border border-outline-variant p-lg">
-                    <div className="flex items-center gap-md mb-md">
-                      <div className="w-20 h-20 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed font-bold text-2xl shrink-0">
-                        {getInitials(displayName || "?")}
-                      </div>
-                      <div>
-                        <h2 className="font-headline-md text-headline-md text-primary">
-                          {displayName}
-                        </h2>
-                        <p className="font-label-sm text-label-sm text-on-surface-variant">
-                          {researchFocus || "Researcher"}
-                        </p>
-                      </div>
-                    </div>
-                    {bio && (
-                      <p className="font-body-md text-body-md text-on-surface-variant italic mb-md line-clamp-3">
-                        &ldquo;{bio}&rdquo;
-                      </p>
-                    )}
-                    {interests.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {interests.slice(0, 5).map((i) => (
-                          <span
-                            key={i}
-                            className="px-3 py-0.5 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-semibold uppercase tracking-wider"
-                          >
-                            {i}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {works.length > 0 && (
-                      <div className="flex gap-md mt-md pt-md border-t border-outline-variant text-sm text-on-surface-variant">
-                        {papers.length > 0 && (
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-sm">article</span>
-                            {papers.length} paper{papers.length !== 1 ? "s" : ""}
-                          </span>
-                        )}
-                        {tools.length > 0 && (
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-sm">build</span>
-                            {tools.length} tool{tools.length !== 1 ? "s" : ""}
-                          </span>
-                        )}
-                        {datasets.length > 0 && (
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-sm">database</span>
-                            {datasets.length} dataset{datasets.length !== 1 ? "s" : ""}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Public toggle */}
-                  <div className="flex items-center justify-between p-md bg-surface-container-low rounded-xl">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="font-label-sm text-label-sm text-on-surface">
-                        Public Researcher Profile
-                      </p>
-                      <p className="text-[11px] text-on-surface-variant">
-                        Allow other SDD Navigator members to find you.
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
+                      <label className={labelCls}>Title / Role</label>
                       <input
-                        type="checkbox"
-                        checked={isPublic}
-                        onChange={(e) => setIsPublic(e.target.checked)}
-                        className="sr-only peer"
+                        type="text"
+                        value={titleRole}
+                        onChange={(e) => setTitleRole(e.target.value)}
+                        className={inputCls}
+                        placeholder="e.g. Senior Computational Biologist"
                       />
-                      <div className="w-11 h-6 bg-outline-variant rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white" />
-                    </label>
-                  </div>
-
-                  {error && (
-                    <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm">
-                      {error}
                     </div>
-                  )}
-
-                  <div className="flex flex-col gap-sm">
-                    <button
-                      type="button"
-                      onClick={handlePublish}
-                      disabled={saving}
-                      className="w-full bg-primary text-on-primary py-md rounded-lg font-headline-md hover:bg-primary-container transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {saving && (
-                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      )}
-                      {saving ? "Saving…" : isPublic ? "Publish Profile" : "Save Draft"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => router.push("/knowledge-hub")}
-                      className="text-center font-label-sm text-label-sm text-primary hover:underline"
-                    >
-                      Skip for now
-                    </button>
+                    <div>
+                      <label className={labelCls}>Affiliation</label>
+                      <input
+                        type="text"
+                        value={affiliation}
+                        onChange={(e) => setAffiliation(e.target.value)}
+                        className={inputCls}
+                        placeholder="e.g. University of Alabama at Birmingham"
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-
-            {/* Action footer (steps 1–3 only — step 4 has its own publish controls above) */}
-            {step < 4 && (
-              <div className="bg-surface-container border-t border-outline-variant px-lg py-md flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setStep((s) => s - 1)}
-                  className={`px-4 py-2.5 rounded-lg font-label-sm text-label-sm text-on-surface-variant flex items-center gap-2 hover:bg-surface-container-highest transition-all ${
-                    step === 1 ? "invisible" : ""
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[18px]">arrow_back</span> Back
-                </button>
-                <div className="flex items-center gap-md">
-                  <button
-                    type="button"
-                    onClick={() => router.push("/knowledge-hub")}
-                    className="font-label-sm text-label-sm text-on-surface-variant hover:text-primary px-2 py-2 transition-colors"
-                  >
-                    Skip for now
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStep((s) => s + 1)}
-                    className="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-label-sm text-label-sm flex items-center gap-2 hover:bg-primary-container shadow-sm transition-all"
-                  >
-                    {step === 3 ? "Review" : "Next Step"}
-                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                  </button>
                 </div>
               </div>
-            )}
-          </div>
+            </section>
 
-          {/* Profile completion indicator */}
-          <div className="mt-8 flex items-center gap-md justify-center md:justify-start">
-            <div className="w-16 h-16 rounded-full border-4 border-surface-container-highest relative flex items-center justify-center shrink-0">
-              <svg className="absolute inset-0 -rotate-90 w-16 h-16">
-                <circle
-                  className="text-primary"
-                  cx="32"
-                  cy="32"
-                  r="28"
-                  fill="transparent"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  strokeDasharray={176}
-                  strokeDashoffset={176 - (176 * progress) / 100}
+            {/* ── About ──────────────────────────────────────────────────── */}
+            <section className={sectionCls}>
+              <h2 className={`${sectionTitleCls} mb-4`}>About</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className={labelCls}>Short bio</label>
+                  <textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    rows={4}
+                    className={`${inputCls} resize-none`}
+                    placeholder="Briefly describe your research focus and scientific background..."
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Primary research focus</label>
+                  <input
+                    type="text"
+                    value={researchFocus}
+                    onChange={(e) => setResearchFocus(e.target.value)}
+                    className={inputCls}
+                    placeholder="e.g. Molecular Pharmacology, Neurobiology"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* ── Research Areas ─────────────────────────────────────────── */}
+            <section className={sectionCls}>
+              <h2 className={`${sectionTitleCls} mb-4`}>Research Areas</h2>
+              {interests.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {interests.map((area) => (
+                    <span
+                      key={area}
+                      className="inline-flex items-center gap-1.5 bg-secondary-container text-on-secondary-container px-3 py-1.5 rounded-full font-label-md text-label-md border border-primary-fixed-dim"
+                    >
+                      {area}
+                      <button
+                        type="button"
+                        onClick={() => removeArea(area)}
+                        className="flex items-center hover:text-error transition-colors"
+                        aria-label={`Remove ${area}`}
+                      >
+                        <span className="material-symbols-outlined !text-lg">close</span>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newArea}
+                  onChange={(e) => setNewArea(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addArea();
+                    }
+                  }}
+                  className={`${inputCls} max-w-xs`}
+                  placeholder="e.g. Medicinal Chemistry"
                 />
-              </svg>
-              <span className="font-label-sm text-label-sm text-primary">
-                {Math.round(progress)}%
-              </span>
-            </div>
-            <div>
-              <p className="font-label-sm text-label-sm text-primary">
-                {step < 4
-                  ? `Almost there${displayName ? `, ${displayName}` : ""}!`
-                  : `All set${displayName ? `, ${displayName}` : ""}!`}
-              </p>
-              <p className="text-sm text-on-surface-variant">
-                Completing your profile increases discovery by 3x.
-              </p>
-            </div>
-          </div>
+                <button type="button" onClick={addArea} className={addBtnCls}>
+                  <span className="material-symbols-outlined">add_circle</span> Add area
+                </button>
+              </div>
+            </section>
 
-          <p className="mt-lg text-center font-label-sm text-label-sm text-on-surface-variant max-w-[400px] mx-auto">
-            Need assistance? Visit the{" "}
-            <a href="/knowledge-hub" className="text-primary hover:underline">
-              Knowledge Hub
-            </a>
-            .
-          </p>
+            {/* ── Publications ───────────────────────────────────────────── */}
+            <section className={sectionCls}>
+              <h2 className={`${sectionTitleCls} mb-6`}>Publications</h2>
+              {papers.length > 0 && (
+                <div className="space-y-4 mb-6">
+                  {papers.map((w) => (
+                    <div
+                      key={w.clientId}
+                      className="grid grid-cols-12 gap-3 items-end p-4 bg-surface rounded-lg border border-outline-variant/60"
+                    >
+                      <div className="col-span-12 md:col-span-5">
+                        <label className={labelCls}>Title</label>
+                        <input
+                          type="text"
+                          value={w.title}
+                          onChange={(e) => updateWork(w.clientId, { title: e.target.value })}
+                          className={rowInputCls}
+                          placeholder="Paper title"
+                        />
+                      </div>
+                      <div className="col-span-6 md:col-span-3">
+                        <label className={labelCls}>Journal</label>
+                        <input
+                          type="text"
+                          value={w.journal}
+                          onChange={(e) => updateWork(w.clientId, { journal: e.target.value })}
+                          className={rowInputCls}
+                          placeholder="e.g. Nature"
+                        />
+                      </div>
+                      <div className="col-span-3 md:col-span-2">
+                        <label className={labelCls}>Year</label>
+                        <input
+                          type="number"
+                          value={w.year}
+                          onChange={(e) => updateWork(w.clientId, { year: e.target.value })}
+                          className={rowInputCls}
+                          placeholder="2024"
+                        />
+                      </div>
+                      <div className="col-span-11 md:col-span-1">
+                        <label className={labelCls}>URL</label>
+                        <input
+                          type="url"
+                          value={w.url}
+                          onChange={(e) => updateWork(w.clientId, { url: e.target.value })}
+                          className={rowInputCls}
+                          placeholder="doi.org/…"
+                        />
+                      </div>
+                      <div className="col-span-1 flex justify-center pb-1.5">
+                        <button
+                          type="button"
+                          onClick={() => removeWork(w.clientId)}
+                          className="text-on-surface-variant hover:text-error transition-colors"
+                          aria-label="Remove publication"
+                        >
+                          <span className="material-symbols-outlined">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button type="button" onClick={() => addWork("paper")} className={addBtnCls}>
+                <span className="material-symbols-outlined">add_circle</span> Add publication
+              </button>
+            </section>
+
+            {/* ── Tools & Software ───────────────────────────────────────── */}
+            <section className={sectionCls}>
+              <h2 className={`${sectionTitleCls} mb-6`}>Tools &amp; Software</h2>
+              {tools.length > 0 && (
+                <div className="space-y-4 mb-6">
+                  {tools.map((w) => (
+                    <div
+                      key={w.clientId}
+                      className="grid grid-cols-12 gap-3 items-end p-4 bg-surface rounded-lg border border-outline-variant/60"
+                    >
+                      <div className="col-span-12 md:col-span-3">
+                        <label className={labelCls}>Tool name</label>
+                        <input
+                          type="text"
+                          value={w.title}
+                          onChange={(e) => updateWork(w.clientId, { title: e.target.value })}
+                          className={rowInputCls}
+                          placeholder="e.g. PyRigid-ML"
+                        />
+                      </div>
+                      <div className="col-span-12 md:col-span-5">
+                        <label className={labelCls}>Short description</label>
+                        <input
+                          type="text"
+                          value={w.description}
+                          onChange={(e) => updateWork(w.clientId, { description: e.target.value })}
+                          className={rowInputCls}
+                          placeholder="What it does"
+                        />
+                      </div>
+                      <div className="col-span-11 md:col-span-3">
+                        <label className={labelCls}>URL</label>
+                        <input
+                          type="url"
+                          value={w.url}
+                          onChange={(e) => updateWork(w.clientId, { url: e.target.value })}
+                          className={rowInputCls}
+                          placeholder="github.com/…"
+                        />
+                      </div>
+                      <div className="col-span-1 flex justify-center pb-1.5">
+                        <button
+                          type="button"
+                          onClick={() => removeWork(w.clientId)}
+                          className="text-on-surface-variant hover:text-error transition-colors"
+                          aria-label="Remove tool"
+                        >
+                          <span className="material-symbols-outlined">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button type="button" onClick={() => addWork("tool")} className={addBtnCls}>
+                <span className="material-symbols-outlined">add_circle</span> Add tool
+              </button>
+            </section>
+
+            {/* ── Datasets ───────────────────────────────────────────────── */}
+            <section className={sectionCls}>
+              <h2 className={`${sectionTitleCls} mb-6`}>Datasets</h2>
+              {datasets.length > 0 && (
+                <div className="space-y-4 mb-6">
+                  {datasets.map((w) => (
+                    <div
+                      key={w.clientId}
+                      className="grid grid-cols-12 gap-3 items-end p-4 bg-surface rounded-lg border border-outline-variant/60"
+                    >
+                      <div className="col-span-12 md:col-span-6">
+                        <label className={labelCls}>Dataset name</label>
+                        <input
+                          type="text"
+                          value={w.title}
+                          onChange={(e) => updateWork(w.clientId, { title: e.target.value })}
+                          className={rowInputCls}
+                          placeholder="e.g. UAB Compound Screening Set"
+                        />
+                      </div>
+                      <div className="col-span-11 md:col-span-5">
+                        <label className={labelCls}>URL</label>
+                        <input
+                          type="url"
+                          value={w.url}
+                          onChange={(e) => updateWork(w.clientId, { url: e.target.value })}
+                          className={rowInputCls}
+                          placeholder="Repository link"
+                        />
+                      </div>
+                      <div className="col-span-1 flex justify-center pb-1.5">
+                        <button
+                          type="button"
+                          onClick={() => removeWork(w.clientId)}
+                          className="text-on-surface-variant hover:text-error transition-colors"
+                          aria-label="Remove dataset"
+                        >
+                          <span className="material-symbols-outlined">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button type="button" onClick={() => addWork("dataset")} className={addBtnCls}>
+                <span className="material-symbols-outlined">add_circle</span> Add dataset
+              </button>
+            </section>
+
+            {/* ── Online Presence ────────────────────────────────────────── */}
+            <section className={sectionCls}>
+              <h2 className={`${sectionTitleCls} mb-6`}>Online Presence</h2>
+              <div className="space-y-4">
+                <LinkField
+                  icon="language"
+                  placeholder="Personal / lab website URL"
+                  value={websiteUrl}
+                  onChange={setWebsiteUrl}
+                />
+                <LinkField
+                  icon="share"
+                  placeholder="LinkedIn profile URL"
+                  value={linkedinUrl}
+                  onChange={setLinkedinUrl}
+                />
+                <LinkField
+                  icon="school"
+                  placeholder="Google Scholar URL"
+                  value={scholarUrl}
+                  onChange={setScholarUrl}
+                />
+                <LinkField
+                  icon="id_card"
+                  placeholder="ORCID iD URL"
+                  value={orcidUrl}
+                  onChange={setOrcidUrl}
+                />
+                <LinkField
+                  icon="code"
+                  placeholder="GitHub profile URL"
+                  value={githubUrl}
+                  onChange={setGithubUrl}
+                />
+              </div>
+              <p className="mt-3 text-[11px] text-on-surface-variant">
+                Google Scholar, ORCID, and GitHub are not saved yet — they persist once the new
+                columns are added to the database.
+              </p>
+            </section>
+
+            {/* ── Visibility ─────────────────────────────────────────────── */}
+            <section className={sectionCls}>
+              <h2 className={`${sectionTitleCls} mb-4`}>Visibility</h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-label-md text-label-md text-on-surface">
+                    Public researcher profile
+                  </p>
+                  <p className="text-[11px] text-on-surface-variant">
+                    Allow other SDD Navigator members to find you in the Researchers directory.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isPublic}
+                    onChange={(e) => setIsPublic(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-outline-variant rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white" />
+                </label>
+              </div>
+            </section>
+
+            {error && (
+              <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* ── Bottom actions ─────────────────────────────────────────── */}
+            <div className="pt-6 border-t border-outline-variant flex flex-col md:flex-row items-center justify-between gap-6">
+              <button
+                type="button"
+                onClick={() => save(false)}
+                disabled={saving}
+                className="text-error font-label-md text-label-md flex items-center gap-2 px-4 py-2 rounded-lg border border-transparent hover:border-error hover:bg-error-container/20 transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined">person_off</span> Remove from directory
+              </button>
+              <div className="flex items-center gap-4 w-full md:w-auto">
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="flex-1 md:flex-none text-on-surface-variant font-label-md text-label-md px-6 py-2.5 rounded-xl hover:bg-surface-container-high transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => save(isPublic)}
+                  disabled={saving}
+                  className="flex-1 md:flex-none bg-primary text-on-primary font-label-md text-label-md px-10 py-2.5 rounded-xl hover:bg-primary-container transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {saving && (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  )}
+                  {saving ? "Saving…" : "Save profile"}
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
       </main>
       <Footer />
@@ -840,34 +725,29 @@ export default function ProfileSetupPage() {
   );
 }
 
-function WorkRow({
-  work,
-  onRemove,
+function LinkField({
+  icon,
+  placeholder,
+  value,
+  onChange,
 }: {
-  work: WorkItem;
-  onRemove: (id: string) => void;
+  icon: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
 }) {
-  const subtitle =
-    work.type === "paper"
-      ? [work.journal, work.year].filter(Boolean).join(", ")
-      : work.description;
-
   return (
-    <div className="flex items-center justify-between p-md bg-surface border border-outline-variant rounded-lg">
-      <div className="min-w-0 mr-2">
-        <p className="font-label-sm text-label-sm text-on-surface truncate">{work.title}</p>
-        {subtitle && (
-          <p className="text-sm text-on-surface-variant truncate">{subtitle}</p>
-        )}
+    <div className="flex items-center gap-4">
+      <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center border border-outline-variant text-on-surface-variant shrink-0">
+        <span className="material-symbols-outlined">{icon}</span>
       </div>
-      <button
-        type="button"
-        onClick={() => onRemove(work.clientId)}
-        className="text-on-surface-variant hover:text-error transition-colors shrink-0"
-        aria-label="Remove"
-      >
-        <span className="material-symbols-outlined">delete</span>
-      </button>
+      <input
+        type="url"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="flex-1 bg-surface border border-outline-variant rounded-[10px] px-4 py-2 font-label-md text-label-md text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors"
+        placeholder={placeholder}
+      />
     </div>
   );
 }
