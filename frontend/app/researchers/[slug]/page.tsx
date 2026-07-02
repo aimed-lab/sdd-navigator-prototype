@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
+import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -42,36 +42,6 @@ const AVATAR_COLORS = [
   { bg: "bg-tertiary-container", text: "text-on-tertiary-container" },
   { bg: "bg-surface-container-high", text: "text-on-surface-variant" },
 ];
-
-const WORK_TYPE_META: Record<
-  Work["type"],
-  { icon: string; iconColor: string; badgeBg: string; badgeText: string; label: string; ctaLabel: string }
-> = {
-  paper: {
-    icon: "description",
-    iconColor: "text-primary",
-    badgeBg: "bg-secondary-container",
-    badgeText: "text-on-secondary-container",
-    label: "Paper",
-    ctaLabel: "Read",
-  },
-  tool: {
-    icon: "terminal",
-    iconColor: "text-secondary",
-    badgeBg: "bg-tertiary-container",
-    badgeText: "text-on-tertiary-container",
-    label: "Tool",
-    ctaLabel: "View",
-  },
-  dataset: {
-    icon: "database",
-    iconColor: "text-on-tertiary-container",
-    badgeBg: "bg-primary-fixed",
-    badgeText: "text-on-primary-fixed-variant",
-    label: "Dataset",
-    ctaLabel: "Access",
-  },
-};
 
 function getInitials(name: string): string {
   return name
@@ -157,9 +127,9 @@ export default function ResearcherProfilePage() {
 
   if (loading) {
     return (
-      <div className="bg-background min-h-screen">
-        <Navbar />
-        <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="bg-background min-h-screen flex flex-col">
+        <Nav />
+        <div className="flex-1 flex items-center justify-center min-h-[60vh]">
           <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
         </div>
         <Footer />
@@ -169,9 +139,9 @@ export default function ResearcherProfilePage() {
 
   if (notFound || !researcher) {
     return (
-      <div className="bg-background min-h-screen">
-        <Navbar />
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-gutter">
+      <div className="bg-background min-h-screen flex flex-col">
+        <Nav />
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] text-center px-gutter">
           <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">
             person_off
           </span>
@@ -181,8 +151,8 @@ export default function ResearcherProfilePage() {
           <p className="text-on-surface-variant mb-6">
             This profile may be private or does not exist.
           </p>
-          <Link href="/knowledge-hub?tab=researchers">
-            <button className="px-8 py-3 bg-primary text-white rounded-full font-bold hover:bg-primary-container transition-all">
+          <Link href="/researchers">
+            <button className="px-8 py-3 bg-primary text-on-primary rounded-full text-sm font-medium hover:bg-primary-container transition-all">
               Browse Researchers
             </button>
           </Link>
@@ -196,94 +166,47 @@ export default function ResearcherProfilePage() {
   const titleLine = [researcher.affiliation, researcher.institution]
     .filter(Boolean)
     .join(" | ");
+  const firstName = researcher.name.split(" ")[0];
+  const loginHref = `/login?callbackUrl=${encodeURIComponent(`/researchers/${slug}`)}`;
+  const interests = researcher.interests ?? [];
+
+  // Same works array, grouped by type into the design's separate sections.
+  const papers = works.filter((w) => w.type === "paper");
+  const tools = works.filter((w) => w.type === "tool");
+  const datasets = works.filter((w) => w.type === "dataset");
 
   return (
-    <div className="bg-background text-on-surface min-h-screen">
-      <Navbar />
-      <main className="max-w-[1280px] mx-auto px-gutter py-md">
-        {/* Profile Header Card */}
-        <section className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 md:p-md shadow-sm mb-gutter">
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-md">
+    <div className="bg-background text-on-surface min-h-screen flex flex-col">
+      <Nav />
+      <main className="flex-1 w-full max-w-[1280px] mx-auto px-gutter py-8 md:py-10">
+        {/* Profile header card */}
+        <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 md:p-8 mb-8">
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8">
             <div
-              className={`w-32 h-32 md:w-40 md:h-40 rounded-full ${color.bg} ${color.text} flex items-center justify-center font-bold text-4xl md:text-5xl shrink-0`}
+              className={`w-28 h-28 md:w-36 md:h-36 rounded-full ${color.bg} ${color.text} flex items-center justify-center font-bold text-4xl md:text-5xl shrink-0 border-4 border-primary-fixed`}
             >
               {getInitials(researcher.name)}
             </div>
 
-            <div className="flex-grow text-center md:text-left">
-              <h1 className="text-2xl md:text-3xl font-bold text-on-surface mb-2">
+            <div className="flex-1 text-center md:text-left min-w-0">
+              <h1 className="text-2xl md:text-3xl font-bold text-on-surface mb-1">
                 {researcher.name}
               </h1>
-              {titleLine && (
-                <p className="font-body-lg text-body-lg text-on-surface-variant mb-4">
-                  {titleLine}
-                </p>
-              )}
-
-              <div className="flex flex-wrap justify-center md:justify-start items-center gap-3">
-                {!authLoading && user ? (
-                  <button
-                    onClick={() => window.open("mailto:" + researcher.email)}
-                    className="bg-secondary text-on-secondary px-6 py-2.5 rounded-lg font-label-sm text-label-sm flex items-center gap-2 hover:opacity-90 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">mail</span>
-                    Connect via Email
-                  </button>
-                ) : (
-                  <>
-                    <Link
-                      href={`/login?callbackUrl=${encodeURIComponent(
-                        `/researchers/${slug}`
-                      )}`}
-                    >
-                      <button className="bg-secondary/40 text-on-secondary px-6 py-2.5 rounded-lg font-label-sm text-label-sm flex items-center gap-2 opacity-80 hover:opacity-100 transition-all">
-                        <span className="material-symbols-outlined text-[18px]">mail</span>
-                        Connect via Email
-                      </button>
-                    </Link>
-                    <span className="text-xs italic text-on-surface-variant">
-                      Sign in to connect with this researcher
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Two-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-          {/* Main Content */}
-          <div className="lg:col-span-8 space-y-gutter">
-            {/* Bio & Focus */}
-            <article className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 md:p-md">
-              <h2 className="font-headline-md text-headline-md mb-4 border-b border-outline-variant pb-3">
-                Biography
-              </h2>
-              {researcher.bio ? (
-                <p className="font-body-md text-body-md text-on-surface-variant mb-6 leading-relaxed">
-                  {researcher.bio}
-                </p>
-              ) : (
-                <p className="text-on-surface-variant italic mb-6">
-                  No biography provided yet.
-                </p>
-              )}
-
               {researcher.research_focus && (
-                <>
-                  <h3 className="font-bold text-lg text-on-surface mb-2">
-                    Research Focus
-                  </h3>
-                  <p className="font-body-md text-body-md text-on-surface-variant mb-6 leading-relaxed">
-                    {researcher.research_focus}
-                  </p>
-                </>
+                <p className="font-body-lg text-body-lg text-on-surface-variant mb-1">
+                  {researcher.research_focus}
+                </p>
+              )}
+              {titleLine && (
+                <div className="flex items-center justify-center md:justify-start gap-1.5 text-sm text-on-surface-variant mb-4">
+                  <span className="material-symbols-outlined text-[18px]">account_balance</span>
+                  {titleLine}
+                </div>
               )}
 
-              {(researcher.interests?.length ?? 0) > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {(researcher.interests ?? []).map((interest) => (
+              {interests.length > 0 && (
+                <div className="flex flex-wrap justify-center md:justify-start gap-2">
+                  {interests.map((interest) => (
                     <span
                       key={interest}
                       className="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full font-label-sm text-label-sm"
@@ -293,99 +216,212 @@ export default function ResearcherProfilePage() {
                   ))}
                 </div>
               )}
-            </article>
+            </div>
 
-            {/* Works */}
-            <section>
-              <h2 className="font-headline-md text-headline-md mb-4">
-                Selected Works
-              </h2>
-              {works.length === 0 ? (
-                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-10 text-center">
-                  <span className="material-symbols-outlined text-5xl text-outline-variant block mb-3">
-                    inventory_2
-                  </span>
-                  <p className="text-on-surface-variant">No works added yet.</p>
-                </div>
+            {/* Connect gate — real mailto when logged in, soft prompt when out */}
+            <div className="shrink-0">
+              {!authLoading && user ? (
+                <button
+                  onClick={() => window.open("mailto:" + researcher.email)}
+                  className="bg-secondary text-on-secondary px-6 py-2.5 rounded-xl text-sm font-medium hover:opacity-90 transition-all flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[20px]">person_add</span>
+                  Connect
+                </button>
               ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {works.map((work) => {
-                    const meta = WORK_TYPE_META[work.type];
-                    return (
-                      <div
-                        key={work.id}
-                        className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 flex gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all"
-                      >
-                        <div className="shrink-0 pt-1">
-                          <span
-                            className={`material-symbols-outlined text-3xl ${meta.iconColor}`}
-                          >
-                            {meta.icon}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-start gap-3 mb-1">
-                            <h4 className="font-bold text-on-surface leading-snug">
-                              {work.title}
-                            </h4>
-                            <span
-                              className={`shrink-0 ${meta.badgeBg} ${meta.badgeText} px-2 py-1 rounded font-label-sm text-label-sm uppercase tracking-wider`}
-                            >
-                              {meta.label}
-                            </span>
-                          </div>
+                <Link href={loginHref}>
+                  <button className="bg-white border border-outline text-on-surface px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-surface-container transition-colors shadow-sm flex items-center gap-2">
+                    <span
+                      className="material-symbols-outlined text-[20px]"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      lock
+                    </span>
+                    Log in to connect
+                  </button>
+                </Link>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Main column */}
+          <div className="lg:col-span-8 space-y-8">
+            {/* About */}
+            <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 md:p-8">
+              <h2 className="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary">info</span>
+                About
+              </h2>
+              {researcher.bio ? (
+                <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                  {researcher.bio}
+                </p>
+              ) : (
+                <p className="text-on-surface-variant italic">No biography provided yet.</p>
+              )}
+            </section>
+
+            {/* Honest single empty state when the researcher has no works at all */}
+            {works.length === 0 && (
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-10 text-center">
+                <span className="material-symbols-outlined text-5xl text-outline-variant block mb-3">
+                  inventory_2
+                </span>
+                <p className="text-on-surface-variant">No works added yet.</p>
+              </div>
+            )}
+
+            {/* Publications (papers) */}
+            {papers.length > 0 && (
+              <section>
+                <h2 className="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary">menu_book</span>
+                  Publications
+                </h2>
+                <div className="space-y-4">
+                  {papers.map((work) => (
+                    <div
+                      key={work.id}
+                      className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 hover:shadow-[0px_4px_12px_rgba(0,0,0,0.05)] hover:border-[#D1D5DB] transition-all group"
+                    >
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="min-w-0">
                           {(work.journal || work.year) && (
-                            <p className="font-label-sm text-label-sm text-on-surface-variant mb-2">
+                            <span className="font-label-sm text-label-sm text-secondary uppercase tracking-widest">
                               {[work.journal, work.year].filter(Boolean).join(" • ")}
-                            </p>
+                            </span>
                           )}
+                          <h3 className="font-headline-md text-[20px] text-on-surface mt-1 group-hover:text-secondary transition-colors leading-snug">
+                            {work.title}
+                          </h3>
                           {work.description && (
-                            <p className="text-on-surface-variant text-sm line-clamp-2">
+                            <p className="font-body-md text-body-md text-on-surface-variant mt-2 line-clamp-2">
                               {work.description}
                             </p>
                           )}
-                          {work.url && (
-                            <a
-                              href={work.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-block mt-3 font-label-sm text-label-sm text-primary font-semibold hover:underline"
-                            >
-                              {meta.ctaLabel} →
-                            </a>
-                          )}
                         </div>
+                        <span className="material-symbols-outlined text-outline-variant group-hover:text-secondary transition-colors shrink-0">
+                          arrow_right_alt
+                        </span>
                       </div>
-                    );
-                  })}
+                      {work.url && (
+                        <a
+                          href={work.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 mt-4 text-secondary font-label-sm text-label-sm font-bold hover:underline"
+                        >
+                          View Paper
+                          <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                        </a>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              )}
-            </section>
+              </section>
+            )}
+
+            {/* Tools & Software */}
+            {tools.length > 0 && (
+              <section>
+                <h2 className="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary">code_blocks</span>
+                  Tools &amp; Software
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {tools.map((work) => (
+                    <div
+                      key={work.id}
+                      className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 hover:shadow-[0px_4px_12px_rgba(0,0,0,0.05)] transition-all flex flex-col"
+                    >
+                      <div className="w-12 h-12 bg-secondary-container rounded-lg flex items-center justify-center mb-4">
+                        <span className="material-symbols-outlined text-secondary text-[28px]">terminal</span>
+                      </div>
+                      <h3 className="font-headline-md text-[20px] text-on-surface mb-2">{work.title}</h3>
+                      {work.description && (
+                        <p className="text-on-surface-variant font-body-md text-body-md mb-6 leading-relaxed line-clamp-3 flex-grow">
+                          {work.description}
+                        </p>
+                      )}
+                      {work.url && (
+                        <a
+                          href={work.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-secondary text-sm font-medium hover:underline mt-auto"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">link</span>
+                          View Tool
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Datasets (kept so no real work type is dropped) */}
+            {datasets.length > 0 && (
+              <section>
+                <h2 className="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary">database</span>
+                  Datasets
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {datasets.map((work) => (
+                    <div
+                      key={work.id}
+                      className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 hover:shadow-[0px_4px_12px_rgba(0,0,0,0.05)] transition-all flex flex-col"
+                    >
+                      <div className="w-12 h-12 bg-secondary-container rounded-lg flex items-center justify-center mb-4">
+                        <span className="material-symbols-outlined text-secondary text-[28px]">database</span>
+                      </div>
+                      <h3 className="font-headline-md text-[20px] text-on-surface mb-2">{work.title}</h3>
+                      {work.description && (
+                        <p className="text-on-surface-variant font-body-md text-body-md mb-6 leading-relaxed line-clamp-3 flex-grow">
+                          {work.description}
+                        </p>
+                      )}
+                      {work.url && (
+                        <a
+                          href={work.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-secondary text-sm font-medium hover:underline mt-auto"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">link</span>
+                          Access
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
 
           {/* Sidebar */}
-          <aside className="lg:col-span-4 space-y-gutter">
+          <aside className="lg:col-span-4 space-y-6">
             {(researcher.website_url || researcher.linkedin_url) && (
-              <section className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6">
-                <h3 className="font-bold text-lg text-on-surface mb-4">
-                  Professional Presence
+              <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
+                <h3 className="font-label-sm text-label-sm uppercase tracking-wider text-outline mb-4">
+                  Professional Links
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {researcher.website_url && (
                     <a
                       href={researcher.website_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-between p-3 rounded-lg border border-outline-variant hover:bg-surface-container-low transition-colors group"
+                      className="flex items-center gap-3 text-on-surface-variant hover:text-secondary transition-colors group"
                     >
-                      <span className="flex items-center gap-2 font-body-md text-body-md text-on-surface">
-                        <span className="material-symbols-outlined text-primary">
-                          language
-                        </span>
-                        Lab Website
-                      </span>
-                      <span className="material-symbols-outlined text-on-surface-variant group-hover:translate-x-1 transition-transform">
-                        arrow_forward
+                      <span className="material-symbols-outlined text-[22px]">language</span>
+                      <span className="text-sm font-medium">Lab Website</span>
+                      <span className="material-symbols-outlined text-[16px] ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                        open_in_new
                       </span>
                     </a>
                   )}
@@ -394,16 +430,12 @@ export default function ResearcherProfilePage() {
                       href={researcher.linkedin_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-between p-3 rounded-lg border border-outline-variant hover:bg-surface-container-low transition-colors group"
+                      className="flex items-center gap-3 text-on-surface-variant hover:text-secondary transition-colors group"
                     >
-                      <span className="flex items-center gap-2 font-body-md text-body-md text-on-surface">
-                        <span className="material-symbols-outlined text-primary">
-                          link
-                        </span>
-                        LinkedIn Profile
-                      </span>
-                      <span className="material-symbols-outlined text-on-surface-variant group-hover:translate-x-1 transition-transform">
-                        arrow_forward
+                      <span className="material-symbols-outlined text-[22px]">link</span>
+                      <span className="text-sm font-medium">LinkedIn Profile</span>
+                      <span className="material-symbols-outlined text-[16px] ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                        open_in_new
                       </span>
                     </a>
                   )}
@@ -411,9 +443,43 @@ export default function ResearcherProfilePage() {
               </section>
             )}
 
+            {/* Connect CTA — gated, honest copy (no invented availability claims) */}
+            <section className="bg-primary-container text-on-primary-container rounded-xl p-6 relative overflow-hidden">
+              <div className="absolute -right-4 -bottom-4 opacity-10 pointer-events-none">
+                <span className="material-symbols-outlined text-[120px]">handshake</span>
+              </div>
+              <h3 className="font-headline-md text-[20px] text-white mb-2 relative z-10">
+                Interested in collaborating with {firstName}?
+              </h3>
+              <p className="font-body-md text-body-md text-on-primary-container opacity-90 mb-6 relative z-10">
+                Reach out to start a conversation.
+              </p>
+              {!authLoading && user ? (
+                <button
+                  onClick={() => window.open("mailto:" + researcher.email)}
+                  className="w-full bg-secondary text-on-secondary px-4 py-3 rounded-xl text-sm font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2 relative z-10"
+                >
+                  <span className="material-symbols-outlined text-[20px]">mail</span>
+                  Send collaboration request
+                </button>
+              ) : (
+                <Link href={loginHref} className="block relative z-10">
+                  <button className="w-full bg-secondary text-on-secondary px-4 py-3 rounded-xl text-sm font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2">
+                    <span
+                      className="material-symbols-outlined text-[20px]"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      lock
+                    </span>
+                    Log in to connect
+                  </button>
+                </Link>
+              )}
+            </section>
+
             {related.length > 0 && (
-              <section className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6">
-                <h3 className="font-bold text-lg text-on-surface mb-4">
+              <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
+                <h3 className="font-label-sm text-label-sm uppercase tracking-wider text-outline mb-4">
                   Related Researchers
                 </h3>
                 <div className="space-y-4">
