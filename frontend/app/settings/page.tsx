@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
+import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -14,12 +14,14 @@ const AFFILIATIONS = ["Researcher", "Laboratory Head", "Institutional Admin", "G
 
 const MIN_PASSWORD_LENGTH = 8;
 
-type SectionKey = "profile" | "account" | "notifications";
+type SectionKey = "account" | "researcher" | "interests" | "notifications" | "danger";
 
 const SECTIONS: { key: SectionKey; label: string; icon: string }[] = [
-  { key: "profile", label: "Profile", icon: "account_circle" },
-  { key: "account", label: "Account", icon: "settings" },
+  { key: "account", label: "Account", icon: "account_circle" },
+  { key: "researcher", label: "Researcher Profile", icon: "badge" },
+  { key: "interests", label: "Interests", icon: "psychology" },
   { key: "notifications", label: "Notifications", icon: "notifications_active" },
+  { key: "danger", label: "Danger Zone", icon: "warning" },
 ];
 
 function ToggleSwitch({
@@ -61,11 +63,20 @@ function ErrorBanner({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Shared styles
+const cardCls =
+  "bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-[0px_4px_20px_rgba(0,0,0,0.05)]";
+const inputCls =
+  "w-full h-12 px-md bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none";
+const labelCls = "font-label-sm text-label-sm text-on-surface-variant";
+const primaryBtnCls =
+  "bg-primary text-on-primary px-xl py-sm rounded-full font-label-sm text-label-sm hover:bg-primary-container transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2";
+
 export default function SettingsPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const router = useRouter();
 
-  const [activeSection, setActiveSection] = useState<SectionKey>("profile");
+  const [activeSection, setActiveSection] = useState<SectionKey>("account");
 
   // Redirect if not logged in (same pattern as profile/setup/page.tsx;
   // middleware also protects this route server-side).
@@ -81,6 +92,10 @@ export default function SettingsPage() {
   const [institution, setInstitution] = useState("");
   const [country, setCountry] = useState("");
 
+  // ── Researcher-profile existence (read-only; drives the link-out card) ────
+  const [isPublic, setIsPublic] = useState(false);
+  const [profileSlug, setProfileSlug] = useState<string | null>(null);
+
   // ── Notification fields ─────────────────────────────────────────────────
   const [notifyWeekly, setNotifyWeekly] = useState(false);
   const [notifyDaily, setNotifyDaily] = useState(false);
@@ -88,7 +103,9 @@ export default function SettingsPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Pre-load current values on mount.
+  // Pre-load current values on mount. (is_public + profile_slug are additive
+  // reads used only to render the Researcher Profile link-out card's empty vs
+  // active state — no write path touches them here.)
   useEffect(() => {
     if (!user) return;
     setLoadingData(true);
@@ -96,7 +113,7 @@ export default function SettingsPage() {
 
     supabase
       .from("users")
-      .select("name, affiliation, institution, country, notify_weekly, notify_daily")
+      .select("name, affiliation, institution, country, notify_weekly, notify_daily, is_public, profile_slug")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -113,6 +130,8 @@ export default function SettingsPage() {
           setCountry(data.country ?? "");
           setNotifyWeekly(data.notify_weekly ?? false);
           setNotifyDaily(data.notify_daily ?? false);
+          setIsPublic(data.is_public ?? false);
+          setProfileSlug(data.profile_slug ?? null);
         }
         setLoadingData(false);
       });
@@ -205,6 +224,15 @@ export default function SettingsPage() {
     setPasswordSaving(false);
   }
 
+  // ── Danger zone: log out ─────────────────────────────────────────────────
+  // Reuses the same signOut logic the nav avatar menu uses.
+  const [loggingOut, setLoggingOut] = useState(false);
+  async function handleLogout() {
+    setLoggingOut(true);
+    await signOut();
+    router.push("/");
+  }
+
   // ── Account: delete account ──────────────────────────────────────────────
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
@@ -282,7 +310,7 @@ export default function SettingsPage() {
   if (loading || !user) {
     return (
       <div className="bg-background min-h-screen">
-        <Navbar />
+        <Nav />
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
         </div>
@@ -290,15 +318,16 @@ export default function SettingsPage() {
     );
   }
 
+  const hasProfile = !!profileSlug;
+
   return (
     <div className="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
-      <Navbar />
+      <Nav />
 
-      <main className="flex flex-col md:flex-row flex-1 max-w-[1280px] mx-auto w-full min-w-0">
-        {/* Mobile section tabs — the design has no mobile treatment for the
-            sidebar (it's `hidden md:flex`), so this is an addition to keep
-            the page usable on small screens, matching the tab-bar pattern
-            already used elsewhere in the app (e.g. Knowledge Hub). */}
+      <main className="flex-grow w-full max-w-[1280px] mx-auto flex flex-col md:flex-row md:gap-gutter md:px-margin md:py-8 min-w-0">
+        {/* Mobile section tabs — kept from the original responsive treatment
+            (the design has no mobile sidebar spec). Matches the tab-bar
+            pattern used elsewhere in the app. */}
         <div className="md:hidden w-full px-gutter pt-md">
           <div className="flex overflow-x-auto gap-2 pb-2">
             {SECTIONS.map((s) => (
@@ -314,77 +343,68 @@ export default function SettingsPage() {
                 {s.label}
               </button>
             ))}
-            <Link
-              href="/profile/setup"
-              className="px-4 py-2 rounded-full font-label-sm text-label-sm whitespace-nowrap shrink-0 bg-surface-container-low text-on-surface-variant flex items-center gap-1"
-            >
-              Public Profile
-              <span className="material-symbols-outlined text-sm">arrow_outward</span>
-            </Link>
           </div>
         </div>
 
-        {/* Sidebar */}
-        <aside className="hidden md:flex flex-col w-64 border-r border-outline-variant bg-surface-container-low p-md space-y-base sticky top-16 h-[calc(100vh-64px)]">
-          <div className="mb-lg px-2">
+        {/* Sidebar — transparent inline column (design), sticks without a
+            fixed-height rail so the divider can never end mid-content. */}
+        <aside className="hidden md:block w-64 flex-shrink-0 self-start md:sticky md:top-24">
+          <div className="mb-md px-3">
             <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest opacity-60">
               Settings
             </p>
           </div>
-          <nav className="space-y-xs">
-            {SECTIONS.map((s) => (
-              <button
-                key={s.key}
-                onClick={() => setActiveSection(s.key)}
-                className={`w-full flex items-center gap-sm p-sm rounded-lg transition-all duration-150 text-left ${
-                  activeSection === s.key
-                    ? "bg-secondary-container text-on-secondary-container font-semibold"
-                    : "text-on-surface-variant hover:bg-surface-container-low"
-                }`}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={activeSection === s.key ? { fontVariationSettings: "'FILL' 1" } : undefined}
+          <nav className="flex flex-col gap-1">
+            {SECTIONS.map((s) => {
+              const isDanger = s.key === "danger";
+              const active = activeSection === s.key;
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => setActiveSection(s.key)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-left ${
+                    active
+                      ? isDanger
+                        ? "bg-error-container text-error font-semibold"
+                        : "bg-primary text-on-primary font-semibold"
+                      : isDanger
+                        ? "text-error hover:bg-error-container/20"
+                        : "text-on-surface-variant hover:bg-surface-container"
+                  }`}
                 >
-                  {s.icon}
-                </span>
-                <span className="font-body-md text-body-md">{s.label}</span>
-              </button>
-            ))}
-
-            <div className="h-px bg-outline-variant my-2" />
-
-            <Link
-              href="/profile/setup"
-              className="flex items-center justify-between p-sm text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-all duration-150"
-            >
-              <div className="flex items-center gap-sm">
-                <span className="material-symbols-outlined">public</span>
-                <span className="font-body-md text-body-md">Public Profile</span>
-              </div>
-              <span className="material-symbols-outlined text-sm">arrow_outward</span>
-            </Link>
+                  <span
+                    className="material-symbols-outlined text-[20px]"
+                    style={active ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                  >
+                    {s.icon}
+                  </span>
+                  <span className="font-body-md text-body-md">{s.label}</span>
+                </button>
+              );
+            })}
           </nav>
         </aside>
 
         {/* Content */}
-        <section className="flex-1 p-margin md:p-lg overflow-y-auto">
-          <div className="max-w-2xl mx-auto space-y-xl">
+        <section className="flex-grow min-w-0 px-gutter py-lg md:px-0 md:py-0">
+          <div className="max-w-2xl mx-auto md:mx-0 space-y-xl">
             {loadError && <ErrorBanner>{loadError}</ErrorBanner>}
 
-            {/* ── Profile ──────────────────────────────────────────── */}
-            {activeSection === "profile" && (
-              <div>
-                <div className="flex flex-col mb-lg">
-                  <h1 className="text-2xl md:text-3xl font-bold text-on-background">
-                    Profile
-                  </h1>
+            {/* ── Account (name + email + password) ─────────────────── */}
+            {activeSection === "account" && (
+              <div className="space-y-lg">
+                <div className="flex flex-col">
+                  <h1 className="text-2xl md:text-3xl font-bold text-on-background">Account</h1>
                   <p className="font-body-md text-on-surface-variant mt-xs">
-                    Your account details
+                    Your details, sign-in email, and password
                   </p>
                 </div>
 
-                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
+                {/* Personal details */}
+                <div className={cardCls}>
+                  <h2 className="font-headline-md text-headline-md text-on-background mb-md">
+                    Personal Details
+                  </h2>
                   {loadingData ? (
                     <div className="flex justify-center py-8">
                       <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
@@ -393,24 +413,20 @@ export default function SettingsPage() {
                     <form className="space-y-md" onSubmit={handleSaveProfile}>
                       <div className="flex flex-col md:flex-row gap-md">
                         <div className="flex-1 space-y-xs">
-                          <label className="font-label-sm text-label-sm text-on-surface-variant">
-                            Full Name
-                          </label>
+                          <label className={labelCls}>Full Name</label>
                           <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full h-12 px-md bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
+                            className={inputCls}
                           />
                         </div>
                         <div className="flex-1 space-y-xs">
-                          <label className="font-label-sm text-label-sm text-on-surface-variant">
-                            Affiliation
-                          </label>
+                          <label className={labelCls}>Affiliation</label>
                           <select
                             value={affiliation}
                             onChange={(e) => setAffiliation(e.target.value)}
-                            className="w-full h-12 px-md bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
+                            className={inputCls}
                           >
                             {AFFILIATIONS.map((a) => (
                               <option key={a} value={a}>
@@ -422,26 +438,22 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="space-y-xs">
-                        <label className="font-label-sm text-label-sm text-on-surface-variant">
-                          Institution
-                        </label>
+                        <label className={labelCls}>Institution</label>
                         <input
                           type="text"
                           value={institution}
                           onChange={(e) => setInstitution(e.target.value)}
-                          className="w-full h-12 px-md bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
+                          className={inputCls}
                         />
                       </div>
 
                       <div className="space-y-xs">
-                        <label className="font-label-sm text-label-sm text-on-surface-variant">
-                          Country
-                        </label>
+                        <label className={labelCls}>Country</label>
                         <input
                           type="text"
                           value={country}
                           onChange={(e) => setCountry(e.target.value)}
-                          className="w-full h-12 px-md bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
+                          className={inputCls}
                         />
                       </div>
 
@@ -449,11 +461,7 @@ export default function SettingsPage() {
                       {profileSuccess && <SuccessBanner>Changes saved.</SuccessBanner>}
 
                       <div className="pt-md border-t border-outline-variant mt-lg flex justify-end">
-                        <button
-                          type="submit"
-                          disabled={profileSaving}
-                          className="bg-primary text-on-primary px-xl py-sm rounded-full font-label-sm text-label-sm hover:bg-primary-container transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                        >
+                        <button type="submit" disabled={profileSaving} className={primaryBtnCls}>
                           {profileSaving && (
                             <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                           )}
@@ -463,23 +471,9 @@ export default function SettingsPage() {
                     </form>
                   )}
                 </div>
-              </div>
-            )}
-
-            {/* ── Account ──────────────────────────────────────────── */}
-            {activeSection === "account" && (
-              <div className="space-y-lg">
-                <div className="flex flex-col">
-                  <h1 className="text-2xl md:text-3xl font-bold text-on-background">
-                    Account
-                  </h1>
-                  <p className="font-body-md text-on-surface-variant mt-xs">
-                    Manage your sign-in email and password
-                  </p>
-                </div>
 
                 {/* Change email */}
-                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
+                <div className={cardCls}>
                   <h2 className="font-headline-md text-headline-md text-on-background mb-xs">
                     Change Email
                   </h2>
@@ -488,9 +482,7 @@ export default function SettingsPage() {
                   </p>
                   <form className="space-y-sm" onSubmit={handleChangeEmail}>
                     <div className="space-y-xs">
-                      <label className="font-label-sm text-label-sm text-on-surface-variant">
-                        New Email Address
-                      </label>
+                      <label className={labelCls}>New Email Address</label>
                       <input
                         type="email"
                         required
@@ -498,7 +490,7 @@ export default function SettingsPage() {
                         value={newEmail}
                         onChange={(e) => setNewEmail(e.target.value)}
                         placeholder="new.email@example.com"
-                        className="w-full h-12 px-md bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
+                        className={inputCls}
                       />
                     </div>
 
@@ -508,11 +500,7 @@ export default function SettingsPage() {
                     )}
 
                     <div className="flex justify-end">
-                      <button
-                        type="submit"
-                        disabled={emailSaving}
-                        className="bg-primary text-on-primary px-xl py-sm rounded-full font-label-sm text-label-sm hover:bg-primary-container transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      >
+                      <button type="submit" disabled={emailSaving} className={primaryBtnCls}>
                         {emailSaving && (
                           <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         )}
@@ -523,16 +511,14 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Change password */}
-                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
+                <div className={cardCls}>
                   <h2 className="font-headline-md text-headline-md text-on-background mb-md">
                     Change Password
                   </h2>
                   <form className="space-y-sm" onSubmit={handleChangePassword}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
                       <div className="space-y-xs">
-                        <label className="font-label-sm text-label-sm text-on-surface-variant">
-                          New Password
-                        </label>
+                        <label className={labelCls}>New Password</label>
                         <input
                           type="password"
                           required
@@ -541,13 +527,11 @@ export default function SettingsPage() {
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full h-12 px-md bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
+                          className={inputCls}
                         />
                       </div>
                       <div className="space-y-xs">
-                        <label className="font-label-sm text-label-sm text-on-surface-variant">
-                          Confirm New Password
-                        </label>
+                        <label className={labelCls}>Confirm New Password</label>
                         <input
                           type="password"
                           required
@@ -556,7 +540,7 @@ export default function SettingsPage() {
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full h-12 px-md bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-md text-body-md outline-none"
+                          className={inputCls}
                         />
                       </div>
                     </div>
@@ -565,11 +549,7 @@ export default function SettingsPage() {
                     {passwordSuccess && <SuccessBanner>Password updated.</SuccessBanner>}
 
                     <div className="flex justify-end">
-                      <button
-                        type="submit"
-                        disabled={passwordSaving}
-                        className="bg-primary text-on-primary px-xl py-sm rounded-full font-label-sm text-label-sm hover:bg-primary-container transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      >
+                      <button type="submit" disabled={passwordSaving} className={primaryBtnCls}>
                         {passwordSaving && (
                           <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         )}
@@ -578,37 +558,112 @@ export default function SettingsPage() {
                     </div>
                   </form>
                 </div>
+              </div>
+            )}
 
-                {/* Danger zone */}
-                <div className="bg-error-container/20 border-2 border-error/40 rounded-xl p-lg">
-                  <div className="flex items-start gap-sm mb-md">
-                    <span className="material-symbols-outlined text-error">warning</span>
-                    <div>
-                      <h2 className="font-headline-md text-headline-md text-error">
-                        Danger Zone
+            {/* ── Researcher Profile (link-out card) ───────────────── */}
+            {activeSection === "researcher" && (
+              <div className="space-y-lg">
+                <div className="flex flex-col">
+                  <h1 className="text-2xl md:text-3xl font-bold text-on-background">
+                    Researcher Profile
+                  </h1>
+                  <p className="font-body-md text-on-surface-variant mt-xs">
+                    Your public presence in the Researchers directory
+                  </p>
+                </div>
+
+                <div className={cardCls}>
+                  <div className="flex items-start gap-5">
+                    <div className="w-16 h-16 rounded-xl bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-3xl">badge</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h2 className="font-headline-md text-headline-md text-on-surface mb-2">
+                        {hasProfile ? "Researcher Profile" : "Create your profile"}
                       </h2>
-                      <p className="font-body-md text-body-md text-on-surface-variant mt-xs">
-                        Deleting your account is permanent and cannot be undone.
+                      <p className="font-body-md text-body-md text-on-surface-variant">
+                        {hasProfile
+                          ? "Your profile appears in the Researchers directory, letting peers discover your work and reach out to collaborate."
+                          : "Set up a researcher profile so peers can discover your work, publications, and tools in the directory."}
                       </p>
+
+                      <div className="flex flex-wrap items-center gap-3 mt-5">
+                        <Link
+                          href="/profile/setup"
+                          className="inline-flex items-center justify-center px-6 py-2.5 rounded-xl bg-primary text-on-primary font-label-sm text-label-sm hover:bg-primary-container transition-all duration-200"
+                        >
+                          {hasProfile ? "Edit your profile" : "Create your profile"}
+                        </Link>
+                        {hasProfile && isPublic && profileSlug && (
+                          <Link
+                            href={`/researchers/${profileSlug}`}
+                            className="inline-flex items-center justify-center px-6 py-2.5 rounded-xl border border-primary text-primary font-label-sm text-label-sm hover:bg-primary/5 transition-all duration-200 group"
+                          >
+                            View public profile
+                            <span className="material-symbols-outlined text-[18px] ml-2 group-hover:translate-x-1 transition-transform">
+                              open_in_new
+                            </span>
+                          </Link>
+                        )}
+                      </div>
+
+                      {hasProfile && (
+                        <div className="mt-4">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-label-sm text-label-sm bg-surface-container-high text-on-surface-variant">
+                            <span
+                              className="material-symbols-outlined text-[14px]"
+                              style={{ fontVariationSettings: "'FILL' 1" }}
+                            >
+                              {isPublic ? "visibility" : "visibility_off"}
+                            </span>
+                            {isPublic ? "Directory: Listed" : "Directory: Hidden"}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <ul className="font-label-sm text-label-sm text-on-surface-variant space-y-1 mb-md list-disc list-inside">
-                    <li>Your public profile, works, and comments will be permanently removed.</li>
-                    <li>You will be signed out everywhere immediately.</li>
-                    <li>This action cannot be reversed.</li>
-                  </ul>
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="bg-error text-on-error px-xl py-sm rounded-full font-label-sm text-label-sm hover:opacity-90 transition-all flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">delete_forever</span>
-                    Delete account
-                  </button>
                 </div>
               </div>
             )}
 
-            {/* ── Notifications ────────────────────────────────────── */}
+            {/* ── Interests (link-out to Discovery) ────────────────── */}
+            {activeSection === "interests" && (
+              <div className="space-y-lg">
+                <div className="flex flex-col">
+                  <h1 className="text-2xl md:text-3xl font-bold text-on-background">Interests</h1>
+                  <p className="font-body-md text-on-surface-variant mt-xs">
+                    Personalize your Discovery feed
+                  </p>
+                </div>
+
+                <div className={cardCls}>
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h2 className="font-headline-md text-headline-md text-primary mb-2">
+                        Research interests
+                      </h2>
+                      <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed max-w-md">
+                        Your interests tailor the Discovery feed to your field. Add or edit them from
+                        Discovery.
+                      </p>
+                    </div>
+                    <span className="material-symbols-outlined text-primary text-3xl">psychology</span>
+                  </div>
+                  <div className="mt-6">
+                    <Link
+                      href="/discovery"
+                      className="inline-flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-xl font-label-sm text-label-sm hover:bg-primary-container transition-all"
+                    >
+                      Edit interests in Discovery
+                      <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Notifications (functional — NOT coming-soon) ─────── */}
             {activeSection === "notifications" && (
               <div>
                 <div className="flex flex-col mb-lg">
@@ -625,7 +680,7 @@ export default function SettingsPage() {
                     <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
                   </div>
                 ) : (
-                  <div className="bg-surface-container-low border border-outline-variant rounded-xl p-lg space-y-md">
+                  <div className={`${cardCls} space-y-md`}>
                     {notifyError && <ErrorBanner>{notifyError}</ErrorBanner>}
 
                     <div className="flex items-center justify-between">
@@ -668,6 +723,68 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ── Danger Zone (log out + delete account) ───────────── */}
+            {activeSection === "danger" && (
+              <div className="space-y-lg">
+                <div className="flex flex-col">
+                  <h1 className="text-2xl md:text-3xl font-bold text-on-background">Danger Zone</h1>
+                  <p className="font-body-md text-on-surface-variant mt-xs">
+                    Sign out or permanently delete your account
+                  </p>
+                </div>
+
+                {/* Log out */}
+                <div className={cardCls}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h2 className="font-headline-md text-headline-md text-on-surface mb-xs">
+                        Log out
+                      </h2>
+                      <p className="font-body-md text-body-md text-on-surface-variant">
+                        Sign out of your account on this device.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      disabled={loggingOut}
+                      className="shrink-0 inline-flex items-center gap-2 px-xl py-sm rounded-full border border-outline-variant text-on-surface font-label-sm text-label-sm hover:bg-surface-container-high transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loggingOut && (
+                        <span className="w-3.5 h-3.5 border-2 border-on-surface/30 border-t-on-surface rounded-full animate-spin" />
+                      )}
+                      <span className="material-symbols-outlined text-[16px]">logout</span>
+                      {loggingOut ? "Logging out…" : "Log out"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Delete account */}
+                <div className="bg-error-container/20 border-2 border-error/40 rounded-xl p-lg">
+                  <div className="flex items-start gap-sm mb-md">
+                    <span className="material-symbols-outlined text-error">warning</span>
+                    <div>
+                      <h2 className="font-headline-md text-headline-md text-error">Delete account</h2>
+                      <p className="font-body-md text-body-md text-on-surface-variant mt-xs">
+                        Deleting your account is permanent and cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+                  <ul className="font-label-sm text-label-sm text-on-surface-variant space-y-1 mb-md list-disc list-inside">
+                    <li>Your public profile, works, and comments will be permanently removed.</li>
+                    <li>You will be signed out everywhere immediately.</li>
+                    <li>This action cannot be reversed.</li>
+                  </ul>
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="bg-error text-on-error px-xl py-sm rounded-full font-label-sm text-label-sm hover:opacity-90 transition-all flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete_forever</span>
+                    Delete account
+                  </button>
+                </div>
               </div>
             )}
           </div>
