@@ -3,12 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
+import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import type { DiscoverItem } from "@/app/api/discover/route";
-import { DiscoverCard, SkeletonCard } from "@/components/DiscoverCard";
 
 // ── Discover tab constants ────────────────────────────────────────────────────
 
@@ -34,6 +33,16 @@ const DISCOVER_TOPICS = [
   "Multi-omics biomarkers",
 ] as const;
 
+// Optional one-tap fills for the "What's your field?" question in the modal.
+// Purely a convenience — clicking one just sets the existing `field` state.
+const FIELD_SUGGESTIONS = [
+  "Computational Biology",
+  "Medicinal Chemistry",
+  "Structural Biology",
+  "Drug Repurposing",
+  "Immunology",
+] as const;
+
 // Debounce a free-text search query before it triggers a live re-fetch.
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -53,6 +62,141 @@ function formatCacheAge(cachedAt: number | null): string | null {
   return `Updated ${hours}h ago`;
 }
 
+// Honest qualitative label for the real 1-5 relevance score (no fabricated
+// percentages). Top tier reads as the mint accent, lower tiers as neutral —
+// mirroring how the design tinted its high vs. low match badges.
+function matchTier(relevance: number): { label: string; className: string } {
+  if (relevance >= 4)
+    return { label: "Strong match", className: "bg-secondary-fixed text-on-secondary-container" };
+  if (relevance === 3)
+    return { label: "Good match", className: "bg-secondary-fixed text-on-secondary-container" };
+  return { label: "Related", className: "bg-surface-container-highest text-on-surface-variant" };
+}
+
+const TYPE_LABEL: Record<string, string> = {
+  paper: "Paper",
+  grant: "Grant",
+  trial: "Trial",
+  tool: "Tool",
+};
+
+// ── Feed card (discovery-only; shared DiscoverCard left untouched for Navigator) ──
+
+function FeedCard({
+  item,
+  canSave,
+  showMatch,
+  saved,
+  onToggleSave,
+}: {
+  item: DiscoverItem;
+  canSave: boolean;
+  showMatch: boolean;
+  saved: boolean;
+  onToggleSave: (item: DiscoverItem) => void;
+}) {
+  const tier = matchTier(item.relevance);
+  return (
+    <div className="bg-white border border-outline-variant p-5 rounded-xl hover:shadow-[0px_4px_12px_rgba(0,0,0,0.05)] hover:border-[#D1D5DB] transition-all duration-300 relative flex flex-col h-full">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-bold uppercase tracking-wider">
+            {TYPE_LABEL[item.type] ?? item.type}
+          </span>
+          {showMatch && (
+            <span
+              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${tier.className}`}
+              title={`Relevance: ${item.relevance}/5`}
+            >
+              {tier.label}
+            </span>
+          )}
+        </div>
+        {canSave && (
+          <button
+            onClick={() => onToggleSave(item)}
+            aria-label={saved ? "Remove from saved" : "Save item"}
+            aria-pressed={saved}
+            className="text-on-surface-variant hover:text-primary transition-colors shrink-0"
+          >
+            <span
+              className="material-symbols-outlined"
+              style={{
+                color: saved ? "#00523c" : undefined,
+                fontVariationSettings: saved ? "'FILL' 1" : "'FILL' 0",
+              }}
+            >
+              bookmark
+            </span>
+          </button>
+        )}
+      </div>
+
+      <a
+        href={item.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-headline-md text-headline-md text-primary leading-tight mb-2 line-clamp-2 hover:underline"
+      >
+        {item.title}
+      </a>
+
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-label-sm font-bold text-on-surface">{item.source}</span>
+        <span className="w-1 h-1 rounded-full bg-outline-variant" />
+        <span className="text-label-sm font-label-sm text-on-surface-variant">{item.date}</span>
+      </div>
+
+      <p className="text-body-md font-body-md text-on-surface-variant line-clamp-2 flex-grow">
+        {item.description}
+      </p>
+
+      {item.tags.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-surface-variant flex items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-1.5 overflow-hidden max-h-[22px]">
+            {item.tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="px-2 py-0.5 bg-surface-container-low text-[10px] font-medium text-on-surface-variant rounded-full whitespace-nowrap"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] font-bold text-primary hover:underline shrink-0"
+          >
+            Read More →
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FeedSkeleton() {
+  return (
+    <div className="bg-white border border-outline-variant p-5 rounded-xl flex flex-col h-full animate-pulse">
+      <div className="flex items-center justify-between mb-4">
+        <div className="h-5 w-16 bg-surface-container-high rounded-full" />
+        <div className="w-6 h-6 bg-surface-container-high rounded" />
+      </div>
+      <div className="h-5 bg-surface-container-high rounded mb-2 w-full" />
+      <div className="h-5 bg-surface-container-high rounded mb-3 w-4/5" />
+      <div className="h-3 bg-surface-container-low rounded mb-3 w-1/2" />
+      <div className="h-4 bg-surface-container-low rounded mb-2 w-full" />
+      <div className="h-4 bg-surface-container-low rounded w-3/4" />
+      <div className="mt-4 pt-4 border-t border-surface-variant flex gap-1.5">
+        <div className="h-4 w-12 bg-surface-container-low rounded-full" />
+        <div className="h-4 w-14 bg-surface-container-low rounded-full" />
+      </div>
+    </div>
+  );
+}
+
 // ── Discover tab ──────────────────────────────────────────────────────────────
 
 function DiscoverTab({ user }: { user: unknown }) {
@@ -60,6 +204,7 @@ function DiscoverTab({ user }: { user: unknown }) {
   const [loading, setLoading]         = useState(true);
   const [refreshing, setRefreshing]   = useState(false);
   const [filter, setFilter]           = useState("all");
+  const [sortBy, setSortBy]           = useState<"relevance" | "recent">("relevance");
   const [search, setSearch]           = useState("");
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [page, setPage]               = useState(1);
@@ -159,8 +304,8 @@ function DiscoverTab({ user }: { user: unknown }) {
 
   useEffect(() => { loadFeed(false); }, [loadFeed]);
 
-  // Reset pagination whenever a new result set comes in or the type filter changes
-  useEffect(() => { setPage(1); }, [filter, debouncedSearch, activeTopic]);
+  // Reset pagination whenever a new result set comes in or the type filter/sort changes
+  useEffect(() => { setPage(1); }, [filter, debouncedSearch, activeTopic, sortBy]);
 
   // Persist the user's interests to users.interests and re-scope the feed.
   // Clearing search/topic makes the interest-driven (multi-term) feed the active
@@ -216,8 +361,8 @@ function DiscoverTab({ user }: { user: unknown }) {
   }, [user, savedIds]);
 
   // One-click curated scopes. The signed-in user's own interests are managed
-  // separately as editable chips (see "Your interests" below), so they're no
-  // longer merged in here — this list stays the fixed "explore more" set.
+  // separately as editable chips (see "My Discovery Interests" below), so they're
+  // not merged in here — this list stays the fixed "explore more" set.
   const topicChips = DISCOVER_TOPICS;
 
   // Clicking a topic sets it as the feed scope; clicking the active one again
@@ -228,155 +373,207 @@ function DiscoverTab({ user }: { user: unknown }) {
     setSearch("");
   };
 
-  // "Saved" is a special pill that shows the user's bookmarked items straight
-  // from saved_items (no live fetch). Otherwise the type pills are a fast,
-  // client-side filter over whatever the live fetch returned.
+  // "Saved" shows the user's bookmarked items straight from saved_items (no live
+  // fetch). Otherwise the type pills are a fast client-side filter over whatever
+  // the live fetch returned.
   const savedView = filter === "saved";
   const filtered = savedView
     ? savedItems
     : items.filter((item) => filter === "all" || item.type === filter);
 
-  const shown   = filtered.slice(0, page * PAGE_SIZE);
-  const hasMore  = shown.length < filtered.length;
+  // Client-side ordering for the Sort control. Relevance reproduces the server's
+  // relevance-then-recency order; Recent sorts purely by date.
+  const ordered = [...filtered].sort((a, b) =>
+    sortBy === "recent"
+      ? new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime()
+      : b.relevance - a.relevance || new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime(),
+  );
+
+  const shown   = ordered.slice(0, page * PAGE_SIZE);
+  const hasMore  = shown.length < ordered.length;
   // The live-fetch skeleton only applies to live views, never the saved list.
   const viewLoading = loading && !savedView;
 
+  const toggleBtn = (active: boolean) =>
+    `px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+      active
+        ? "bg-secondary-container text-on-secondary-container font-semibold"
+        : "text-on-surface-variant hover:text-on-surface"
+    }`;
+
+  const sortBtn = (active: boolean) =>
+    `px-3 py-1 rounded-md text-sm font-medium transition-all ${
+      active
+        ? "bg-white text-primary font-semibold shadow-sm"
+        : "text-on-surface-variant hover:text-on-surface"
+    }`;
+
   return (
     <>
-      {/* Personalization banner — logged-out users only */}
-      {!user && (
-        <section className="px-gutter max-w-[1280px] mx-auto mb-8">
-          <div className="bg-primary p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-6 shadow-md">
-            <div className="text-white text-center md:text-left">
-              <h2 className="font-headline-md text-headline-md mb-1">Tailor your research experience</h2>
-              <p className="font-body-md text-body-md opacity-90">
-                Sign in to personalize your feed and get research recommendations based on your profile.
-              </p>
-            </div>
-            <Link href="/login?callbackUrl=/knowledge-hub" className="shrink-0">
-              <button className="whitespace-nowrap px-8 py-3 bg-white text-primary font-bold rounded-lg hover:bg-surface-container-low transition-colors shadow-sm">
-                Sign in to personalize
-              </button>
-            </Link>
-          </div>
-        </section>
-      )}
+      {/* Control bar: Feed / Saved toggle + AI-curated marker */}
+      <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
+        <div className="inline-flex bg-surface-container rounded-lg p-1">
+          <button
+            onClick={() => { if (savedView) setFilter("all"); }}
+            className={toggleBtn(!savedView)}
+          >
+            Feed
+          </button>
+          <button onClick={() => setFilter("saved")} className={toggleBtn(savedView)}>
+            Saved{savedIds.size > 0 ? ` (${savedIds.size})` : ""}
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary text-[18px]">auto_awesome</span>
+          <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">
+            AI-curated insights
+          </span>
+        </div>
+      </div>
 
-      {/* Personalization prompt — signed-in users who haven't set interests yet */}
-      {user && interests.length === 0 && (
-        <section className="px-gutter max-w-[1280px] mx-auto mb-8">
-          <div className="bg-primary p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-6 shadow-md">
-            <div className="text-white text-center md:text-left">
-              <h2 className="font-headline-md text-headline-md mb-1">Personalize your feed</h2>
-              <p className="font-body-md text-body-md opacity-90">
-                Answer three quick questions and we&apos;ll tune your Discover feed to your research with AI.
+      {/* Personalization zone */}
+      {!user ? (
+        // Logged-out: soft "log in to personalize" prompt (no chips, no % match)
+        <div className="mb-8 bg-surface-container-low border border-outline-variant rounded-xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+              <span className="material-symbols-outlined text-[24px]">person_add</span>
+            </div>
+            <div>
+              <h2 className="font-headline-md text-[18px] text-primary">Log in to personalize your feed</h2>
+              <p className="text-body-md text-on-surface-variant">
+                See papers, grants, and tools matched to your research
               </p>
             </div>
+          </div>
+          <Link href="/login?callbackUrl=/knowledge-hub" className="shrink-0">
+            <button className="px-8 py-2 bg-primary text-on-primary text-sm font-medium rounded-full hover:opacity-90 transition-all active:scale-95">
+              Log in
+            </button>
+          </Link>
+        </div>
+      ) : (
+        // Logged-in: editable interest chips (drive the multi-term feed)
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-label-sm font-label-sm text-on-surface-variant tracking-wider uppercase">
+              My Discovery Interests
+            </h2>
             <button
               onClick={() => setShowPersonalize(true)}
-              className="shrink-0 whitespace-nowrap px-8 py-3 bg-white text-primary font-bold rounded-lg hover:bg-surface-container-low transition-colors shadow-sm flex items-center gap-2"
+              className="text-label-sm font-label-sm text-primary hover:underline flex items-center gap-1"
             >
-              <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-              Personalize your feed
+              <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+              Edit interests
             </button>
           </div>
-        </section>
+          <div className="flex items-center gap-2 flex-wrap">
+            {interests.map((kw) => (
+              <span
+                key={kw}
+                className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-secondary-fixed text-on-secondary-container rounded-full text-sm font-medium border border-secondary-fixed"
+              >
+                {kw}
+                <button
+                  onClick={() => removeInterest(kw)}
+                  aria-label={`Remove ${kw}`}
+                  className="flex items-center"
+                >
+                  <span className="material-symbols-outlined text-[16px] hover:text-error transition-colors">
+                    close
+                  </span>
+                </button>
+              </span>
+            ))}
+            {/* Add-your-own — dashed pill wrapping the live input (preserves addInterest) */}
+            <div className="flex-shrink-0 flex items-center gap-1 pl-3 pr-2 py-1.5 border-2 border-dashed border-outline-variant rounded-full focus-within:border-primary transition-all">
+              <span className="material-symbols-outlined text-[16px] text-on-surface-variant">add</span>
+              <input
+                type="text"
+                value={newChip}
+                onChange={(e) => setNewChip(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addInterest(newChip); } }}
+                placeholder="Add"
+                aria-label="Add an interest"
+                className="bg-transparent outline-none text-sm w-20 placeholder:text-on-surface-variant"
+              />
+            </div>
+          </div>
+          {interests.length === 0 && (
+            <p className="text-body-md text-on-surface-variant mt-3">
+              Add interests above, or{" "}
+              <button onClick={() => setShowPersonalize(true)} className="text-primary font-semibold hover:underline">
+                let AI build them
+              </button>{" "}
+              to personalize your feed.
+            </p>
+          )}
+        </div>
       )}
 
-      {/* Editable interest chips — the user's saved interests that drive the
-          multi-term feed. Remove one or add your own; both re-scope instantly. */}
-      {user && interests.length > 0 && (
-        <section className="px-gutter max-w-[1280px] mx-auto mb-8">
-          <div className="bg-secondary-container/40 border border-secondary-container rounded-xl p-5">
-            <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
-                <h3 className="font-bold text-on-surface text-body-md">Your interests</h3>
-                <span className="text-[11px] text-on-surface-variant">— your feed blends these</span>
-              </div>
-              <button
-                onClick={() => setShowPersonalize(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-primary text-primary text-[11px] font-bold hover:bg-primary/5 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
-                Redo with AI
+      {/* Weekly research digest — honest "coming soon", not a working control */}
+      {user && (
+        <div className="mb-8 p-4 rounded-xl bg-[#b4ecd3]/20 border border-secondary-fixed/30 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-secondary-fixed/30 flex items-center justify-center">
+            <span className="material-symbols-outlined text-[#00523c]">mail</span>
+          </div>
+          <div className="flex-grow">
+            <h4 className="font-semibold text-on-surface text-[16px]">Weekly research digest</h4>
+            <p className="text-on-surface-variant text-[14px] font-body-md">
+              Get your matched papers, grants, and trials delivered to your inbox every week.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="px-3 py-1 rounded-full bg-surface-container-highest text-on-surface-variant text-[11px] font-bold uppercase tracking-wider">
+              Coming soon
+            </span>
+            <button
+              type="button"
+              disabled
+              title="Coming soon"
+              className="px-4 py-1.5 border border-outline-variant rounded-lg text-label-sm font-label-sm text-on-surface-variant cursor-default opacity-70"
+            >
+              Notify me
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Type filters + Sort + Search */}
+      <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {DISCOVER_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setFilter(f.value)}
+              className={`px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                filter === f.value
+                  ? "bg-primary text-on-primary"
+                  : "border border-outline-variant text-on-surface-variant hover:bg-surface-container"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3 lg:ml-auto flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider hidden sm:inline">
+              Sort by:
+            </span>
+            <div className="inline-flex bg-surface-container rounded-lg p-1">
+              <button onClick={() => setSortBy("relevance")} className={sortBtn(sortBy === "relevance")}>
+                Relevance
+              </button>
+              <button onClick={() => setSortBy("recent")} className={sortBtn(sortBy === "recent")}>
+                Recent
               </button>
             </div>
-            <div className="flex flex-wrap gap-2 items-center">
-              {interests.map((kw) => (
-                <span
-                  key={kw}
-                  className="flex items-center gap-1.5 pl-4 pr-2 py-2 rounded-full bg-primary text-white font-medium font-label-sm text-label-sm shadow-sm"
-                >
-                  {kw}
-                  <button
-                    onClick={() => removeInterest(kw)}
-                    aria-label={`Remove ${kw}`}
-                    className="flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">close</span>
-                  </button>
-                </span>
-              ))}
-              {/* Add-your-own input */}
-              <div className="flex items-center gap-1 rounded-full border border-outline-variant bg-surface-container-lowest pl-3 pr-1 py-1">
-                <input
-                  type="text"
-                  value={newChip}
-                  onChange={(e) => setNewChip(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addInterest(newChip); } }}
-                  placeholder="Add a topic…"
-                  className="bg-transparent outline-none text-label-sm w-32 placeholder:text-on-surface-variant"
-                />
-                <button
-                  onClick={() => addInterest(newChip)}
-                  disabled={!newChip.trim()}
-                  aria-label="Add topic"
-                  className="flex items-center justify-center w-7 h-7 rounded-full text-primary hover:bg-primary/10 transition-colors disabled:opacity-40"
-                >
-                  <span className="material-symbols-outlined text-[18px]">add</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Search & filters */}
-      <section className="px-gutter max-w-[1280px] mx-auto mb-8">
-        <div className="space-y-4 md:space-y-6">
-          {/* Personalization + cache-age indicators, and a manual refresh control */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
-              {personalized && (
-                <div className="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-full">
-                  <span className="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
-                  <span className="text-[11px] font-bold text-primary">Personalized to your interests</span>
-                </div>
-              )}
-              {fromCache && formatCacheAge(cachedAt) && (
-                <span className="text-[11px] text-on-surface-variant">
-                  {formatCacheAge(cachedAt)} · showing cached results
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => loadFeed(true)}
-              disabled={refreshing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-on-surface-variant text-[11px] font-bold hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
-            >
-              <span
-                className={`material-symbols-outlined text-[14px] ${refreshing ? "animate-spin" : ""}`}
-              >
-                refresh
-              </span>
-              {refreshing ? "Refreshing…" : "Refresh"}
-            </button>
           </div>
 
-          {/* Search bar */}
-          <div className="relative w-full">
-            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">
+          <div className="relative min-w-[240px] flex-1">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
               search
             </span>
             <input
@@ -389,151 +586,149 @@ function DiscoverTab({ user }: { user: unknown }) {
                 if (e.target.value.trim()) setActiveTopic(null);
               }}
               placeholder="Search papers, grants, trials, tools..."
-              className="w-full pl-12 pr-12 py-4 bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all shadow-sm font-body-md text-body-md"
+              className="w-full pl-10 pr-9 py-2 bg-surface-container-low border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary-fixed focus:border-primary transition-all outline-none font-body-md text-body-md"
             />
             {loading && (
-              <span className="absolute right-12 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+              <span className="absolute right-9 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
             )}
             {search && (
               <button
                 onClick={() => setSearch("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary"
                 aria-label="Clear search"
               >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            )}
-          </div>
-
-          {/* Topic chips — pick a topic to scope the live feed (search > topic > interests) */}
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant mb-2">
-              Explore more topics
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {topicChips.map((topic) => {
-                const selected = activeTopic === topic;
-                return (
-                  <button
-                    key={topic}
-                    onClick={() => onTopicClick(topic)}
-                    aria-pressed={selected}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full font-medium font-label-sm text-label-sm transition-all ${
-                      selected
-                        ? "bg-primary text-white border border-primary shadow-sm"
-                        : "border border-outline-variant text-on-surface-variant hover:bg-surface-container-high"
-                    }`}
-                  >
-                    {selected && (
-                      <span className="material-symbols-outlined text-[14px]">check</span>
-                    )}
-                    {topic}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Filter pills */}
-          <div className="flex flex-wrap gap-2">
-            {DISCOVER_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setFilter(f.value)}
-                className={`px-5 py-2 rounded-full font-medium font-label-sm text-label-sm transition-all ${
-                  filter === f.value
-                    ? "bg-primary text-white shadow-sm"
-                    : "border border-outline-variant text-on-surface-variant hover:bg-surface-container-high"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-            {/* Saved view — logged-in only; renders bookmarked items from the DB */}
-            {Boolean(user) && (
-              <button
-                onClick={() => setFilter("saved")}
-                className={`flex items-center gap-1.5 px-5 py-2 rounded-full font-medium font-label-sm text-label-sm transition-all ${
-                  savedView
-                    ? "bg-primary text-white shadow-sm"
-                    : "border border-outline-variant text-on-surface-variant hover:bg-surface-container-high"
-                }`}
-              >
-                <span
-                  className="material-symbols-outlined text-[16px]"
-                  style={{ fontVariationSettings: savedView ? "'FILL' 1" : "'FILL' 0" }}
-                >
-                  bookmark
-                </span>
-                Saved{savedIds.size > 0 ? ` (${savedIds.size})` : ""}
+                <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             )}
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Discovery grid */}
-      <section className="px-gutter max-w-[1280px] mx-auto pb-xl">
-        {/* Loading skeletons */}
-        {viewLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
-        )}
+      {/* Topic chips — one-click feed scopes (search > topic > interests) */}
+      <div className="mb-6">
+        <p className="text-label-sm font-label-sm uppercase tracking-wider text-on-surface-variant mb-2">
+          Explore topics
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {topicChips.map((topic) => {
+            const selected = activeTopic === topic;
+            return (
+              <button
+                key={topic}
+                onClick={() => onTopicClick(topic)}
+                aria-pressed={selected}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-label-sm text-label-sm transition-all ${
+                  selected
+                    ? "bg-primary text-on-primary border border-primary"
+                    : "border border-outline-variant text-on-surface-variant hover:bg-surface-container"
+                }`}
+              >
+                {selected && <span className="material-symbols-outlined text-[14px]">check</span>}
+                {topic}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-        {/* No results */}
-        {!viewLoading && shown.length === 0 && (
-          <div className="py-20 flex flex-col items-center justify-center text-center">
-            <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">
-              {savedView ? "bookmark" : "search_off"}
+      {/* Feed state indicators + manual refresh */}
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
+        <div className="flex items-center gap-2 flex-wrap">
+          {personalized && (
+            <div className="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-full">
+              <span className="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
+              <span className="text-[11px] font-bold text-primary">Personalized to your interests</span>
+            </div>
+          )}
+          {fromCache && formatCacheAge(cachedAt) && (
+            <span className="text-[11px] text-on-surface-variant">
+              {formatCacheAge(cachedAt)} · showing cached results
             </span>
-            <h3 className="font-headline-md text-headline-md text-on-surface mb-2">
-              {savedView ? "No saved items yet" : "No results found"}
-            </h3>
-            <p className="text-on-surface-variant mb-6">
-              {savedView
-                ? "Tap the bookmark on any card to save it here for later."
-                : "Try adjusting your filters or search keywords."}
+          )}
+        </div>
+        <button
+          onClick={() => loadFeed(true)}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-on-surface-variant text-[11px] font-bold hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+        >
+          <span className={`material-symbols-outlined text-[14px] ${refreshing ? "animate-spin" : ""}`}>
+            refresh
+          </span>
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+
+      {/* Feed grid */}
+      {viewLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <FeedSkeleton key={i} />
+          ))}
+        </div>
+      )}
+
+      {!viewLoading && shown.length === 0 && (
+        savedView ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-16 h-16 bg-surface-container rounded-full flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-[32px] text-on-surface-variant">bookmark</span>
+            </div>
+            <h3 className="text-headline-md font-headline-md text-on-surface mb-2">Nothing saved yet</h3>
+            <p className="text-body-md font-body-md text-on-surface-variant max-w-xs mx-auto mb-6">
+              Bookmark items from your feed to see them here and access them quickly later.
+            </p>
+            <button
+              onClick={() => setFilter("all")}
+              className="px-6 py-2.5 bg-primary text-on-primary rounded-full text-sm font-medium hover:opacity-90 transition-all active:scale-95"
+            >
+              Browse feed
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">search_off</span>
+            <h3 className="text-headline-md font-headline-md text-on-surface mb-2">No results found</h3>
+            <p className="text-body-md text-on-surface-variant mb-6">
+              Try adjusting your filters or search keywords.
             </p>
             <button
               onClick={() => { setFilter("all"); setSearch(""); }}
-              className="px-8 py-3 bg-primary text-white rounded-full font-bold shadow-sm hover:bg-primary-container transition-all"
+              className="px-6 py-2.5 bg-primary text-on-primary rounded-full text-sm font-medium hover:opacity-90 transition-all active:scale-95"
             >
-              {savedView ? "Back to feed" : "Clear all filters"}
+              Clear all filters
             </button>
           </div>
-        )}
+        )
+      )}
 
-        {/* Cards */}
-        {!viewLoading && shown.length > 0 && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {shown.map((item) => (
-                <DiscoverCard
-                  key={item.id}
-                  item={item}
-                  canSave={Boolean(user)}
-                  saved={savedIds.has(item.id)}
-                  onToggleSave={toggleSave}
-                />
-              ))}
+      {!viewLoading && shown.length > 0 && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {shown.map((item) => (
+              <FeedCard
+                key={item.id}
+                item={item}
+                canSave={Boolean(user)}
+                showMatch={Boolean(user)}
+                saved={savedIds.has(item.id)}
+                onToggleSave={toggleSave}
+              />
+            ))}
+          </div>
+
+          {hasMore && (
+            <div className="mt-12 flex justify-center">
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                className="px-8 py-3 bg-white border border-outline text-primary text-sm font-medium rounded-xl hover:bg-surface-container transition-all active:scale-95 flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined">refresh</span>
+                Load more scientific insights
+              </button>
             </div>
-
-            {hasMore && (
-              <div className="mt-12 flex justify-center">
-                <button
-                  onClick={() => setPage((p) => p + 1)}
-                  className="px-10 py-3 border-2 border-primary text-primary font-bold rounded-full hover:bg-primary/5 transition-all"
-                >
-                  Load More Resources
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </section>
+          )}
+        </>
+      )}
 
       {/* Guided AI personalization form */}
       {showPersonalize && (
@@ -599,108 +794,133 @@ function PersonalizeModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 flex items-center justify-center p-4"
-      style={{ zIndex: 999999, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
+      className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
       onClick={submitting ? undefined : onClose}
     >
       <div
-        className="w-full max-w-lg bg-white rounded-2xl overflow-hidden shadow-2xl"
+        className="bg-white w-full max-w-[600px] rounded-xl border border-outline-variant shadow-[0px_4px_32px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="h-1.5 w-full bg-primary" />
-        <div className="p-8">
-          <div className="flex justify-between items-start mb-1">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">auto_awesome</span>
-              <h2 className="font-headline-md text-headline-md text-on-surface leading-tight">
-                Personalize your feed
-              </h2>
-            </div>
-            <button
-              onClick={onClose}
-              disabled={submitting}
-              className="text-outline hover:text-on-surface transition-colors p-1 shrink-0 disabled:opacity-40"
-              aria-label="Close"
+        {/* Header */}
+        <div className="p-6 relative border-b border-outline-variant/50">
+          <button
+            onClick={onClose}
+            disabled={submitting}
+            className="absolute top-4 right-4 text-outline hover:text-on-surface transition-colors disabled:opacity-40"
+            aria-label="Close"
+          >
+            <span className="material-symbols-outlined">close</span>
+          </button>
+          <div className="flex items-center gap-3 mb-2">
+            <span
+              className="material-symbols-outlined text-primary text-2xl"
+              style={{ fontVariationSettings: "'FILL' 1" }}
             >
-              <span className="material-symbols-outlined">close</span>
-            </button>
+              auto_awesome
+            </span>
+            <h1 className="font-headline-md text-headline-md text-on-surface">Personalize your feed</h1>
           </div>
-          <p className="font-body-md text-body-md text-on-surface-variant mb-6">
+          <p className="font-body-md text-on-surface-variant leading-relaxed">
             Answer a few questions — AI turns them into search keywords that scope your Discover feed.
           </p>
+        </div>
 
-          <div className="space-y-5">
-            <div>
-              <label className="block text-label-sm font-bold text-on-surface mb-1.5">
+        {/* Form content */}
+        <div className="p-6 overflow-y-auto flex-1">
+          <div className="space-y-8">
+            {/* Question 1 */}
+            <div className="space-y-3">
+              <label htmlFor="field_input" className="block text-sm font-medium text-on-surface">
                 What&apos;s your field?
               </label>
               <input
+                id="field_input"
                 type="text"
                 value={field}
                 onChange={(e) => setField(e.target.value)}
                 placeholder="e.g. computational biology, medicinal chemistry"
-                className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md"
+                className="w-full h-12 px-4 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md"
               />
+              <div className="flex flex-wrap gap-2 pt-1">
+                {FIELD_SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setField(s)}
+                    className="px-3 py-1.5 rounded-full border border-[#b4ecd3] bg-[#b4ecd3]/10 text-primary text-label-sm hover:bg-[#b4ecd3]/20 transition-colors"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div>
-              <label className="block text-label-sm font-bold text-on-surface mb-1.5">
+
+            {/* Question 2 */}
+            <div className="space-y-3">
+              <label htmlFor="working_on" className="block text-sm font-medium text-on-surface">
                 What are you working on right now?
               </label>
               <textarea
+                id="working_on"
                 value={working}
                 onChange={(e) => setWorking(e.target.value)}
-                rows={2}
                 placeholder="e.g. finding inhibitors for PHGDH in Alzheimer's disease"
-                className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md resize-none"
+                className="w-full min-h-[100px] p-4 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md resize-none"
               />
             </div>
-            <div>
-              <label className="block text-label-sm font-bold text-on-surface mb-1.5">
-                Any specific topics you want to follow? <span className="font-normal text-on-surface-variant">(optional)</span>
+
+            {/* Question 3 */}
+            <div className="space-y-3">
+              <label htmlFor="topics" className="block text-sm font-medium text-on-surface">
+                Any specific topics you want to follow?{" "}
+                <span className="font-normal text-on-surface-variant">(optional)</span>
               </label>
               <textarea
+                id="topics"
                 value={topics}
                 onChange={(e) => setTopics(e.target.value)}
-                rows={2}
                 placeholder="e.g. protein aggregation, tau phosphorylation, CRISPR screens"
-                className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md text-body-md resize-none"
+                className="w-full min-h-[100px] p-4 rounded-lg border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md resize-none"
               />
             </div>
-          </div>
 
-          {error && (
-            <p className="mt-4 text-body-sm text-error flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[16px]">error</span>
-              {error}
-            </p>
-          )}
-
-          <div className="flex gap-3 pt-6">
-            <button
-              onClick={submit}
-              disabled={!canSubmit || submitting}
-              className="flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-primary text-white hover:bg-primary-container transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
-            >
-              {submitting ? (
-                <>
-                  <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                  Extracting keywords…
-                </>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-                  Generate my feed
-                </>
-              )}
-            </button>
-            <button
-              onClick={onClose}
-              disabled={submitting}
-              className="px-6 py-3 rounded-xl font-bold text-sm border border-outline-variant hover:bg-surface-container-low transition-colors text-on-surface-variant disabled:opacity-40"
-            >
-              Cancel
-            </button>
+            {error && (
+              <p className="text-sm text-error flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px]">error</span>
+                {error}
+              </p>
+            )}
           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 bg-surface-container-lowest border-t border-outline-variant/50 flex items-center justify-end gap-3">
+          <button
+            onClick={onClose}
+            disabled={submitting}
+            className="px-5 h-11 rounded-lg text-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors disabled:opacity-40"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            disabled={!canSubmit || submitting}
+            className="bg-primary-container text-white text-sm font-medium px-6 h-11 rounded-lg hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed"
+          >
+            {submitting ? (
+              <>
+                <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                Generating…
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  auto_awesome
+                </span>
+                Generate my feed
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>,
@@ -710,34 +930,19 @@ function PersonalizeModal({
 
 // ── Route ─────────────────────────────────────────────────────────────────────
 //
-// Standalone /discovery route. Structurally lifted verbatim from the Discover tab
-// in /knowledge-hub (which still exists in parallel this step). The `user` prop is
-// now sourced from a local useAuth() call instead of being passed down by the hub.
+// Standalone /discovery route, reskinned to /design/discovery-logged-in.html.
+// RESTYLE ONLY — all state, fetching, and behavior are unchanged from the
+// knowledge-hub extraction. The `user` prop is sourced from a local useAuth().
 
 export default function DiscoveryPage() {
   const { user } = useAuth();
 
   return (
-    <div className="bg-background text-on-background min-h-screen">
-      <Navbar />
-
-      <main className="min-h-screen">
-        {/* Hero */}
-        <section className="py-8 md:py-xl px-gutter max-w-[1280px] mx-auto">
-          <div className="max-w-3xl">
-            <h1 className="text-[28px] md:font-display-lg md:text-display-lg mb-3 md:mb-4 text-primary font-bold">
-              Discovery
-            </h1>
-            <p className="text-base md:font-body-lg md:text-body-lg text-on-surface-variant leading-relaxed">
-              Explore the frontier of pharmaceutical innovation. Discover the latest research, deep-dive into
-              podcasts, and visualize the clinical discovery network.
-            </p>
-          </div>
-        </section>
-
+    <div className="bg-background text-on-background min-h-screen flex flex-col">
+      <Nav />
+      <main className="flex-1 w-full max-w-[1100px] mx-auto px-gutter py-8">
         <DiscoverTab user={user} />
       </main>
-
       <Footer />
     </div>
   );
