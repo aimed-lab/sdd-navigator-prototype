@@ -1,50 +1,41 @@
 import Link from "next/link";
 
+// ── LOCKED SHELL — Footer (single source of truth: /design/SHELL.md) ─────────────
+// Identical on every page.
+//   Left:  SDD Navigator · Built at UAB SPARC
+//   Right: Privacy Policy · Terms of Service · Contact
+
+const LEGAL_LINKS = [
+  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/terms",   label: "Terms of Service" },
+  { href: "/contact", label: "Contact" },
+] as const;
+
 export default function Footer() {
   return (
-    <footer className="bg-surface-container-low border-t border-outline-variant">
-      <div className="flex flex-col md:flex-row justify-between items-center w-full px-gutter py-lg max-w-[1280px] mx-auto gap-8">
-        <div className="flex flex-col gap-2">
-          <span className="font-headline-md text-headline-md font-semibold text-on-surface">
-            SDD Navigator
-          </span>
-          <p className="font-label-sm text-label-sm text-on-surface-variant">
-            Copyright 2026 University of Alabama at Birmingham
-          </p>
-        </div>
+    <footer className="bg-background border-t border-outline-variant">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 w-full px-gutter py-6 max-w-[1280px] mx-auto">
+        {/* Left: wordmark + SPARC attribution */}
+        <p className="text-sm text-on-surface-variant text-center md:text-left">
+          <span className="font-semibold text-on-surface">SDD Navigator</span>
+          <span className="mx-2 text-outline-variant">·</span>
+          Built at UAB SPARC
+        </p>
 
-        <div className="flex gap-8">
-          <Link
-            href="/knowledge-hub"
-            className="text-on-surface-variant font-medium hover:underline decoration-primary-container"
-          >
-            Knowledge Hub
-          </Link>
-          <Link
-            href="/navigator"
-            className="text-on-surface-variant font-medium hover:underline decoration-primary-container"
-          >
-            Navigator
-          </Link>
-          <a href="#" className="text-on-surface-variant font-medium hover:underline decoration-primary-container">
-            About
-          </a>
-        </div>
-
-        <div className="flex gap-4">
-          <a
-            href="#"
-            className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-primary hover:text-white transition-all"
-          >
-            <span className="material-symbols-outlined text-[18px]">share</span>
-          </a>
-          <a
-            href="#"
-            className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-primary hover:text-white transition-all"
-          >
-            <span className="material-symbols-outlined text-[18px]">mail</span>
-          </a>
-        </div>
+        {/* Right: legal links */}
+        <nav className="flex items-center gap-1 text-sm">
+          {LEGAL_LINKS.map((link, i) => (
+            <span key={link.href} className="flex items-center">
+              {i > 0 && <span className="mx-2 text-outline-variant">·</span>}
+              <Link
+                href={link.href}
+                className="text-on-surface-variant hover:text-primary transition-colors"
+              >
+                {link.label}
+              </Link>
+            </span>
+          ))}
+        </nav>
       </div>
     </footer>
   );
