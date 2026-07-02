@@ -22,7 +22,7 @@ const NAV_LINKS = [
   { href: "/",                              label: "Home" },
   { href: "/discovery",                     label: "Discovery" },
   { href: "/knowledge-hub?tab=podcast",     label: "Podcast" },
-  { href: "/knowledge-hub?tab=researchers", label: "Researchers" },
+  { href: "/researchers",                   label: "Researchers" },
 ] as const;
 
 export default function Nav() {
