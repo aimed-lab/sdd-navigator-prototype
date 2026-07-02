@@ -56,6 +56,35 @@ CREATE POLICY "users_update_own"
     USING (auth.uid() = id)
     WITH CHECK (auth.uid() = id);
 
+-- Auto-create the profile row when a new auth user is created.
+-- Email confirmation is ON, so signUp() creates the auth.users row WITHOUT a
+-- session — a client-side insert into public.users would fail RLS (401). This
+-- SECURITY DEFINER trigger runs with the function owner's rights (bypassing
+-- RLS) and reads the display name from the signup metadata. Idempotent via
+-- ON CONFLICT so it can't clash with any existing login-time fallback insert.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+    RETURNS TRIGGER
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = public
+AS $$
+BEGIN
+    INSERT INTO public.users (id, name, email)
+    VALUES (
+        NEW.id,
+        COALESCE(NEW.raw_user_meta_data ->> 'name', split_part(NEW.email, '@', 1)),
+        COALESCE(NEW.email, '')
+    )
+    ON CONFLICT (id) DO NOTHING;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
 
 -- =============================================================================
 -- TABLE: wiki_pages

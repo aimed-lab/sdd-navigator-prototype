@@ -14,14 +14,15 @@ import { useAuth } from "@/context/AuthContext";
 // and Settings are intentionally NOT top-level (reached contextually; Settings
 // lives in the avatar menu).
 //
-// These are the canonical destinations the shell targets. Discovery/Podcast/
-// Researchers become their own routes when pages are wired (today several live
-// as tabs inside /knowledge-hub); the shell points at the final structure.
+// Discovery/Podcast/Researchers are still TABS inside /knowledge-hub, not their
+// own routes yet — so these point at the working knowledge-hub tab URLs for now
+// (avoids 404s). They'll be repointed at /discovery, /podcast, /researchers once
+// those real routes exist.
 const NAV_LINKS = [
-  { href: "/",            label: "Home" },
-  { href: "/discovery",   label: "Discovery" },
-  { href: "/podcast",     label: "Podcast" },
-  { href: "/researchers", label: "Researchers" },
+  { href: "/",                              label: "Home" },
+  { href: "/knowledge-hub",                 label: "Discovery" },
+  { href: "/knowledge-hub?tab=podcast",     label: "Podcast" },
+  { href: "/knowledge-hub?tab=researchers", label: "Researchers" },
 ] as const;
 
 export default function Nav() {
@@ -31,10 +32,12 @@ export default function Nav() {
   const [menuOpen, setMenuOpen] = useState(false);   // mobile drawer
   const [acctOpen, setAcctOpen] = useState(false);   // avatar dropdown
 
-  // Home matches exactly; every other link matches on path prefix so nested
-  // routes (e.g. /researchers/jane) still highlight their top-level link.
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname?.startsWith(href) ?? false;
+  // Home matches exactly; every other link matches on path prefix (query string
+  // stripped) so nested routes still highlight their top-level link.
+  const isActive = (href: string) => {
+    const path = href.split("?")[0];
+    return path === "/" ? pathname === "/" : pathname?.startsWith(path) ?? false;
+  };
 
   async function handleLogout() {
     await signOut();
@@ -117,40 +120,43 @@ export default function Nav() {
                       onClick={() => setAcctOpen(false)}
                       className="fixed inset-0 z-40 cursor-default"
                     />
+                    {/* w-max + explicit px max-w overrides the global `* { max-width:100% }`
+                        rule (which otherwise clamps this absolute panel to its ~36px
+                        avatar-sized containing block). min-w guarantees labels fit. */}
                     <div
                       role="menu"
-                      className="absolute right-0 mt-2 w-56 z-50 bg-surface-container-lowest rounded-xl border border-outline-variant shadow-lg overflow-hidden py-1"
+                      className="absolute right-0 mt-2 z-50 w-max min-w-[220px] max-w-[280px] bg-surface-container-lowest rounded-xl border border-outline-variant shadow-lg overflow-hidden py-1"
                     >
                       <div className="px-4 py-3 border-b border-outline-variant">
-                        <p className="text-sm font-semibold text-on-surface truncate">{displayName || "Account"}</p>
+                        <p className="text-sm font-semibold text-on-surface truncate max-w-[248px]">{displayName || "Account"}</p>
                         {user.email && (
-                          <p className="text-[11px] text-on-surface-variant truncate">{user.email}</p>
+                          <p className="text-[11px] text-on-surface-variant truncate max-w-[248px]">{user.email}</p>
                         )}
                       </div>
                       <Link
                         href="/settings"
                         role="menuitem"
                         onClick={() => setAcctOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                        className="flex items-center gap-3 whitespace-nowrap px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors"
                       >
-                        <span className="material-symbols-outlined text-[18px]">settings</span>
+                        <span className="material-symbols-outlined text-[18px] shrink-0">settings</span>
                         Settings
                       </Link>
                       <Link
                         href="/profile/setup"
                         role="menuitem"
                         onClick={() => setAcctOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                        className="flex items-center gap-3 whitespace-nowrap px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors"
                       >
-                        <span className="material-symbols-outlined text-[18px]">badge</span>
+                        <span className="material-symbols-outlined text-[18px] shrink-0">badge</span>
                         Researcher Profile
                       </Link>
                       <button
                         role="menuitem"
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-container-low transition-colors border-t border-outline-variant"
+                        className="w-full flex items-center gap-3 whitespace-nowrap px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors border-t border-outline-variant"
                       >
-                        <span className="material-symbols-outlined text-[18px]">logout</span>
+                        <span className="material-symbols-outlined text-[18px] shrink-0">logout</span>
                         Log out
                       </button>
                     </div>
