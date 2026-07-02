@@ -15,13 +15,6 @@ import { useAuth } from "@/context/AuthContext";
 // of truth. Data plumbing is intentionally FROZEN: preload existing `users` +
 // `researcher_works` on mount, and save = update `users` + delete-and-reinsert
 // `researcher_works`. Only the UI layer + the new fields changed.
-//
-// PENDING COLUMNS: Title/Role, Google Scholar, ORCID, and GitHub have no
-// columns on `users` yet. Their inputs are wired below but deliberately kept
-// OUT of the preload select and the update payload — selecting/writing a
-// missing column makes PostgREST fail the whole request and would break save.
-// Once the SQL in the handoff notes is applied, enable them at the two spots
-// marked `TODO(after SQL)`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 type WorkItem = {
@@ -75,9 +68,9 @@ export default function ProfileSetupPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Basics (name + affiliation persist; titleRole is PENDING a column)
+  // Basics
   const [name, setName] = useState("");
-  const [titleRole, setTitleRole] = useState(""); // PENDING column — not persisted yet
+  const [titleRole, setTitleRole] = useState("");
   const [affiliation, setAffiliation] = useState("");
 
   // About
@@ -91,12 +84,12 @@ export default function ProfileSetupPage() {
   // Work (papers / tools / datasets) — editable repeatable rows
   const [works, setWorks] = useState<WorkItem[]>([]);
 
-  // Online presence (linkedin + website persist; scholar/orcid/github PENDING columns)
+  // Online presence
   const [linkedinUrl, setLinkedinUrl] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
-  const [scholarUrl, setScholarUrl] = useState(""); // PENDING column
-  const [orcidUrl, setOrcidUrl] = useState(""); // PENDING column
-  const [githubUrl, setGithubUrl] = useState(""); // PENDING column
+  const [scholarUrl, setScholarUrl] = useState("");
+  const [orcidUrl, setOrcidUrl] = useState("");
+  const [githubUrl, setGithubUrl] = useState("");
 
   // Visibility
   const [isPublic, setIsPublic] = useState(true);
@@ -113,12 +106,9 @@ export default function ProfileSetupPage() {
   useEffect(() => {
     if (!user) return;
 
-    // NOTE: pending columns (title, scholar_url, orcid_url, github_url) are
-    // intentionally excluded — selecting a missing column fails the request.
-    // TODO(after SQL): add `, title, scholar_url, orcid_url, github_url` here.
     supabase
       .from("users")
-      .select("name, affiliation, bio, research_focus, linkedin_url, website_url, interests, is_public, profile_slug")
+      .select("name, title, affiliation, bio, research_focus, linkedin_url, website_url, scholar_url, orcid_url, github_url, interests, is_public, profile_slug")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => {
@@ -127,18 +117,20 @@ export default function ProfileSetupPage() {
           return;
         }
         setName(data.name || displayName || "");
+        if (data.title) setTitleRole(data.title);
         if (data.affiliation) setAffiliation(data.affiliation);
         if (data.bio) setBio(data.bio);
         if (data.research_focus) setResearchFocus(data.research_focus);
         if (data.linkedin_url) setLinkedinUrl(data.linkedin_url);
         if (data.website_url) setWebsiteUrl(data.website_url);
+        if (data.scholar_url) setScholarUrl(data.scholar_url);
+        if (data.orcid_url) setOrcidUrl(data.orcid_url);
+        if (data.github_url) setGithubUrl(data.github_url);
         if (data.interests?.length) setInterests(data.interests);
         // is_public is NOT NULL in the DB, so this only falls back to the
         // current default (true) when the row itself has no value for it.
         setIsPublic(data.is_public ?? true);
         setProfileSlug(data.profile_slug ?? null);
-        // TODO(after SQL): setTitleRole(data.title ?? ""); setScholarUrl(...);
-        // setOrcidUrl(...); setGithubUrl(...);
       });
 
     // Pre-populate previously published works so editing/removing them on
@@ -225,16 +217,18 @@ export default function ProfileSetupPage() {
         .from("users")
         .update({
           name: effectiveName,
+          title: titleRole || null,
           affiliation: affiliation || null,
           bio: bio || null,
           research_focus: researchFocus || null,
           linkedin_url: linkedinUrl || null,
           website_url: websiteUrl || null,
+          scholar_url: scholarUrl || null,
+          orcid_url: orcidUrl || null,
+          github_url: githubUrl || null,
           interests,
           is_public: makePublic,
           profile_slug: slug,
-          // TODO(after SQL): title: titleRole || null, scholar_url: scholarUrl || null,
-          // orcid_url: orcidUrl || null, github_url: githubUrl || null,
         })
         .eq("id", user.id);
 
@@ -650,10 +644,6 @@ export default function ProfileSetupPage() {
                   onChange={setGithubUrl}
                 />
               </div>
-              <p className="mt-3 text-[11px] text-on-surface-variant">
-                Google Scholar, ORCID, and GitHub are not saved yet — they persist once the new
-                columns are added to the database.
-              </p>
             </section>
 
             {/* ── Visibility ─────────────────────────────────────────────── */}
