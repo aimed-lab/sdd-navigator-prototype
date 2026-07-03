@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/Navbar";
+import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
 import { track } from "@/lib/posthog";
@@ -127,7 +127,7 @@ export default function NewProposalPage() {
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar />
+        <Nav />
         <main className="flex-grow flex items-center justify-center px-4 py-xl">
           <div className="max-w-md w-full text-center flex flex-col items-center gap-6 bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm">
             <div
@@ -168,7 +168,7 @@ export default function NewProposalPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
+      <Nav />
       <main className="flex-grow w-full max-w-[720px] mx-auto px-4 sm:px-margin py-xl">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 mb-8 text-label-sm font-label-sm text-on-surface-variant">

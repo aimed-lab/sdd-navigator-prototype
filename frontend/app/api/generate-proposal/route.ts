@@ -9,6 +9,7 @@ import type {
   ProposalRecap,
 } from "@/types/proposal";
 import type { DiscoverItem } from "@/app/api/discover/route";
+import { cleanText } from "@/lib/sanitizeText";
 
 // =============================================================================
 // Unified Navigator proposal engine.
@@ -191,7 +192,15 @@ async function fetchPaperPool(origin: string, query: string): Promise<ProposalPa
     const data = (await res.json()) as { items?: DiscoverItem[] };
     return (data.items ?? [])
       .filter((i) => i.type === "paper")
-      .map((i) => ({ id: i.id, title: i.title, source: i.source, date: i.date, url: i.url }));
+      // Source APIs embed HTML/XML in titles (<scp>, <i>, &amp;) — clean to plain
+      // text here so output_data, the PDF, and saved projects are all clean.
+      .map((i) => ({
+        id: i.id,
+        title: cleanText(i.title),
+        source: cleanText(i.source),
+        date: i.date,
+        url: i.url,
+      }));
   } catch {
     return [];
   }

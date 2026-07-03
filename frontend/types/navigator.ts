@@ -1,12 +1,10 @@
-// ── Shared types for the Navigator (Target / Discovery / Validation spaces) ───
-
-export type Provider = {
-  name: string;
-  type: string;
-  description: string;
-  website: string;
-  free: boolean;
-};
+// ── Shared Navigator types (still used by the unified proposal flow) ──────────
+//
+// The old per-space output shapes (Target/Discovery/Validation roadmaps) were
+// removed with the 3-space cleanup. Only the types still referenced by surviving
+// code remain:
+//   • InternalProvider / SparcStepContribution → app/api/generate-proposal
+//   • ResearcherMini                            → lib/navigatorResearchers (dormant, TKG)
 
 // Internal UAB provider (e.g. SPARC) read from the `providers` table.
 // NOTE: the live table has no description/website columns — `speciality`
@@ -22,54 +20,10 @@ export type InternalProvider = {
   contact: string | null;
 };
 
-export type ResearcherMini = {
-  id: string;
-  name: string;
-  email: string;
-  research_focus: string | null;
-  interests: string[] | null;
-  profile_slug: string | null;
-};
-
-// ── Target Space ────────────────────────────────────────────────────────────
-
-export type TargetStep = {
-  id: string; // identify | score | assess | fine-tune
-  name: string;
-  description: string;
-  scoring_criteria: string[];
-  tools: string[];
-  providers: Provider[];
-};
-
-export type TargetRoadmap = {
-  space: "target";
-  title: string;
-  summary: string;
-  steps: TargetStep[];
-};
-
-// ── Discovery Space ─────────────────────────────────────────────────────────
-
-export type PrioritizedMolecule = {
-  id: string;
-  priority_rank: number;
-  reasoning: string;
-};
-
-export type CROPartner = {
-  name: string;
-  description: string;
-  website: string;
-  estimated_cost: string;
-  estimated_timeline: string;
-  free: false;
-};
-
-// How UAB SPARC specifically helps at ONE roadmap step. The LLM selects the
-// relevant subset of SPARC's REAL capabilities/tools (it may not invent any);
-// the server then re-validates that subset against the DB arrays before this
-// reaches the client. `relevant: false` → SPARC doesn't fit this step, show nothing.
+// How UAB SPARC's real capabilities/tools map onto ONE roadmap/phase. The LLM
+// selects a subset (it may not invent any); the server re-validates that subset
+// against the DB arrays before it reaches the client. `relevant: false` → SPARC
+// doesn't fit, show nothing.
 export type SparcStepContribution = {
   relevant: boolean;
   capabilities: string[];
@@ -77,46 +31,11 @@ export type SparcStepContribution = {
   how: string;
 };
 
-export type DiscoveryIteration = {
-  id: string; // hit-finding | lead-optimization
+export type ResearcherMini = {
+  id: string;
   name: string;
-  description: string;
-  tools_and_software: Provider[];
-  cro_partners: CROPartner[];
-  // Step-specific SPARC contribution (grounded in `providers`, validated server-side).
-  sparc?: SparcStepContribution;
-};
-
-export type DiscoveryRoadmap = {
-  space: "discovery";
-  title: string;
-  summary: string;
-  prioritized_molecules: PrioritizedMolecule[];
-  entry_points: string[];
-  iterations: DiscoveryIteration[];
-  // Real internal providers (SPARC) from the DB — injected server-side by
-  // /api/generate-roadmap, NOT produced by the LLM.
-  internal_providers?: InternalProvider[];
-};
-
-// ── Validation Space ────────────────────────────────────────────────────────
-
-export type ContextLevel = {
-  level: number;
-  name: string;
-  description: string;
-  is_current: boolean;
-  experiments: string[];
-  cost_range: string;
-  timeline: string;
-  tools: string[];
-  providers: Provider[];
-};
-
-export type ValidationRoadmap = {
-  space: "validation";
-  title: string;
-  summary: string;
-  current_level: number;
-  context_levels: ContextLevel[];
+  email: string;
+  research_focus: string | null;
+  interests: string[] | null;
+  profile_slug: string | null;
 };

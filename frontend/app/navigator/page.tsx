@@ -1,63 +1,95 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
+import { useRouter } from "next/navigation";
+import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
 import { track } from "@/lib/posthog";
 
-const SPACES = [
-  {
-    key: "target",
-    href: "/navigator/target",
-    icon: "balance",
-    iconColor: "text-primary",
-    iconBg: "rgba(30, 107, 82, 0.1)",
-    category: "Biology & Disease",
-    categoryColor: "text-primary",
-    title: "Target Space",
-    description:
-      "Rank and assess biological targets for your disease using AI-driven scoring across multiple criteria.",
-    have: "Disease hypothesis, gene candidates, protein targets, omics data",
-    ctaColor: "text-primary",
-  },
-  {
-    key: "discovery",
-    href: "/navigator/discovery",
-    icon: "science",
-    iconColor: "text-[#0d9488]",
-    iconBg: "rgba(13, 148, 136, 0.1)",
-    category: "Chemistry & Compounds",
-    categoryColor: "text-[#0d9488]",
-    title: "Discovery Space",
-    description:
-      "Discover and optimize chemical compounds through AI-guided virtual screening, repositioning and natural compound analysis.",
-    have: "Validated target, existing drugs to reposition, natural compounds, hit compounds",
-    ctaColor: "text-[#0d9488]",
-  },
-  {
-    key: "validation",
-    href: "/navigator/validation",
-    icon: "verified_user",
-    iconColor: "text-[#f59e0b]",
-    iconBg: "rgba(245, 158, 11, 0.1)",
-    category: "Wet Lab & Preclinical",
-    categoryColor: "text-[#f59e0b]",
-    title: "Validation Space",
-    description:
-      "Validate your candidate across biological contexts from protein binding to organism level studies.",
-    have: "Lead compound, hit candidate, synthesis ready compound",
-    ctaColor: "text-[#f59e0b]",
-  },
-];
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-export default function NavigatorPage() {
+type ProjectSummary = {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ListState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; projects: ProjectSummary[] };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function NavigatorHubPage() {
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  const [list, setList] = useState<ListState>({ status: "loading" });
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     track("navigator_opened"); // fire-and-forget on page load
   }, []);
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    let cancelled = false;
+    setList({ status: "loading" });
+    (async () => {
+      try {
+        const res = await fetch("/api/projects");
+        const data = await res.json();
+        if (cancelled) return;
+        if (!res.ok) {
+          setList({ status: "error" });
+          return;
+        }
+        setList({ status: "ready", projects: (data.projects ?? []) as ProjectSummary[] });
+      } catch {
+        if (!cancelled) setList({ status: "error" });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, user]);
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        setDeletingId(null);
+        setConfirmingId(null);
+        return;
+      }
+      setList((prev) =>
+        prev.status === "ready"
+          ? { status: "ready", projects: prev.projects.filter((p) => p.id !== id) }
+          : prev,
+      );
+    } catch {
+      // leave the card in place on failure
+    } finally {
+      setDeletingId(null);
+      setConfirmingId(null);
+    }
+  }
+
+  // ── Auth gate (unchanged behaviour, SHELL Nav) ────────────────────────────
 
   if (authLoading) {
     return (
@@ -70,24 +102,16 @@ export default function NavigatorPage() {
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar />
+        <Nav />
         <main className="flex-grow flex items-center justify-center px-4 py-xl">
           <div className="max-w-md w-full text-center flex flex-col items-center gap-6 bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm">
-            <div
-              className="w-16 h-16 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: "rgba(30, 107, 82, 0.1)" }}
-            >
-              <span className="material-symbols-outlined text-4xl text-primary">
-                lock
-              </span>
+            <div className="w-16 h-16 rounded-xl flex items-center justify-center" style={{ backgroundColor: "rgba(30, 107, 82, 0.1)" }}>
+              <span className="material-symbols-outlined text-4xl text-primary">lock</span>
             </div>
             <div className="space-y-2">
-              <h2 className="font-headline-md text-headline-md text-on-surface">
-                Restricted Access
-              </h2>
+              <h2 className="font-headline-md text-headline-md text-on-surface">Restricted Access</h2>
               <p className="text-sm text-on-surface-variant leading-relaxed">
-                Sign in to access the Navigator and generate your AI-driven
-                research roadmap.
+                Sign in to access the Navigator and generate your AI-driven research proposals.
               </p>
             </div>
             <div className="flex flex-col w-full gap-3">
@@ -100,10 +124,7 @@ export default function NavigatorPage() {
               </Link>
               <p className="text-sm text-on-surface-variant">
                 New to SDD Navigator?{" "}
-                <Link
-                  href="/register"
-                  className="font-bold text-primary hover:underline"
-                >
+                <Link href="/register" className="font-bold text-primary hover:underline">
                   Register for an account
                 </Link>
               </p>
@@ -115,142 +136,190 @@ export default function NavigatorPage() {
     );
   }
 
+  // ── Hub ───────────────────────────────────────────────────────────────────
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
-      <main className="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-md py-xl">
-        {/* Breadcrumb */}
-        <nav className="mb-lg flex items-center gap-2 text-label-sm font-label-sm text-on-surface-variant">
-          <Link href="/" className="hover:text-primary transition-colors">
-            Home
-          </Link>
-          <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-          <span className="text-primary font-bold">Navigator</span>
-        </nav>
-
-        {/* Hero */}
-        <div className="mb-xl text-center space-y-sm">
-          <h1 className="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface max-w-3xl mx-auto">
-            Where are you in your research journey?
-          </h1>
-          <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">
-            Select your research space to get a personalized AI-driven
-            roadmap. Our ecosystem bridges the gap between hypothesis and
-            clinical validation.
-          </p>
-        </div>
-
-        {/* Section A: explicit space selection */}
-        <div className="mb-xl">
-          <div className="flex items-center gap-4 mb-lg">
-            <span className="font-label-sm text-label-sm text-secondary-fixed-dim bg-primary px-3 py-1 rounded-full shrink-0">
-              Section A
-            </span>
-            <h2 className="text-sm font-semibold text-on-surface-variant uppercase tracking-widest whitespace-nowrap">
-              I know my space
-            </h2>
-            <div className="h-px flex-grow bg-outline-variant" />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-            {SPACES.map((space) => (
-              <Link
-                key={space.key}
-                href={space.href}
-                className="group relative bg-surface-container-lowest border border-outline-variant rounded-xl p-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-primary flex flex-col h-full overflow-hidden"
-              >
-                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                  <span
-                    className={`material-symbols-outlined text-[96px] ${space.iconColor}`}
-                    style={{ fontVariationSettings: "'FILL' 1" }}
-                  >
-                    {space.icon}
-                  </span>
-                </div>
-
-                <div
-                  className="relative mb-md p-sm rounded-lg inline-flex w-12 h-12 items-center justify-center"
-                  style={{ backgroundColor: space.iconBg }}
-                >
-                  <span className={`material-symbols-outlined text-[32px] ${space.iconColor}`}>
-                    {space.icon}
-                  </span>
-                </div>
-                <div className={`relative mb-xs font-label-sm text-label-sm uppercase tracking-widest ${space.categoryColor}`}>
-                  {space.category}
-                </div>
-                <h3 className="relative font-headline-md text-headline-md text-on-surface mb-sm">
-                  {space.title}
-                </h3>
-                <p className="relative text-on-surface-variant font-body-md mb-md flex-grow">
-                  {space.description}
-                </p>
-                <div className="relative bg-surface-container-low rounded-lg p-sm mb-lg border border-outline-variant/30">
-                  <span className="font-label-sm text-label-sm block mb-xs text-on-surface-variant">
-                    WHAT YOU MIGHT HAVE:
-                  </span>
-                  <p className="text-label-sm text-on-surface font-medium">
-                    {space.have}
-                  </p>
-                </div>
-                <div className="relative flex items-center justify-between mt-auto">
-                  <span className={`flex items-center gap-1 font-bold font-body-md group-hover:translate-x-2 transition-transform duration-300 ${space.ctaColor}`}>
-                    Select {space.title}
-                    <span className="material-symbols-outlined">arrow_forward</span>
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Section B: guided placement (placeholder — not yet implemented) */}
-        <div>
-          <div className="flex items-center gap-4 mb-lg">
-            <span className="font-label-sm text-label-sm text-secondary-fixed-dim bg-primary px-3 py-1 rounded-full shrink-0">
-              Section B
-            </span>
-            <h2 className="text-sm font-semibold text-on-surface-variant uppercase tracking-widest whitespace-nowrap">
-              Uncertain path
-            </h2>
-            <div className="h-px flex-grow bg-outline-variant" />
-          </div>
-
-          <div
-            aria-disabled="true"
-            className="relative w-full flex flex-col md:flex-row items-center justify-between gap-6 bg-surface-container-lowest p-lg rounded-xl border border-outline-variant overflow-hidden opacity-70 cursor-default"
-          >
-            <span className="absolute top-4 right-4 font-label-sm text-label-sm text-on-surface-variant bg-surface-container-low border border-outline-variant px-3 py-1 rounded-full">
-              Coming soon
-            </span>
-            <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-              <div className="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant shrink-0">
+      <Nav />
+      <main className="flex-grow w-full max-w-[960px] mx-auto px-4 sm:px-margin py-xl space-y-12">
+        {/* Section 1 — Start a New Proposal */}
+        <section>
+          <div className="relative overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8 shadow-sm">
+            <div className="flex-1 space-y-4">
+              <div className="flex items-center gap-3">
                 <span
-                  className="material-symbols-outlined text-3xl"
+                  className="material-symbols-outlined text-primary text-4xl"
                   style={{ fontVariationSettings: "'FILL' 1" }}
                 >
-                  psychology
+                  rocket_launch
                 </span>
+                <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
+                  Start a New Proposal
+                </h1>
               </div>
-              <div className="max-w-xl">
-                <h3 className="font-headline-md text-headline-md text-on-surface mb-xs">
-                  Help me figure it out
-                </h3>
-                <p className="text-on-surface-variant font-body-md">
-                  Not sure where to begin? Soon you&rsquo;ll be able to engage
-                  with our research AI to analyze your current data points
-                  and determine the most effective entry point.
-                </p>
-              </div>
+              <p className="font-body-lg text-body-lg text-on-surface-variant max-w-lg">
+                Describe your project and generate a phased discovery plan — matched providers,
+                relevant research, and a document you can save and export.
+              </p>
+              <Link
+                href="/navigator/new"
+                className="inline-flex mt-2 px-8 py-3 bg-primary text-on-primary font-label-md text-label-md rounded-xl hover:bg-primary-container transition-all items-center gap-2 shadow-sm"
+              >
+                <span className="material-symbols-outlined text-[20px]">add</span>
+                New Proposal
+              </Link>
             </div>
-            <div className="shrink-0">
-              <div className="px-lg py-sm bg-surface-container-low text-on-surface-variant font-bold rounded-lg flex items-center gap-2">
-                <span className="font-label-sm text-label-sm">Start AI Guidance</span>
-                <span className="material-symbols-outlined text-[18px]">smart_toy</span>
-              </div>
+
+            {/* Decorative panel (no external image — CSP-safe, honest) */}
+            <div className="hidden md:flex w-40 h-40 rounded-xl bg-secondary-container/40 border border-outline-variant items-center justify-center shrink-0">
+              <span
+                className="material-symbols-outlined text-primary text-[72px]"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                network_intelligence
+              </span>
             </div>
           </div>
-        </div>
+        </section>
+
+        {/* Section 2 — Saved Projects */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-headline-md text-headline-md text-on-surface">Saved Projects</h2>
+          </div>
+
+          {list.status === "loading" && (
+            <div className="flex flex-col gap-4">
+              {[0, 1].map((i) => (
+                <div
+                  key={i}
+                  className="h-24 rounded-xl border border-outline-variant bg-surface-container-low animate-pulse"
+                />
+              ))}
+            </div>
+          )}
+
+          {list.status === "error" && (
+            <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-6 flex items-center justify-between gap-4">
+              <p className="text-sm text-on-surface-variant">
+                Couldn&rsquo;t load your saved projects.
+              </p>
+              <button
+                onClick={() => {
+                  // re-trigger the effect by bouncing loading state
+                  setList({ status: "loading" });
+                  fetch("/api/projects")
+                    .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
+                    .then(({ ok, d }) =>
+                      setList(ok ? { status: "ready", projects: d.projects ?? [] } : { status: "error" }),
+                    )
+                    .catch(() => setList({ status: "error" }));
+                }}
+                className="text-sm font-semibold text-primary hover:underline shrink-0"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {list.status === "ready" && list.projects.length === 0 && (
+            <div className="rounded-xl border border-dashed border-outline-variant bg-surface-container-low p-10 text-center flex flex-col items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-surface-container-lowest shadow-sm flex items-center justify-center">
+                <span className="material-symbols-outlined text-on-surface-variant text-[32px]">
+                  bookmark
+                </span>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-headline-md text-[20px] text-on-surface">No saved proposals yet</h3>
+                <p className="text-sm text-on-surface-variant max-w-sm">
+                  Start your first one — generate a phased plan and save it here to reopen anytime.
+                </p>
+              </div>
+              <Link
+                href="/navigator/new"
+                className="inline-flex px-6 py-2.5 bg-primary text-on-primary font-label-md text-label-md rounded-xl hover:bg-primary-container transition-all items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[20px]">add</span>
+                Start a New Proposal
+              </Link>
+            </div>
+          )}
+
+          {list.status === "ready" && list.projects.length > 0 && (
+            <div className="flex flex-col gap-4">
+              {list.projects.map((project) => {
+                const isConfirming = confirmingId === project.id;
+                const isDeleting = deletingId === project.id;
+                return (
+                  <div
+                    key={project.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => router.push(`/navigator/proposal?id=${project.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(`/navigator/proposal?id=${project.id}`);
+                      }
+                    }}
+                    className="group cursor-pointer bg-surface-container-lowest border border-outline-variant rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-primary/50 hover:shadow-md transition-all"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <h3 className="font-body-lg text-body-lg font-bold text-on-surface truncate">
+                        {project.title || "Untitled proposal"}
+                      </h3>
+                      <div className="flex items-center gap-2 pt-1 text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[16px]">calendar_today</span>
+                        <span className="font-label-sm text-label-sm">
+                          Saved {fmtDate(project.created_at)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {isConfirming ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-on-surface-variant">Delete?</span>
+                          <button
+                            onClick={() => handleDelete(project.id)}
+                            disabled={isDeleting}
+                            className="px-3 py-2 rounded-lg bg-error text-on-error font-label-sm text-label-sm hover:opacity-90 transition-all disabled:opacity-60"
+                          >
+                            {isDeleting ? "Deleting…" : "Yes, delete"}
+                          </button>
+                          <button
+                            onClick={() => setConfirmingId(null)}
+                            disabled={isDeleting}
+                            className="px-3 py-2 rounded-lg border border-outline text-on-surface-variant font-label-sm text-label-sm hover:bg-surface-container-low transition-all"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <Link
+                            href={`/navigator/proposal?id=${project.id}`}
+                            className="px-6 py-2 border border-primary text-primary font-label-md text-label-md rounded-xl hover:bg-primary hover:text-on-primary transition-colors"
+                          >
+                            View Project
+                          </Link>
+                          <button
+                            onClick={() => setConfirmingId(project.id)}
+                            aria-label="Delete project"
+                            title="Delete project"
+                            className="p-2 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/5 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </main>
       <Footer />
     </div>

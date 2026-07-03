@@ -1,9 +1,4 @@
-import type {
-  TargetRoadmap,
-  DiscoveryRoadmap,
-  ValidationRoadmap,
-  Provider,
-} from "@/types/navigator";
+import type { ProposalDocument, ProposalRecap } from "@/types/proposal";
 
 type PDFDoc = {
   internal: { pageSize: { getWidth: () => number; getHeight: () => number } };
@@ -71,47 +66,6 @@ function ensureSpace(doc: PDFDoc, y: number, threshold = PAGE_BREAK_Y): number {
   return y;
 }
 
-function addProviders(
-  doc: PDFDoc,
-  usableW: number,
-  y: number,
-  providers: Array<{ name: string; type?: string; website: string; free: boolean }>
-): number {
-  if (!providers || providers.length === 0) return y;
-  y = ensureSpace(doc, y);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(0, 0, 0);
-  doc.text("Providers:", MARGIN, y);
-  y += 5;
-  for (const p of providers) {
-    y = ensureSpace(doc, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(60, 60, 60);
-    const tag = p.free ? " [FREE]" : "";
-    const typeLabel = p.type ? ` (${p.type})` : "";
-    const pLine = `  • ${p.name}${typeLabel}${tag} — ${p.website}`;
-    const pWrapped = doc.splitTextToSize(pLine, usableW);
-    doc.text(pWrapped, MARGIN, y);
-    y += pWrapped.length * 5 + 1;
-  }
-  return y + 4;
-}
-
-function addToolsLine(doc: PDFDoc, usableW: number, y: number, tools: string[]): number {
-  if (!tools || tools.length === 0) return y;
-  y = ensureSpace(doc, y);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(0, 0, 0);
-  doc.text("Tools: ", MARGIN, y);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(60, 60, 60);
-  const toolsWrapped = doc.splitTextToSize(tools.join(", "), usableW - 16);
-  doc.text(toolsWrapped, MARGIN + 16, y);
-  return y + toolsWrapped.length * 5 + 3;
-}
-
 function addListLine(doc: PDFDoc, usableW: number, y: number, label: string, items: string[]): number {
   if (!items || items.length === 0) return y;
   y = ensureSpace(doc, y);
@@ -136,115 +90,155 @@ function addFooter(doc: PDFDoc) {
   }
 }
 
-export async function downloadTargetRoadmapPDF(roadmap: TargetRoadmap) {
-  const { doc, usableW } = await createDoc();
-  let y = addHeader(doc);
-  y = addTitleAndSummary(doc, usableW, y, roadmap.title, roadmap.summary);
+// ── Unified proposal document ─────────────────────────────────────────────────
+// One exporter for the new ProposalDocument shape. Unlike the 3 roadmap
+// exporters above, this leads with the researcher's OWN inputs (the recap /
+// "Your project" block) so the downloaded PDF is a self-contained record of both
+// what they asked for and what was generated.
 
-  for (const step of roadmap.steps) {
-    y = ensureSpace(doc, y);
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 82, 60);
-    doc.text(`${step.id.toUpperCase()}: ${step.name}`, MARGIN, y);
-    y += 6;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(40, 40, 40);
-    const descWrapped = doc.splitTextToSize(step.description, usableW);
-    doc.text(descWrapped, MARGIN, y);
-    y += descWrapped.length * 5 + 3;
-
-    y = addListLine(doc, usableW, y, "Scoring Criteria", step.scoring_criteria);
-    y = addToolsLine(doc, usableW, y, step.tools);
-    y = addProviders(doc, usableW, y, step.providers);
-    y += 3;
-  }
-
-  addFooter(doc);
-  doc.save("sdd-navigator-target-roadmap.pdf");
-}
-
-export async function downloadDiscoveryRoadmapPDF(roadmap: DiscoveryRoadmap) {
-  const { doc, usableW } = await createDoc();
-  let y = addHeader(doc);
-  y = addTitleAndSummary(doc, usableW, y, roadmap.title, roadmap.summary);
-
-  y = addListLine(doc, usableW, y, "Entry Points", roadmap.entry_points);
-  y += 4;
-
-  for (const iteration of roadmap.iterations) {
-    y = ensureSpace(doc, y);
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 82, 60);
-    doc.text(iteration.name, MARGIN, y);
-    y += 6;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(40, 40, 40);
-    const descWrapped = doc.splitTextToSize(iteration.description, usableW);
-    doc.text(descWrapped, MARGIN, y);
-    y += descWrapped.length * 5 + 3;
-
-    y = addToolsLine(doc, usableW, y, (iteration.tools_and_software ?? []).map((t) => t.name));
-    y = addProviders(doc, usableW, y, iteration.cro_partners ?? []);
-    y += 3;
-  }
-
+// Print one "LABEL: value" pair with the value wrapped under/after the label.
+function addRecapField(doc: PDFDoc, usableW: number, y: number, label: string, value: string): number {
+  if (!value || !value.trim()) return y;
   y = ensureSpace(doc, y);
-  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
   doc.setTextColor(0, 82, 60);
-  doc.text("Exit Point: Synthesis Ready Candidate", MARGIN, y);
-  y += 6;
-
-  addFooter(doc);
-  doc.save("sdd-navigator-discovery-roadmap.pdf");
+  doc.text(`${label.toUpperCase()}`, MARGIN, y);
+  y += 5;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(40, 40, 40);
+  const wrapped = doc.splitTextToSize(value.trim(), usableW);
+  doc.text(wrapped, MARGIN, y);
+  return y + wrapped.length * 5 + 4;
 }
 
-export async function downloadValidationRoadmapPDF(roadmap: ValidationRoadmap) {
+function addProposalRecap(doc: PDFDoc, usableW: number, y: number, recap: ProposalRecap): number {
+  y = ensureSpace(doc, y);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(0, 82, 60);
+  doc.text("Your Project", MARGIN, y);
+  y += 7;
+
+  y = addRecapField(doc, usableW, y, "Title", recap.title);
+  y = addRecapField(doc, usableW, y, "Therapeutic Target / Assets", recap.therapeutic_target);
+  y = addRecapField(doc, usableW, y, "Scientific Rationale", recap.scientific_rationale);
+  y = addRecapField(doc, usableW, y, "Support Needed", recap.sparc_support_needed);
+  y = addRecapField(doc, usableW, y, "Validation Plan", recap.validation_plan);
+  y = addRecapField(doc, usableW, y, "Expected Impact", recap.expected_impact);
+  y = addRecapField(doc, usableW, y, "Project Readiness", recap.project_readiness);
+  y = addListLine(doc, usableW, y, "Support Requested", recap.support_chips);
+  return y + 4;
+}
+
+export async function downloadProposalPDF(document: ProposalDocument) {
   const { doc, usableW } = await createDoc();
   let y = addHeader(doc);
-  y = addTitleAndSummary(doc, usableW, y, roadmap.title, roadmap.summary);
+  y = addTitleAndSummary(doc, usableW, y, document.title, document.summary);
 
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(0, 0, 0);
-  doc.text(`Current Context Level: ${roadmap.current_level} / 10`, MARGIN, y);
-  y += 10;
+  // Inputs first — the recap / "Your project" block.
+  y = addProposalRecap(doc, usableW, y, document.recap);
 
-  for (const level of roadmap.context_levels) {
+  // Divider before the generated phases.
+  y = ensureSpace(doc, y);
+  doc.setDrawColor(200, 200, 200);
+  doc.line(MARGIN, y, MARGIN + usableW, y);
+  y += 8;
+
+  document.phases.forEach((phase, i) => {
     y = ensureSpace(doc, y);
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(level.is_current ? 180 : 0, level.is_current ? 120 : 82, level.is_current ? 0 : 60);
-    const marker = level.is_current ? "  ← CURRENT" : "";
-    doc.text(`Level ${level.level}: ${level.name}${marker}`, MARGIN, y);
+    doc.setTextColor(0, 82, 60);
+    doc.text(`Phase ${i + 1} — ${phase.title}`, MARGIN, y);
     y += 6;
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(40, 40, 40);
-    const descWrapped = doc.splitTextToSize(level.description, usableW);
-    doc.text(descWrapped, MARGIN, y);
-    y += descWrapped.length * 5 + 3;
+    if (phase.estimated_duration) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(110, 110, 110);
+      doc.text(`Estimated duration: ${phase.estimated_duration}`, MARGIN, y);
+      y += 5;
+    }
 
-    y = ensureSpace(doc, y);
+    if (phase.goal) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(40, 40, 40);
+      const goalWrapped = doc.splitTextToSize(`Goal: ${phase.goal}`, usableW);
+      doc.text(goalWrapped, MARGIN, y);
+      y += goalWrapped.length * 5 + 3;
+    }
+
+    // Verified providers.
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Cost: ${level.cost_range}   Timeline: ${level.timeline}`, MARGIN, y);
+    y = ensureSpace(doc, y);
+    doc.text("Verified Providers:", MARGIN, y);
     y += 5;
 
-    y = addListLine(doc, usableW, y, "Experiments", level.experiments);
-    y = addToolsLine(doc, usableW, y, level.tools);
-    y = addProviders(doc, usableW, y, level.providers);
-    y += 3;
-  }
+    if (phase.providers.length === 0) {
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(110, 110, 110);
+      doc.text("  No verified providers for this phase yet.", MARGIN, y);
+      y += 6;
+    } else {
+      for (const p of phase.providers) {
+        y = ensureSpace(doc, y);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(40, 40, 40);
+        const cost = p.cost_symbol ?? (p.is_free ? "Free" : "—");
+        const timeline = p.estimated_timeline ?? "—";
+        doc.text(`  • ${p.name} [Verified]  ${cost} · ${timeline}`, MARGIN, y);
+        y += 5;
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(60, 60, 60);
+        if (p.speciality) {
+          const sp = doc.splitTextToSize(`     ${p.speciality}`, usableW - 4);
+          doc.text(sp, MARGIN, y);
+          y += sp.length * 5;
+        }
+        if (p.how) {
+          const how = doc.splitTextToSize(`     ${p.how}`, usableW - 4);
+          doc.text(how, MARGIN, y);
+          y += how.length * 5;
+        }
+        if (p.capabilities.length > 0) {
+          y = addListLine(doc, usableW, y, "     Capabilities", p.capabilities);
+        }
+        if (p.tools.length > 0) {
+          y = addListLine(doc, usableW, y, "     Tools", p.tools);
+        }
+        y += 2;
+      }
+    }
+
+    // Relevant research.
+    if (phase.papers.length > 0) {
+      y = ensureSpace(doc, y);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Relevant Research:", MARGIN, y);
+      y += 5;
+      for (const paper of phase.papers) {
+        y = ensureSpace(doc, y);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(60, 60, 60);
+        const line = `  • ${paper.title} — ${paper.source}${paper.date ? `, ${paper.date}` : ""}`;
+        const wrapped = doc.splitTextToSize(line, usableW);
+        doc.text(wrapped, MARGIN, y);
+        y += wrapped.length * 5 + 1;
+      }
+    }
+
+    y += 5;
+  });
 
   addFooter(doc);
-  doc.save("sdd-navigator-validation-roadmap.pdf");
+  doc.save("sdd-navigator-proposal.pdf");
 }
