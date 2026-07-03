@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
+import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -689,7 +689,7 @@ export default function KnowledgeGraphPage() {
 
   return (
     <div className="bg-background text-on-background min-h-screen">
-      <Navbar />
+      <Nav />
 
       <main className="min-h-screen">
         {/* Hero */}
