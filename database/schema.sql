@@ -359,6 +359,52 @@ CREATE POLICY "saved_items_delete_own"
 
 
 -- =============================================================================
+-- TABLE: projects
+-- =============================================================================
+-- Saved Navigator proposals. Each row is one generated phased-document proposal
+-- so it can be reopened as the exact same document later WITHOUT re-calling the
+-- LLM. input_data stores the full 7-field form input (for the recap block and a
+-- regenerate/edit flow); output_data stores the full generated phased-document
+-- output (rendered verbatim on reopen). Fully private — users only ever see
+-- their own projects.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.projects (
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID        NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+    title       TEXT,                                 -- proposal title (7-field input's title)
+    input_data  JSONB       NOT NULL DEFAULT '{}',    -- full 7-field form input, for recap / regenerate
+    output_data JSONB       NOT NULL DEFAULT '{}',    -- full generated phased document, for reopen
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
+
+-- Users can read, insert, update, and delete only their OWN projects.
+CREATE POLICY "projects_select_own"
+    ON public.projects FOR SELECT
+    TO authenticated
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "projects_insert_own"
+    ON public.projects FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "projects_update_own"
+    ON public.projects FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "projects_delete_own"
+    ON public.projects FOR DELETE
+    TO authenticated
+    USING (auth.uid() = user_id);
+
+
+-- =============================================================================
 -- INDEXES
 -- =============================================================================
 -- Additional indexes on columns used in frequent queries / filters.
@@ -374,5 +420,6 @@ CREATE INDEX IF NOT EXISTS idx_providers_type            ON public.providers (ty
 CREATE INDEX IF NOT EXISTS idx_discovery_items_type      ON public.discovery_items (type);
 CREATE INDEX IF NOT EXISTS idx_discovery_items_collected ON public.discovery_items (collected_at DESC);
 CREATE INDEX IF NOT EXISTS idx_saved_items_user           ON public.saved_items (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_user              ON public.projects (user_id, created_at DESC);
 
 
