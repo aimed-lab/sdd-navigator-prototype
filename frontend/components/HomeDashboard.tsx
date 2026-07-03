@@ -139,7 +139,7 @@ export default function HomeDashboard() {
 
           {/* Podcast — newest real episode if available */}
           <Link
-            href={latestEp ? `/topics/${latestEp.slug}` : "/knowledge-hub?tab=podcast"}
+            href={latestEp ? `/topics/${latestEp.slug}` : "/podcast"}
             className="bg-white border border-outline-variant rounded-xl p-6 hover:shadow-md transition-all group flex flex-col"
           >
             <div className="flex justify-between items-start mb-4">
