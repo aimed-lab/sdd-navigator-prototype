@@ -13,12 +13,21 @@ import type { DiscoverItem } from "@/app/api/discover/route";
 // app/page.tsx only when the visitor is authenticated. Every card reflects real
 // data or an honest empty/coming-soon state:
 //   • Welcome     → real display name from auth.
-//   • Recent proj → honest empty state (no documented projects table yet).
+//   • Recent proj → real saved projects from GET /api/projects (same source as
+//                   the Navigator hub); honest empty state only when truly zero.
 //   • Feed        → real personalized /api/discover (users.interests), or an
 //                   honest "personalize your feed" prompt when interests are empty.
 //   • Podcast     → newest real episode from wiki_pages, if any.
 
 type LatestEpisode = { slug: string; title: string; episode_number: number };
+
+type ProjectSummary = { id: string; title: string | null; created_at: string; updated_at: string };
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
 export default function HomeDashboard() {
   const { user, loading, displayName } = useAuth();
@@ -28,6 +37,7 @@ export default function HomeDashboard() {
   const [feedItems, setFeedItems] = useState<DiscoverItem[]>([]);
   const [feedStatus, setFeedStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [latestEp, setLatestEp] = useState<LatestEpisode | null>(null);
+  const [projects, setProjects] = useState<ProjectSummary[] | null>(null); // null = not loaded yet
 
   // Load the user's saved interests + newest podcast episode.
   useEffect(() => {
@@ -48,6 +58,24 @@ export default function HomeDashboard() {
       .order("episode_number", { ascending: false })
       .limit(1)
       .then(({ data }) => setLatestEp(data?.[0] ?? null));
+  }, [user, loading]);
+
+  // Load the user's saved proposals from the same session-scoped endpoint the
+  // Navigator hub uses. Any failure degrades to the honest empty state.
+  useEffect(() => {
+    if (loading || !user) return;
+    let cancelled = false;
+    fetch("/api/projects")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((data: { projects?: ProjectSummary[] }) => {
+        if (!cancelled) setProjects(data.projects ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setProjects([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user, loading]);
 
   // Once interests are known, pull the real personalized feed (only if there
@@ -222,22 +250,71 @@ export default function HomeDashboard() {
           )}
         </section>
 
-        {/* ── Recent proposals — honest empty state ──────────────── */}
+        {/* ── Recent proposals — real saved projects (GET /api/projects) ─ */}
         <section>
-          <h2 className="font-headline-md text-headline-md text-on-surface mb-4">Recent proposals</h2>
-          <div className="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-8 text-center">
-            <span className="material-symbols-outlined text-4xl text-outline-variant mb-2">description</span>
-            <p className="text-on-surface-variant font-body-md text-body-md mb-4">
-              You haven&apos;t created any proposals yet.
-            </p>
-            <Link
-              href="/navigator"
-              className="inline-flex items-center gap-1 px-6 py-3 bg-primary text-on-primary rounded-xl font-label-sm text-label-sm hover:bg-primary-container transition-all"
-            >
-              Start a proposal
-              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-            </Link>
+          <div className="flex justify-between items-center mb-4 gap-4">
+            <h2 className="font-headline-md text-headline-md text-on-surface">Recent proposals</h2>
+            {projects !== null && projects.length > 0 && (
+              <Link href="/navigator" className="text-primary font-label-sm text-label-sm hover:underline shrink-0">
+                View all
+              </Link>
+            )}
           </div>
+
+          {/* Loading skeletons */}
+          {projects === null && (
+            <div className="flex flex-col gap-4">
+              {[0, 1].map((i) => (
+                <div
+                  key={i}
+                  className="h-20 rounded-xl border border-outline-variant bg-surface-container-low animate-pulse"
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Honest empty state — only when the user genuinely has zero */}
+          {projects !== null && projects.length === 0 && (
+            <div className="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-8 text-center">
+              <span className="material-symbols-outlined text-4xl text-outline-variant mb-2">description</span>
+              <p className="text-on-surface-variant font-body-md text-body-md mb-4">
+                You haven&apos;t created any proposals yet.
+              </p>
+              <Link
+                href="/navigator"
+                className="inline-flex items-center gap-1 px-6 py-3 bg-primary text-on-primary rounded-xl font-label-sm text-label-sm hover:bg-primary-container transition-all"
+              >
+                Start a proposal
+                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+              </Link>
+            </div>
+          )}
+
+          {/* Real proposals — most recent 3, matching the hub's card treatment */}
+          {projects !== null && projects.length > 0 && (
+            <div className="flex flex-col gap-4">
+              {projects.slice(0, 3).map((project) => (
+                <Link
+                  key={project.id}
+                  href={`/navigator/proposal?id=${project.id}`}
+                  className="group bg-surface-container-lowest border border-outline-variant rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-primary/50 hover:shadow-md transition-all"
+                >
+                  <div className="space-y-1 min-w-0">
+                    <h3 className="font-body-lg text-body-lg font-bold text-on-surface truncate">
+                      {project.title || "Untitled proposal"}
+                    </h3>
+                    <div className="flex items-center gap-2 pt-1 text-on-surface-variant">
+                      <span className="material-symbols-outlined text-[16px]">calendar_today</span>
+                      <span className="font-label-sm text-label-sm">Saved {fmtDate(project.created_at)}</span>
+                    </div>
+                  </div>
+                  <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0">
+                    arrow_forward
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
       </main>
 

@@ -348,7 +348,7 @@ export default function ProfileSetupPage() {
                       />
                     </div>
                     <div>
-                      <label className={labelCls}>Affiliation</label>
+                      <label className={labelCls}>Institution</label>
                       <input
                         type="text"
                         value={affiliation}

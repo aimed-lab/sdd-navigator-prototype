@@ -422,7 +422,7 @@ export default function SettingsPage() {
                           />
                         </div>
                         <div className="flex-1 space-y-xs">
-                          <label className={labelCls}>Affiliation</label>
+                          <label className={labelCls}>Role</label>
                           <select
                             value={affiliation}
                             onChange={(e) => setAffiliation(e.target.value)}
