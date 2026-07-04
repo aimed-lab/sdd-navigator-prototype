@@ -14,10 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 // and Settings are intentionally NOT top-level (reached contextually; Settings
 // lives in the avatar menu).
 //
-// Discovery/Podcast/Researchers are still TABS inside /knowledge-hub, not their
-// own routes yet — so these point at the working knowledge-hub tab URLs for now
-// (avoids 404s). They'll be repointed at /discovery, /podcast, /researchers once
-// those real routes exist.
+// Discovery/Podcast/Researchers are their own top-level routes.
 const NAV_LINKS = [
   { href: "/",                              label: "Home" },
   { href: "/discovery",                     label: "Discovery" },

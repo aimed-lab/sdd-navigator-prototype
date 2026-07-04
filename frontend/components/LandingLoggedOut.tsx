@@ -82,7 +82,7 @@ export default function LandingLoggedOut() {
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </button>
               </Link>
-              <Link href="/knowledge-hub" className="w-full sm:w-auto">
+              <Link href="/discovery" className="w-full sm:w-auto">
                 <button className="w-full sm:w-auto px-8 py-4 border-2 border-primary text-primary rounded-xl font-label-sm text-label-sm hover:bg-surface-container-low active:scale-95 transition-all">
                   Explore Discovery
                 </button>

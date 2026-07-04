@@ -120,7 +120,7 @@ export default function HomeDashboard() {
 
           {/* Discovery feed */}
           <Link
-            href="/knowledge-hub"
+            href="/discovery"
             className="bg-white border border-outline-variant rounded-xl p-6 hover:shadow-md transition-all group flex flex-col"
           >
             <div className="flex justify-between items-start mb-4">
@@ -166,7 +166,7 @@ export default function HomeDashboard() {
               Latest in your areas
               <span className="material-symbols-outlined text-primary">auto_awesome</span>
             </h2>
-            <Link href="/knowledge-hub" className="text-primary font-label-sm text-label-sm hover:underline shrink-0">
+            <Link href="/discovery" className="text-primary font-label-sm text-label-sm hover:underline shrink-0">
               Manage interests
             </Link>
           </div>
@@ -182,7 +182,7 @@ export default function HomeDashboard() {
                 Add your research interests and we&apos;ll surface the papers, grants, and trials that match.
               </p>
               <Link
-                href="/knowledge-hub"
+                href="/discovery"
                 className="inline-flex items-center gap-1 px-6 py-3 bg-primary text-on-primary rounded-xl font-label-sm text-label-sm hover:bg-primary-container transition-all"
               >
                 Set your interests
@@ -214,7 +214,7 @@ export default function HomeDashboard() {
               <p className="text-on-surface-variant font-body-md text-body-md mb-4">
                 Live research signals aren&apos;t available right now.
               </p>
-              <Link href="/knowledge-hub" className="inline-flex items-center gap-1 text-primary font-semibold font-label-sm text-label-sm hover:underline">
+              <Link href="/discovery" className="inline-flex items-center gap-1 text-primary font-semibold font-label-sm text-label-sm hover:underline">
                 Open the Discovery feed
                 <span className="material-symbols-outlined text-[18px]">chevron_right</span>
               </Link>

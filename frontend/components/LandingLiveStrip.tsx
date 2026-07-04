@@ -37,7 +37,7 @@ export default function LandingLiveStrip() {
         <div className="flex items-center justify-between gap-4 mb-8">
           <h2 className="font-headline-md text-headline-md text-primary">Latest in drug discovery</h2>
           <Link
-            href="/knowledge-hub"
+            href="/discovery"
             className="flex items-center gap-1 text-primary font-semibold font-label-sm text-label-sm hover:underline"
           >
             View all
@@ -68,7 +68,7 @@ export default function LandingLiveStrip() {
               Live research signals aren&apos;t available right now.
             </p>
             <Link
-              href="/knowledge-hub"
+              href="/discovery"
               className="inline-flex items-center gap-1 text-primary font-semibold font-label-sm text-label-sm hover:underline"
             >
               Browse the Discovery feed

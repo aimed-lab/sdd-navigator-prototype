@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
 }
 
 // Protect /navigator, /profile/setup, and /settings — everything else
-// (including /graph) is public.
+// (including /knowledge-graph) is public.
 export const config = {
   matcher: [
     "/navigator",

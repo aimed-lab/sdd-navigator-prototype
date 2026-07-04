@@ -35,7 +35,7 @@ export default function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) router.replace("/knowledge-hub");
+    if (!loading && user) router.replace("/");
   }, [user, loading, router]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
