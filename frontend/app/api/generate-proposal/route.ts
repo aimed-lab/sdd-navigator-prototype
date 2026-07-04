@@ -83,13 +83,14 @@ Capabilities: ${caps.join("; ")}
 Tools: ${tools.join("; ")}
 
 For EACH object in the "phases" array, add a "sparc" field selecting which of SPARC's capabilities/tools genuinely help at THAT phase:
-  "sparc": { "relevant": boolean, "capabilities": ["subset of the capabilities above"], "tools": ["subset of the tools above"], "how": "1-2 sentences on how SPARC helps at THIS specific phase" }
+  "sparc": { "relevant": boolean, "capabilities": ["subset of the capabilities above"], "tools": ["subset of the tools above"], "capability_how": { "<exact capability string>": "1-2 sentences on how THIS capability specifically helps this target at this phase" }, "how": "one short fallback sentence for the phase overall" }
 
 HARD RULES for the "sparc" field:
 - You may ONLY copy capability/tool strings VERBATIM from the two lists above. NEVER invent, rename, paraphrase, abbreviate, or add new capabilities, tools, or providers.
 - Pick only the subset genuinely relevant to that specific phase. Different phases MUST get different selections — choose what actually applies to each.
-- "how" must explain SPARC's role at THAT phase specifically, referencing the selected capabilities/tools.
-- If SPARC genuinely does not help at a phase, set "relevant": false with empty "capabilities"/"tools" arrays and an empty "how". Do not force a fit.
+- "capability_how" MUST contain one entry for EVERY capability you list in "capabilities", keyed by the EXACT capability string (verbatim from the list above).
+- Each capability's sentence must be SPECIFIC to what THAT capability actually does for this target, and DISTINCT from the others. NEVER reuse the same sentence (or a near-identical one) for two capabilities — a researcher may want each service independently, so the text must let them tell the services apart. Example: for "Pathway & gene-set enrichment analysis" describe how enrichment situates this target in its pathway/gene-set context; for "Protein-interaction network analysis" describe how interactome mapping reveals this target's binding partners — clearly different sentences.
+- If SPARC genuinely does not help at a phase, set "relevant": false with empty "capabilities"/"tools" arrays, empty "capability_how", and an empty "how". Do not force a fit.
 - Do NOT output any other providers, CROs, companies, tools, or papers anywhere in the JSON — those are added by the system, not by you.`;
 }
 
@@ -141,13 +142,36 @@ function costSymbol(cost: string | null | undefined): string | null {
   return "$$$$";
 }
 
+// Extract the model's PER-CAPABILITY "how" explanations, validated against the
+// real grounded capabilities (keys must match a real capability verbatim, so the
+// model can't attach text to an invented service). Keyed by lowercased capability.
+// Kept separate from sanitizeSparcSelection so that grounding guard stays untouched.
+function extractCapabilityHows(rawSparc: unknown, allowedCaps: string[]): Map<string, string> {
+  const out = new Map<string, string>();
+  const r = (rawSparc ?? {}) as Record<string, unknown>;
+  const ch = r.capability_how;
+  if (!ch || typeof ch !== "object" || Array.isArray(ch)) return out;
+  const canonical = new Map(allowedCaps.map((a) => [a.toLowerCase().trim(), a]));
+  for (const [key, value] of Object.entries(ch as Record<string, unknown>)) {
+    if (typeof value !== "string" || !value.trim()) continue;
+    const hit = canonical.get(key.toLowerCase().trim());
+    if (hit) out.set(hit.toLowerCase(), value.trim());
+  }
+  return out;
+}
+
 // Map a phase's VALIDATED SPARC selection back to the real DB rows, producing
 // Verified provider cards. A row is included only if it actually owns at least
 // one of the surviving capabilities — so providers are built entirely from DB
 // rows, never from LLM free text. Returns [] when nothing matches.
+//
+// Each card's "how" is the explanation for THAT row's own capability (from the
+// per-capability map), so two different SPARC services in one phase get distinct,
+// service-specific text — never the same phase-level blurb copied across cards.
 function buildPhaseProviders(
   contribution: SparcStepContribution,
   providers: InternalProvider[],
+  capabilityHows: Map<string, string>,
 ): ProposalProvider[] {
   if (!contribution.relevant) return [];
   const selectedCaps = new Set(contribution.capabilities.map((c) => c.toLowerCase()));
@@ -158,13 +182,17 @@ function buildPhaseProviders(
     const rowCaps = (row.capabilities ?? []).filter((c) => selectedCaps.has(c.toLowerCase()));
     if (rowCaps.length === 0) continue; // this SPARC service isn't relevant to this phase
     const rowTools = (row.tools ?? []).filter((t) => selectedTools.has(t.toLowerCase()));
+    // Capability-specific "how": join this row's own capabilities' sentences
+    // (deduped). Fall back to the phase-level "how" only if none were provided.
+    const rowHows = [...new Set(rowCaps.map((c) => capabilityHows.get(c.toLowerCase())).filter(Boolean))] as string[];
+    const how = rowHows.length > 0 ? rowHows.join(" ") : contribution.how;
     cards.push({
       name: row.name,
       verified: true,
       speciality: row.speciality,
       capabilities: rowCaps,
       tools: rowTools,
-      how: contribution.how,
+      how,
       estimated_cost: row.estimated_cost,
       cost_symbol: costSymbol(row.estimated_cost),
       estimated_timeline: row.estimated_timeline,
@@ -475,7 +503,8 @@ export async function POST(req: NextRequest) {
   const rawPhases = Array.isArray(parsed.phases) ? (parsed.phases as Record<string, unknown>[]) : [];
   const phases: ProposalPhase[] = rawPhases.map((p, i) => {
     const contribution = sanitizeSparcSelection(p.sparc, grounding.capabilities, grounding.tools);
-    const providers = buildPhaseProviders(contribution, internalProviders);
+    const capabilityHows = extractCapabilityHows(p.sparc, grounding.capabilities);
+    const providers = buildPhaseProviders(contribution, internalProviders, capabilityHows);
     const papers: ProposalResearchItem[] = [
       ...research.papers.slice(pc, pc + PAPERS_PER_PHASE),
       ...research.trials.slice(tc, tc + TRIALS_PER_PHASE),

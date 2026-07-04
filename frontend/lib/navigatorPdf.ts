@@ -7,6 +7,7 @@ type PDFDoc = {
   setTextColor: (r: number, g: number, b: number) => PDFDoc;
   setDrawColor: (r: number, g: number, b: number) => PDFDoc;
   text: (text: string | string[], x: number, y: number) => PDFDoc;
+  textWithLink: (text: string, x: number, y: number, options: { url: string }) => number;
   line: (x1: number, y1: number, x2: number, y2: number) => PDFDoc;
   splitTextToSize: (text: string, width: number) => string[];
   addPage: () => PDFDoc;
@@ -16,7 +17,19 @@ type PDFDoc = {
 };
 
 const MARGIN = 20;
-const PAGE_BREAK_Y = 270;
+// Space kept clear at the bottom of every page for the footer, so content never
+// runs into it. Footer baseline sits at pageHeight - FOOTER_BASELINE_OFFSET;
+// content is page-broken before it can cross (pageHeight - FOOTER_RESERVE).
+const FOOTER_BASELINE_OFFSET = 10;
+const FOOTER_RESERVE = 16;
+const LINE_H = 5; // default wrapped-line height at 9-10pt body text
+
+function contentBottom(doc: PDFDoc): number {
+  return doc.internal.pageSize.getHeight() - FOOTER_RESERVE;
+}
+
+// A11y link colour (blue) for clickable text.
+const LINK_RGB: [number, number, number] = [17, 85, 204];
 
 async function createDoc() {
   const { jsPDF } = await import("jspdf");
@@ -58,8 +71,11 @@ function addTitleAndSummary(doc: PDFDoc, usableW: number, y: number, title: stri
   return y;
 }
 
-function ensureSpace(doc: PDFDoc, y: number, threshold = PAGE_BREAK_Y): number {
-  if (y > threshold) {
+// Page-break BEFORE drawing a block. `needed` is the block's height (mm); if it
+// wouldn't fit above the reserved footer band, start a new page. Height-aware so
+// a tall multi-line block moves as a unit instead of overrunning the footer.
+function ensureSpace(doc: PDFDoc, y: number, needed = 0): number {
+  if (y + needed > contentBottom(doc)) {
     doc.addPage();
     return MARGIN;
   }
@@ -68,25 +84,29 @@ function ensureSpace(doc: PDFDoc, y: number, threshold = PAGE_BREAK_Y): number {
 
 function addListLine(doc: PDFDoc, usableW: number, y: number, label: string, items: string[]): number {
   if (!items || items.length === 0) return y;
-  y = ensureSpace(doc, y);
+  const wrapped = doc.splitTextToSize(items.join(", "), usableW - 28);
+  y = ensureSpace(doc, y, wrapped.length * LINE_H);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(0, 0, 0);
   doc.text(`${label}: `, MARGIN, y);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(60, 60, 60);
-  const wrapped = doc.splitTextToSize(items.join(", "), usableW - 28);
   doc.text(wrapped, MARGIN + 28, y);
-  return y + wrapped.length * 5 + 3;
+  return y + wrapped.length * LINE_H + 3;
 }
 
+// Footer sits at a FIXED bottom-margin position on every page and is a clickable
+// link to the site. Content is reserved away from this band by ensureSpace.
 function addFooter(doc: PDFDoc) {
+  const url = "https://sdd-navigator-six.vercel.app";
+  const label = "sdd-navigator-six.vercel.app";
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text("sdd-navigator-six.vercel.app", MARGIN, doc.internal.pageSize.getHeight() - 10);
+    doc.setTextColor(...LINK_RGB);
+    doc.textWithLink(label, MARGIN, doc.internal.pageSize.getHeight() - FOOTER_BASELINE_OFFSET, { url });
   }
 }
 
@@ -99,7 +119,9 @@ function addFooter(doc: PDFDoc) {
 // Print one "LABEL: value" pair with the value wrapped under/after the label.
 function addRecapField(doc: PDFDoc, usableW: number, y: number, label: string, value: string): number {
   if (!value || !value.trim()) return y;
-  y = ensureSpace(doc, y);
+  const wrapped = doc.splitTextToSize(value.trim(), usableW);
+  // Keep the label + its wrapped value together on one page.
+  y = ensureSpace(doc, y, 5 + wrapped.length * LINE_H);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(0, 82, 60);
@@ -108,9 +130,8 @@ function addRecapField(doc: PDFDoc, usableW: number, y: number, label: string, v
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(40, 40, 40);
-  const wrapped = doc.splitTextToSize(value.trim(), usableW);
   doc.text(wrapped, MARGIN, y);
-  return y + wrapped.length * 5 + 4;
+  return y + wrapped.length * LINE_H + 4;
 }
 
 function addProposalRecap(doc: PDFDoc, usableW: number, y: number, recap: ProposalRecap): number {
@@ -167,26 +188,28 @@ export async function downloadProposalPDF(document: ProposalDocument) {
       doc.setFontSize(9);
       doc.setTextColor(40, 40, 40);
       const goalWrapped = doc.splitTextToSize(`Goal: ${phase.goal}`, usableW);
+      y = ensureSpace(doc, y, goalWrapped.length * LINE_H);
       doc.text(goalWrapped, MARGIN, y);
-      y += goalWrapped.length * 5 + 3;
+      y += goalWrapped.length * LINE_H + 3;
     }
 
     // Verified providers.
+    y = ensureSpace(doc, y, 5);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(0, 0, 0);
-    y = ensureSpace(doc, y);
     doc.text("Verified Providers:", MARGIN, y);
     y += 5;
 
     if (phase.providers.length === 0) {
+      y = ensureSpace(doc, y, 6);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(110, 110, 110);
       doc.text("  No verified providers for this phase yet.", MARGIN, y);
       y += 6;
     } else {
       for (const p of phase.providers) {
-        y = ensureSpace(doc, y);
+        y = ensureSpace(doc, y, 5);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
         doc.setTextColor(40, 40, 40);
@@ -198,13 +221,16 @@ export async function downloadProposalPDF(document: ProposalDocument) {
         doc.setTextColor(60, 60, 60);
         if (p.speciality) {
           const sp = doc.splitTextToSize(`     ${p.speciality}`, usableW - 4);
+          y = ensureSpace(doc, y, sp.length * LINE_H);
           doc.text(sp, MARGIN, y);
-          y += sp.length * 5;
+          y += sp.length * LINE_H;
         }
         if (p.how) {
           const how = doc.splitTextToSize(`     ${p.how}`, usableW - 4);
+          y = ensureSpace(doc, y, how.length * LINE_H);
+          doc.setTextColor(60, 60, 60);
           doc.text(how, MARGIN, y);
-          y += how.length * 5;
+          y += how.length * LINE_H;
         }
         if (p.capabilities.length > 0) {
           y = addListLine(doc, usableW, y, "     Capabilities", p.capabilities);
@@ -212,30 +238,52 @@ export async function downloadProposalPDF(document: ProposalDocument) {
         if (p.tools.length > 0) {
           y = addListLine(doc, usableW, y, "     Tools", p.tools);
         }
+        // Clickable contact link (only when a real URL exists).
+        if (p.contact && p.contact.trim()) {
+          const url = /^https?:\/\//i.test(p.contact) ? p.contact : `https://${p.contact}`;
+          y = ensureSpace(doc, y, LINE_H);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(...LINK_RGB);
+          doc.textWithLink(`     Connect: ${p.contact}`, MARGIN, y, { url });
+          y += LINE_H;
+        }
         y += 2;
       }
     }
 
-    // Relevant research.
+    // Relevant research — clickable titles/entries linking to the source URL.
     if (phase.papers.length > 0) {
-      y = ensureSpace(doc, y);
+      y = ensureSpace(doc, y, 5);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
       doc.setTextColor(0, 0, 0);
       doc.text("Relevant Research:", MARGIN, y);
       y += 5;
       for (const paper of phase.papers) {
-        y = ensureSpace(doc, y);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(60, 60, 60);
         // Honest type labels — grants are broad Grants.gov funding opportunities.
         const typeLabel =
           paper.type === "trial" ? "Trial" : paper.type === "grant" ? "Funding Opportunity" : "Paper";
         const line = `  • [${typeLabel}] ${paper.title} — ${paper.source}${paper.date ? `, ${paper.date}` : ""}`;
         const wrapped = doc.splitTextToSize(line, usableW);
-        doc.text(wrapped, MARGIN, y);
-        y += wrapped.length * 5 + 1;
+        y = ensureSpace(doc, y, wrapped.length * LINE_H + 1);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        const url = paper.url?.trim();
+        if (url) {
+          // textWithLink measures each line, so the clickable region matches the
+          // drawn text exactly. Link colour signals clickability.
+          doc.setTextColor(...LINK_RGB);
+          let ly = y;
+          for (const wl of wrapped) {
+            doc.textWithLink(wl, MARGIN, ly, { url });
+            ly += LINE_H;
+          }
+        } else {
+          doc.setTextColor(60, 60, 60);
+          doc.text(wrapped, MARGIN, y);
+        }
+        y += wrapped.length * LINE_H + 1;
       }
     }
 
