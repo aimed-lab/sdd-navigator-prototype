@@ -14,7 +14,8 @@ import type {
   ProposalDocument,
   ProposalPhase,
   ProposalProvider,
-  ProposalPaper,
+  ProposalResearchItem,
+  ProposalResearchType,
   ProposalRecap,
 } from "@/types/proposal";
 
@@ -523,11 +524,24 @@ function ResearcherPlaceholder() {
   );
 }
 
-// ── Relevant-research card ────────────────────────────────────────────────────
+// ── Relevant-research card (paper / trial / funding opportunity) ──────────────
 
-function PaperCard({ paper }: { paper: ProposalPaper }) {
+// Honest labels — grants are Grants.gov FUNDING OPPORTUNITIES (broad calls), not
+// target-specific awarded research, so they're never labelled "Grant".
+const RESEARCH_META: Record<
+  ProposalResearchType,
+  { label: string; icon: string }
+> = {
+  paper: { label: "Paper", icon: "article" },
+  trial: { label: "Trial", icon: "clinical_notes" },
+  grant: { label: "Funding Opportunity", icon: "payments" },
+};
+
+function PaperCard({ paper }: { paper: ProposalResearchItem }) {
   const title = cleanText(paper.title);
   const source = cleanText(paper.source);
+  // Older saved proposals have items with no `type` → treat as "paper".
+  const meta = RESEARCH_META[paper.type] ?? RESEARCH_META.paper;
   return (
     <a
       href={paper.url}
@@ -536,9 +550,12 @@ function PaperCard({ paper }: { paper: ProposalPaper }) {
       className="h-full bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:border-outline hover:shadow-sm transition-all flex items-start gap-4"
     >
       <div className="w-12 h-12 bg-surface-container rounded-lg shrink-0 flex items-center justify-center">
-        <span className="material-symbols-outlined text-primary text-[24px]">article</span>
+        <span className="material-symbols-outlined text-primary text-[24px]">{meta.icon}</span>
       </div>
       <div className="flex flex-col min-w-0">
+        <span className="self-start mb-1.5 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-semibold uppercase tracking-wide">
+          {meta.label}
+        </span>
         <h5 className="font-label-md text-label-md text-on-surface leading-snug mb-1 line-clamp-3">
           {title}
         </h5>

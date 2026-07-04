@@ -229,7 +229,10 @@ export async function downloadProposalPDF(document: ProposalDocument) {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(9);
         doc.setTextColor(60, 60, 60);
-        const line = `  • ${paper.title} — ${paper.source}${paper.date ? `, ${paper.date}` : ""}`;
+        // Honest type labels — grants are broad Grants.gov funding opportunities.
+        const typeLabel =
+          paper.type === "trial" ? "Trial" : paper.type === "grant" ? "Funding Opportunity" : "Paper";
+        const line = `  • [${typeLabel}] ${paper.title} — ${paper.source}${paper.date ? `, ${paper.date}` : ""}`;
         const wrapped = doc.splitTextToSize(line, usableW);
         doc.text(wrapped, MARGIN, y);
         y += wrapped.length * 5 + 1;

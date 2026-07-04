@@ -5,7 +5,7 @@ import type {
   ProposalDocument,
   ProposalPhase,
   ProposalProvider,
-  ProposalPaper,
+  ProposalResearchItem,
   ProposalRecap,
 } from "@/types/proposal";
 import type { DiscoverItem } from "@/app/api/discover/route";
@@ -176,33 +176,110 @@ function buildPhaseProviders(
 }
 
 // ── Relevant research (reuses the live /api/discover engine) ──────────────────
+//
+// Precision strategy (vs. the old raw-blob query that returned broad, off-target
+// results): extract clean search entities from the proposal, query discover in
+// MULTI-TERM mode, then post-filter papers/trials down to items that actually
+// mention the extracted entities. Grants are Grants.gov FUNDING OPPORTUNITIES —
+// broad by nature — so they're NOT precision-filtered and are labelled honestly.
+// The whole chain runs in parallel with the main generation call (see POST).
 
-// Pull real papers once for the whole proposal (scoped to the therapeutic
-// target), then distribute across phases. Reuses /api/discover wholesale via an
-// internal request so we don't duplicate or destabilise the source fetchers.
-// Any failure returns [] and never blocks the proposal.
-async function fetchPaperPool(origin: string, query: string): Promise<ProposalPaper[]> {
-  if (!query.trim()) return [];
+type ResearchPools = {
+  papers: ProposalResearchItem[];
+  trials: ProposalResearchItem[];
+  grants: ProposalResearchItem[];
+};
+
+const EMPTY_POOLS: ResearchPools = { papers: [], trials: [], grants: [] };
+
+// Turn the proposal's free-text target + rationale into 3-5 clean search terms
+// via the existing /api/extract-interests Groq route. Returns [] on any failure
+// so research degrades gracefully to a single-term query.
+async function extractSearchTerms(origin: string, input: ProposalInput): Promise<string[]> {
   try {
-    const res = await fetch(
-      `${origin}/api/discover?q=${encodeURIComponent(query.slice(0, 200))}`,
-      { cache: "no-store" },
-    );
+    const res = await fetch(`${origin}/api/extract-interests`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        working: input.therapeutic_target,
+        topics: input.scientific_rationale,
+      }),
+      cache: "no-store",
+    });
     if (!res.ok) return [];
-    const data = (await res.json()) as { items?: DiscoverItem[] };
-    return (data.items ?? [])
-      .filter((i) => i.type === "paper")
-      // Source APIs embed HTML/XML in titles (<scp>, <i>, &amp;) — clean to plain
-      // text here so output_data, the PDF, and saved projects are all clean.
-      .map((i) => ({
-        id: i.id,
-        title: cleanText(i.title),
-        source: cleanText(i.source),
-        date: i.date,
-        url: i.url,
-      }));
+    const data = (await res.json()) as { keywords?: unknown };
+    if (!Array.isArray(data.keywords)) return [];
+    return data.keywords.filter((k): k is string => typeof k === "string" && k.trim().length > 0);
   } catch {
     return [];
+  }
+}
+
+// Count how many extracted term-phrases appear (case-insensitive substring) in
+// the item's title + description — the precision signal. Items matching more
+// terms (e.g. target AND disease) rank above single-term matches.
+function termMatchCount(item: DiscoverItem, terms: string[]): number {
+  const hay = `${item.title} ${item.description}`.toLowerCase();
+  return terms.reduce((n, t) => (hay.includes(t.toLowerCase()) ? n + 1 : n), 0);
+}
+
+function toResearchItem(i: DiscoverItem): ProposalResearchItem {
+  return {
+    // discover types are paper | grant | trial | tool; we only keep the first 3.
+    type: i.type === "grant" || i.type === "trial" ? i.type : "paper",
+    id: i.id,
+    // Source APIs embed HTML/XML in titles (<scp>, <i>, &amp;) — clean to plain
+    // text so output_data, the PDF, and saved projects are all clean.
+    title: cleanText(i.title),
+    source: cleanText(i.source),
+    date: i.date,
+    url: i.url,
+  };
+}
+
+// Precision post-filter for target-queryable types (papers, trials): keep only
+// items mentioning an extracted term, ranked by match count. If that leaves the
+// pool empty (over-filtered), fall back to the unfiltered subset rather than
+// showing nothing. No-op when we have no terms.
+function precisionFilter(items: DiscoverItem[], terms: string[]): DiscoverItem[] {
+  if (terms.length === 0) return items;
+  const onTarget = items
+    .map((i) => ({ i, score: termMatchCount(i, terms) }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.i);
+  return onTarget.length > 0 ? onTarget : items;
+}
+
+// Gather the whole research pool in ONE discover call (multi-term), split by
+// type, precision-filter papers/trials, and clean titles. Never throws.
+async function gatherResearch(origin: string, input: ProposalInput): Promise<ResearchPools> {
+  const terms = await extractSearchTerms(origin, input);
+
+  // Multi-term when we have extracted entities; otherwise fall back to the raw
+  // target as a single query (old behaviour) so research still works.
+  const url =
+    terms.length > 0
+      ? `${origin}/api/discover?interests=${encodeURIComponent(terms.join(","))}`
+      : `${origin}/api/discover?q=${encodeURIComponent(input.therapeutic_target.slice(0, 200))}`;
+
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return EMPTY_POOLS;
+    const data = (await res.json()) as { items?: DiscoverItem[] };
+    const items = data.items ?? [];
+
+    const rawPapers = items.filter((i) => i.type === "paper");
+    const rawTrials = items.filter((i) => i.type === "trial");
+    const rawGrants = items.filter((i) => i.type === "grant"); // broad — not filtered
+
+    return {
+      papers: precisionFilter(rawPapers, terms).map(toResearchItem),
+      trials: precisionFilter(rawTrials, terms).map(toResearchItem),
+      grants: rawGrants.map(toResearchItem),
+    };
+  } catch {
+    return EMPTY_POOLS;
   }
 }
 
@@ -283,6 +360,65 @@ function buildRecap(input: ProposalInput): ProposalRecap {
   };
 }
 
+// ── Generation (extracted so it can run in parallel with research) ────────────
+
+type GenerationResult =
+  | { ok: true; parsed: Record<string, unknown> }
+  | { ok: false; status: number; error: string };
+
+async function runGeneration(
+  systemPrompt: string,
+  userMessage: string,
+  groqKey: string,
+): Promise<GenerationResult> {
+  const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${groqKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ],
+      temperature: 0.7,
+      max_tokens: 4096,
+    }),
+  });
+
+  if (!groqRes.ok) {
+    const detail = await groqRes.text();
+    console.error("Groq API error:", groqRes.status, detail);
+    return { ok: false, status: 502, error: "AI service unavailable. Please try again." };
+  }
+
+  const groqData = await groqRes.json();
+  const content: string = groqData.choices?.[0]?.message?.content ?? "";
+
+  // Parse JSON — tolerant of markdown fences (carried forward from generate-roadmap).
+  const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  let parsed: Record<string, unknown> | null = null;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        parsed = JSON.parse(match[0]);
+      } catch {
+        parsed = null;
+      }
+    }
+  }
+  if (!parsed) {
+    console.error("Failed to parse Groq response:", content);
+    return { ok: false, status: 500, error: "Failed to parse AI response. Please try again." };
+  }
+  return { ok: true, parsed };
+}
+
 // ── Route ─────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -312,64 +448,42 @@ export async function POST(req: NextRequest) {
   const systemPrompt =
     PROPOSAL_SYSTEM_PROMPT + buildSparcGrounding(grounding.capabilities, grounding.tools);
 
-  const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${groqKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: buildUserMessage(input) },
-      ],
-      temperature: 0.7,
-      max_tokens: 4096,
-    }),
-  });
+  // Run the main generation and the research gathering IN PARALLEL. The research
+  // chain (extract terms → multi-term discover → precision filter) is far lighter
+  // than the 4096-token generation, so it hides fully behind the LLM call and
+  // adds no serial latency. gatherResearch never throws (returns empty pools).
+  const [generation, research] = await Promise.all([
+    runGeneration(systemPrompt, buildUserMessage(input), groqKey),
+    gatherResearch(req.nextUrl.origin, input),
+  ]);
 
-  if (!groqRes.ok) {
-    const detail = await groqRes.text();
-    console.error("Groq API error:", groqRes.status, detail);
-    return NextResponse.json({ error: "AI service unavailable. Please try again." }, { status: 502 });
+  if (!generation.ok) {
+    return NextResponse.json({ error: generation.error }, { status: generation.status });
   }
+  const parsed = generation.parsed;
 
-  const groqData = await groqRes.json();
-  const content: string = groqData.choices?.[0]?.message?.content ?? "";
-
-  // Parse JSON — tolerant of markdown fences (carried forward from generate-roadmap).
-  const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  let parsed: Record<string, unknown> | null = null;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (match) {
-      try {
-        parsed = JSON.parse(match[0]);
-      } catch {
-        parsed = null;
-      }
-    }
-  }
-  if (!parsed) {
-    console.error("Failed to parse Groq response:", content);
-    return NextResponse.json({ error: "Failed to parse AI response. Please try again." }, { status: 500 });
-  }
-
-  // Pull real papers once (scoped to the therapeutic target) and distribute
-  // across phases — top-ranked papers to the earliest phases.
-  const paperPool = await fetchPaperPool(req.nextUrl.origin, input.therapeutic_target);
+  // Distribute a balanced research mix per phase: up to 2 papers + 1 trial +
+  // 1 funding opportunity, consumed sequentially so no phase repeats another's.
+  // Honest — if a type's pool runs out, that phase just shows fewer; no padding.
   const PAPERS_PER_PHASE = 2;
-  let paperCursor = 0;
+  const TRIALS_PER_PHASE = 1;
+  const GRANTS_PER_PHASE = 1;
+  let pc = 0;
+  let tc = 0;
+  let gc = 0;
 
   const rawPhases = Array.isArray(parsed.phases) ? (parsed.phases as Record<string, unknown>[]) : [];
   const phases: ProposalPhase[] = rawPhases.map((p, i) => {
     const contribution = sanitizeSparcSelection(p.sparc, grounding.capabilities, grounding.tools);
     const providers = buildPhaseProviders(contribution, internalProviders);
-    const papers = paperPool.slice(paperCursor, paperCursor + PAPERS_PER_PHASE);
-    paperCursor += PAPERS_PER_PHASE;
+    const papers: ProposalResearchItem[] = [
+      ...research.papers.slice(pc, pc + PAPERS_PER_PHASE),
+      ...research.trials.slice(tc, tc + TRIALS_PER_PHASE),
+      ...research.grants.slice(gc, gc + GRANTS_PER_PHASE),
+    ];
+    pc += PAPERS_PER_PHASE;
+    tc += TRIALS_PER_PHASE;
+    gc += GRANTS_PER_PHASE;
     return {
       id: typeof p.id === "string" && p.id.trim() ? p.id.trim() : `phase-${i + 1}`,
       title: typeof p.title === "string" ? p.title : `Phase ${i + 1}`,

@@ -39,12 +39,19 @@ export type ProposalProvider = {
   contact: string | null;            // website URL or email
 };
 
-// A relevant-research card for one phase. Real papers pulled from the live
-// /api/discover engine — never invented.
-export type ProposalPaper = {
+// A relevant-research item for one phase. Real records pulled from the live
+// /api/discover engine — never invented. `type` distinguishes the source kind:
+//   • "paper" — PubMed / OpenAlex / Crossref (target-queryable)
+//   • "trial" — ClinicalTrials.gov (target-queryable)
+//   • "grant" — Grants.gov FUNDING OPPORTUNITY (broad call, NOT target-specific;
+//               labelled honestly in the UI as "Funding Opportunity")
+export type ProposalResearchType = "paper" | "trial" | "grant";
+
+export type ProposalResearchItem = {
+  type: ProposalResearchType;
   id: string;
   title: string;
-  source: string;   // journal / index, e.g. "Nature Biotech"
+  source: string;   // journal / registry / agency, e.g. "Nature Biotech"
   date: string;     // human-readable, e.g. "Oct 24, 2024"
   url: string;
 };
@@ -55,7 +62,10 @@ export type ProposalPhase = {
   goal: string;
   estimated_duration: string;    // e.g. "6–9 weeks"
   providers: ProposalProvider[]; // Verified-only; may be empty (honest empty state)
-  papers: ProposalPaper[];       // real research; may be empty
+  // Mixed papers + trials + funding opportunities. Field name kept as `papers`
+  // for backward-compat with already-saved proposals (older items had no `type`,
+  // and the UI treats a missing type as "paper").
+  papers: ProposalResearchItem[];
   // NOTE: researcher matching is deliberately NOT produced here — the frontend
   // shows a "coming soon" Talent Knowledge Graph placeholder.
 };
