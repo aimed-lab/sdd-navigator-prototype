@@ -544,7 +544,7 @@ export default function GraphPage() {
               </div>
               <div className="flex flex-col w-full gap-4">
                 <Link
-                  href="/login"
+                  href="/login?callbackUrl=/graph"
                   className="w-full py-3.5 rounded-lg font-semibold flex items-center justify-center gap-2 hover:brightness-110 transition-all"
                   style={{ background: "#1E6B52", color: "#fff" }}
                 >

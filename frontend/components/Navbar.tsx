@@ -14,6 +14,8 @@ export default function Navbar() {
   const router = useRouter();
   const { user, loading, displayName, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  // Log in returns the user to the page they were on.
+  const loginHref = `/login?callbackUrl=${encodeURIComponent(pathname || "/")}`;
 
   async function handleLogout() {
     await signOut();
@@ -74,7 +76,7 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link href="/login">
+              <Link href={loginHref}>
                 <button className="px-5 py-2 min-h-[44px] rounded-full border border-outline text-primary font-semibold hover:bg-surface-container-low transition-all active:scale-95">
                   Sign In
                 </button>
@@ -155,7 +157,7 @@ export default function Navbar() {
                 </>
               ) : (
                 <>
-                  <Link href="/login" onClick={() => setMenuOpen(false)}>
+                  <Link href={loginHref} onClick={() => setMenuOpen(false)}>
                     <button className="w-full py-3 rounded-xl border border-outline text-primary font-semibold text-sm min-h-[44px] hover:bg-surface-container-low transition-all">
                       Sign In
                     </button>

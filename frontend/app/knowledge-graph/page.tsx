@@ -579,7 +579,7 @@ function GraphTab({ user }: { user: unknown }) {
               Register for Access
             </button>
           </Link>
-          <Link href="/login">
+          <Link href="/login?callbackUrl=/knowledge-graph">
             <button className="px-8 py-3 border border-outline text-primary font-bold rounded-full hover:bg-white transition-all active:scale-95">
               Sign In
             </button>

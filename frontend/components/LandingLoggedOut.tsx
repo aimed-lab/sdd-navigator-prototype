@@ -203,7 +203,7 @@ export default function LandingLoggedOut() {
                   Create a free account
                 </button>
               </Link>
-              <Link href="/login" className="w-full sm:w-auto">
+              <Link href="/login?callbackUrl=/" className="w-full sm:w-auto">
                 <button className="w-full sm:w-auto px-10 py-4 border-2 border-primary text-primary rounded-xl font-label-sm text-label-sm hover:bg-surface-container-low active:scale-95 transition-all">
                   Log in
                 </button>

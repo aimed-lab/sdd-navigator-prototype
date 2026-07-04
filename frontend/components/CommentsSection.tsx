@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 
@@ -46,6 +47,9 @@ export default function CommentsSection({
   wikiPageId?: string;
 }) {
   const { user, loading: authLoading } = useAuth();
+  const pathname = usePathname();
+  // Return the user to THIS wiki page (where they were commenting) after login.
+  const loginHref = `/login?callbackUrl=${encodeURIComponent(pathname || "/")}`;
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComments, setLoadingComments] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -180,7 +184,7 @@ export default function CommentsSection({
           <p className="font-headline-md text-headline-md text-on-surface">Join the Discussion</p>
           <p className="font-body-md text-body-md text-on-surface-variant">
             Please{" "}
-            <Link href="/login" className="text-primary font-semibold hover:underline">
+            <Link href={loginHref} className="text-primary font-semibold hover:underline">
               sign in
             </Link>{" "}
             to contribute to this research thread.
