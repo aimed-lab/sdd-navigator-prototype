@@ -35,14 +35,15 @@ export type RelatedEpisode = {
   image_url: string | null;
 };
 
-// One episode card as rendered by the podcast grid / dashboard.
+// One episode card as rendered by the podcast grid. Column shape matches the
+// podcast page's existing usage (tags/description treated as present).
 export type EpisodeCard = {
   id: string;
-  slug: string;
-  title: string;
   episode_number: number;
-  description: string | null;
-  tags: string[] | null;
+  title: string;
+  tags: string[];
+  description: string;
+  slug: string;
   image_url: string | null;
 };
 
@@ -78,8 +79,20 @@ export async function getRelatedEpisodes(slug: string, limit = 3): Promise<Relat
   return (data ?? []) as RelatedEpisode[];
 }
 
+// List all episodes, newest episode_number first (podcast grid). Same query as
+// before: same select columns, same ordering, no limit. Logs a read error and
+// degrades to an empty list, matching the page's prior behavior.
 export async function listEpisodes(): Promise<EpisodeCard[]> {
-  throw new Error(NOT_IMPLEMENTED);
+  const supabase = getAnonServerClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("wiki_pages")
+    .select("id, slug, title, episode_number, description, tags, image_url")
+    .order("episode_number", { ascending: false });
+
+  if (error) console.error(error.message);
+  return (data ?? []) as EpisodeCard[];
 }
 
 export async function getLatestEpisode(): Promise<EpisodeCard | null> {

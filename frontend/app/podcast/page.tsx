@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
-import { supabase } from "@/lib/supabase";
 
 // ── Route ─────────────────────────────────────────────────────────────────────
 //
@@ -65,13 +64,15 @@ export default function PodcastPage() {
 
   useEffect(() => {
     async function load() {
-      const { data, error } = await supabase
-        .from("wiki_pages")
-        .select("id, slug, title, episode_number, description, tags, image_url")
-        .order("episode_number", { ascending: false });
-      if (error) console.error(error.message);
-      setEpisodes(data ?? []);
-      setLoading(false);
+      try {
+        const res = await fetch("/api/episodes");
+        const data = await res.json();
+        setEpisodes(data.episodes ?? []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, []);
