@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
 // ── Researcher types ──────────────────────────────────────────────────────────
@@ -82,32 +81,27 @@ function ResearchersTab({ user }: { user: unknown }) {
 
   useEffect(() => {
     async function load() {
-      const [resRes, worksRes] = await Promise.all([
-        supabase
-          .from("users")
-          .select(
-            "id, name, email, affiliation, institution, bio, research_focus, interests, is_public, profile_slug"
-          )
-          .eq("is_public", true)
-          .order("name"),
-        supabase
-          .from("researcher_works")
-          .select("user_id, type"),
-      ]);
+      try {
+        const res = await fetch("/api/researchers");
+        const data = await res.json();
 
-      setResearchers(resRes.data ?? []);
+        setResearchers(data.researchers ?? []);
 
-      const counts = new Map<string, WorkCount>();
-      for (const w of worksRes.data ?? []) {
-        if (!counts.has(w.user_id))
-          counts.set(w.user_id, { papers: 0, tools: 0, datasets: 0 });
-        const c = counts.get(w.user_id)!;
-        if (w.type === "paper") c.papers++;
-        else if (w.type === "tool") c.tools++;
-        else if (w.type === "dataset") c.datasets++;
+        const counts = new Map<string, WorkCount>();
+        for (const w of data.works ?? []) {
+          if (!counts.has(w.user_id))
+            counts.set(w.user_id, { papers: 0, tools: 0, datasets: 0 });
+          const c = counts.get(w.user_id)!;
+          if (w.type === "paper") c.papers++;
+          else if (w.type === "tool") c.tools++;
+          else if (w.type === "dataset") c.datasets++;
+        }
+        setWorkCounts(counts);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-      setWorkCounts(counts);
-      setLoading(false);
     }
     load();
   }, []);

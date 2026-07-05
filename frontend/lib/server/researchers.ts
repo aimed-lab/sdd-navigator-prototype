@@ -1,20 +1,42 @@
 // lib/server/researchers.ts — public researcher directory + profiles (anon).
 //
-// STEP 4a SCAFFOLD: signatures only. `fetchPublicResearchers` moves here from
-// lib/navigatorResearchers.ts (whose PURE matchResearchers() stays put, client-
-// safe). Profile reads move here from researchers/[slug]. Do not implement yet.
+// listPublicResearchers is LIVE (migrated from researchers/page.tsx in Step 4a —
+// same queries, same is_public=true filter, same ordering). getResearcherProfile
+// remains a stub for the researchers/[slug] migration.
+//
+// RLS NOTE: this relies on the live DB permitting the ANON role to SELECT
+// users rows where is_public=true (and to read researcher_works). The committed
+// database/schema.sql does NOT define such a policy (only users_select_own), so
+// this read's correctness depends on a live policy not reflected in the repo —
+// see the review notes for the verification step. This module never uses the
+// service-role key to bypass RLS.
+
+import { getAnonServerClient } from "@/lib/server/supabaseServer";
 
 const NOT_IMPLEMENTED = "lib/server/researchers: not implemented yet (Step 4a migration pending)";
 
-// Directory card: a public user + their work counts by type.
+// One public researcher row for the directory grid.
 export type ResearcherCard = {
   id: string;
-  name: string | null;
+  name: string;
   email: string;
+  affiliation: string | null;
+  institution: string | null;
+  bio: string | null;
   research_focus: string | null;
   interests: string[] | null;
+  is_public: boolean;
   profile_slug: string | null;
-  work_counts?: Record<string, number>;
+};
+
+// A single researcher_works row (only the columns the directory counts by).
+export type ResearcherWorkRow = { user_id: string; type: string };
+
+// Both raw query results, so the client keeps its exact per-user work-count
+// aggregation unchanged (the counting is presentation, not data access).
+export type PublicResearchersResult = {
+  researchers: ResearcherCard[];
+  works: ResearcherWorkRow[];
 };
 
 // Full public profile (users row + researcher_works). Shape finalized on migration.
@@ -23,8 +45,28 @@ export type ResearcherProfile = {
   works: Record<string, unknown>[];
 };
 
-export async function listPublicResearchers(): Promise<ResearcherCard[]> {
-  throw new Error(NOT_IMPLEMENTED);
+// Fetch the public researcher directory + all researcher_works rows, in parallel.
+// Same queries as before, verbatim: users filtered to is_public=true, ordered by
+// name; researcher_works selecting (user_id, type). Degrades to empty arrays.
+export async function listPublicResearchers(): Promise<PublicResearchersResult> {
+  const supabase = getAnonServerClient();
+  if (!supabase) return { researchers: [], works: [] };
+
+  const [resRes, worksRes] = await Promise.all([
+    supabase
+      .from("users")
+      .select(
+        "id, name, email, affiliation, institution, bio, research_focus, interests, is_public, profile_slug",
+      )
+      .eq("is_public", true)
+      .order("name"),
+    supabase.from("researcher_works").select("user_id, type"),
+  ]);
+
+  return {
+    researchers: (resRes.data ?? []) as ResearcherCard[],
+    works: (worksRes.data ?? []) as ResearcherWorkRow[],
+  };
 }
 
 export async function getResearcherProfile(_slug: string): Promise<ResearcherProfile | null> {
