@@ -3,32 +3,10 @@ import Link from "next/link";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import CommentsSection from "@/components/CommentsSection";
-import { supabase } from "@/lib/supabase";
+import { getWikiPage, getRelatedEpisodes } from "@/lib/server/wiki";
+import type { Concept } from "@/lib/server/wiki";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-type Concept = { title: string; bullets: string[] };
-
-type WikiPage = {
-  id: string;
-  slug: string;
-  title: string;
-  episode_number: number;
-  transcript: string;
-  concepts: Concept[] | string[];
-  tags: string[];
-  episode_url: string;
-  description: string;
-  summary: string[];
-  image_url: string | null;
-};
-
-type RelatedEpisode = {
-  episode_number: number;
-  title: string;
-  slug: string;
-  image_url: string | null;
-};
 
 type PubMedPaper = {
   id: string;
@@ -112,27 +90,13 @@ export default async function WikiPage({
 }) {
   const { slug } = await params;
 
-  const { data: pageData, error } = await supabase
-    .from("wiki_pages")
-    .select("id,slug,title,episode_number,transcript,concepts,tags,episode_url,description,summary,image_url")
-    .eq("slug", slug)
-    .single();
+  const page = await getWikiPage(slug);
+  if (!page) notFound();
 
-  if (error || !pageData) notFound();
-
-  const page = pageData as WikiPage;
-
-  const [relatedResult, papers] = await Promise.all([
-    supabase
-      .from("wiki_pages")
-      .select("episode_number,title,slug,image_url")
-      .neq("slug", slug)
-      .order("episode_number", { ascending: false })
-      .limit(3),
+  const [relatedEpisodes, papers] = await Promise.all([
+    getRelatedEpisodes(slug, 3),
     fetchPubMedPapers(page.title),
   ]);
-
-  const relatedEpisodes = (relatedResult.data ?? []) as RelatedEpisode[];
 
   const concepts: Concept[] = (page.concepts ?? []).map((c) =>
     typeof c === "string" ? { title: c, bullets: [] } : (c as Concept)
