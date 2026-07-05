@@ -1,19 +1,17 @@
 // lib/server/researchers.ts — public researcher directory + profiles (anon).
 //
-// listPublicResearchers is LIVE (migrated from researchers/page.tsx in Step 4a —
-// same queries, same is_public=true filter, same ordering). getResearcherProfile
-// remains a stub for the researchers/[slug] migration.
+// listPublicResearchers + getResearcherProfile are LIVE (migrated from
+// researchers/page.tsx and researchers/[slug]/page.tsx in Step 4a — same
+// queries, same is_public=true filters, same ordering/limits).
 //
-// RLS NOTE: this relies on the live DB permitting the ANON role to SELECT
-// users rows where is_public=true (and to read researcher_works). The committed
-// database/schema.sql does NOT define such a policy (only users_select_own), so
-// this read's correctness depends on a live policy not reflected in the repo —
-// see the review notes for the verification step. This module never uses the
-// service-role key to bypass RLS.
+// RLS NOTE: relies on the live DB permitting the ANON role to SELECT users rows
+// where is_public=true (and to read researcher_works) — confirmed working via
+// the logged-out /researchers directory. This module never uses the service-role
+// key to bypass RLS.
 
 import { getAnonServerClient } from "@/lib/server/supabaseServer";
 
-const NOT_IMPLEMENTED = "lib/server/researchers: not implemented yet (Step 4a migration pending)";
+// ── Directory (listPublicResearchers) ─────────────────────────────────────────
 
 // One public researcher row for the directory grid.
 export type ResearcherCard = {
@@ -37,12 +35,6 @@ export type ResearcherWorkRow = { user_id: string; type: string };
 export type PublicResearchersResult = {
   researchers: ResearcherCard[];
   works: ResearcherWorkRow[];
-};
-
-// Full public profile (users row + researcher_works). Shape finalized on migration.
-export type ResearcherProfile = {
-  profile: Record<string, unknown>;
-  works: Record<string, unknown>[];
 };
 
 // Fetch the public researcher directory + all researcher_works rows, in parallel.
@@ -69,6 +61,95 @@ export async function listPublicResearchers(): Promise<PublicResearchersResult> 
   };
 }
 
-export async function getResearcherProfile(_slug: string): Promise<ResearcherProfile | null> {
-  throw new Error(NOT_IMPLEMENTED);
+// ── Public profile (getResearcherProfile) ─────────────────────────────────────
+
+// Full public profile row (the 13 columns the profile page selects by slug).
+export type ResearcherProfileRow = {
+  id: string;
+  name: string;
+  email: string;
+  affiliation: string | null;
+  institution: string | null;
+  country: string | null;
+  bio: string | null;
+  research_focus: string | null;
+  linkedin_url: string | null;
+  website_url: string | null;
+  interests: string[] | null;
+  is_public: boolean;
+  profile_slug: string | null;
+};
+
+// A full researcher_works row (select * on the profile page).
+export type ResearcherWorkFull = {
+  id: string;
+  user_id: string;
+  type: "paper" | "tool" | "dataset";
+  title: string;
+  journal: string | null;
+  year: number | null;
+  url: string | null;
+  description: string | null;
+  created_at: string;
+};
+
+// The reduced "related researchers" row (7 columns the sidebar selects).
+export type RelatedResearcher = {
+  id: string;
+  name: string;
+  affiliation: string | null;
+  institution: string | null;
+  research_focus: string | null;
+  profile_slug: string | null;
+  interests: string[] | null;
+};
+
+// Full public profile payload: the researcher, their works, and the related-pool
+// candidates. The client still does the interest-overlap sort + top-3 slice.
+export type ResearcherProfile = {
+  profile: ResearcherProfileRow;
+  works: ResearcherWorkFull[];
+  related: RelatedResearcher[];
+};
+
+// Fetch one public researcher profile by slug (+ works + related pool). Returns
+// null when the profile is missing OR not public, so the caller renders the
+// not-found state exactly as before. Both is_public=true filters, the slug
+// filter, the works ordering, and the related neq/limit move verbatim.
+export async function getResearcherProfile(slug: string): Promise<ResearcherProfile | null> {
+  const supabase = getAnonServerClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("users")
+    .select(
+      "id, name, email, affiliation, institution, country, bio, research_focus, linkedin_url, website_url, interests, is_public, profile_slug",
+    )
+    .eq("profile_slug", slug)
+    .eq("is_public", true)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const profile = data as ResearcherProfileRow;
+
+  const [worksRes, relatedRes] = await Promise.all([
+    supabase
+      .from("researcher_works")
+      .select("*")
+      .eq("user_id", profile.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("users")
+      .select("id, name, affiliation, institution, research_focus, profile_slug, interests")
+      .eq("is_public", true)
+      .neq("id", profile.id)
+      .limit(10),
+  ]);
+
+  return {
+    profile,
+    works: (worksRes.data ?? []) as ResearcherWorkFull[],
+    related: (relatedRes.data ?? []) as RelatedResearcher[],
+  };
 }

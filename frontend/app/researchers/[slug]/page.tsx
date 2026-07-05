@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
 type Researcher = {
@@ -71,55 +70,36 @@ export default function ResearcherProfilePage() {
     async function load() {
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from("users")
-        .select(
-          "id, name, email, affiliation, institution, country, bio, research_focus, linkedin_url, website_url, interests, is_public, profile_slug"
-        )
-        .eq("profile_slug", slug)
-        .eq("is_public", true)
-        .maybeSingle();
+      try {
+        const res = await fetch(`/api/researchers/${encodeURIComponent(slug)}`);
+        if (!res.ok) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+        const data = await res.json();
 
-      if (error || !data) {
+        setResearcher(data.profile);
+        setWorks(data.works ?? []);
+
+        const myInterests = new Set(
+          ((data.profile?.interests ?? []) as string[]).map((i) => i.toLowerCase())
+        );
+        const sorted = ((data.related ?? []) as Researcher[]).sort((a, b) => {
+          const aScore = (a.interests ?? []).filter((i) =>
+            myInterests.has(i.toLowerCase())
+          ).length;
+          const bScore = (b.interests ?? []).filter((i) =>
+            myInterests.has(i.toLowerCase())
+          ).length;
+          return bScore - aScore;
+        });
+        setRelated(sorted.slice(0, 3));
+        setLoading(false);
+      } catch {
         setNotFound(true);
         setLoading(false);
-        return;
       }
-
-      setResearcher(data);
-
-      const [worksRes, relatedRes] = await Promise.all([
-        supabase
-          .from("researcher_works")
-          .select("*")
-          .eq("user_id", data.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("users")
-          .select(
-            "id, name, affiliation, institution, research_focus, profile_slug, interests"
-          )
-          .eq("is_public", true)
-          .neq("id", data.id)
-          .limit(10),
-      ]);
-
-      setWorks(worksRes.data ?? []);
-
-      const myInterests = new Set(
-        (data.interests ?? []).map((i: string) => i.toLowerCase())
-      );
-      const sorted = ((relatedRes.data ?? []) as Researcher[]).sort((a, b) => {
-        const aScore = (a.interests ?? []).filter((i) =>
-          myInterests.has(i.toLowerCase())
-        ).length;
-        const bScore = (b.interests ?? []).filter((i) =>
-          myInterests.has(i.toLowerCase())
-        ).length;
-        return bScore - aScore;
-      });
-      setRelated(sorted.slice(0, 3));
-      setLoading(false);
     }
 
     load();
