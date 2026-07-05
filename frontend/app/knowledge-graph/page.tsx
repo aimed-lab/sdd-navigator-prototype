@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import * as d3 from "d3";
 
@@ -343,31 +342,37 @@ function GraphTab({ user }: { user: unknown }) {
     setGraphSearch("");
     searchRef.current = "";
 
-    const [nodesRes, edgesRes, pagesRes] = await Promise.all([
-      supabase.from("nodes").select("id,label,type,description"),
-      supabase.from("edges").select("source_id,target_id,relationship"),
-      supabase.from("wiki_pages").select("id,title,slug,episode_number,tags,description"),
-    ]);
-
-    if (nodesRes.error || edgesRes.error) {
+    let graph: { nodes?: unknown[]; edges?: unknown[]; pages?: GraphWikiPage[] };
+    try {
+      const res = await fetch("/api/graph");
+      if (!res.ok) {
+        setGraphError("Failed to load graph data.");
+        setGraphLoading(false);
+        return;
+      }
+      graph = await res.json();
+    } catch {
       setGraphError("Failed to load graph data.");
       setGraphLoading(false);
       return;
     }
 
-    const rawNodes = (nodesRes.data || []).map((n) => ({
-      id: n.id, label: n.label,
-      type: n.type as "episode" | "concept" | "resource",
-      description: n.description as string | undefined,
-    }));
+    const rawNodes = (graph.nodes || []).map((n) => {
+      const row = n as { id: string; label: string; type: string; description?: string };
+      return {
+        id: row.id, label: row.label,
+        type: row.type as "episode" | "concept" | "resource",
+        description: row.description as string | undefined,
+      };
+    });
     rawNodesRef.current = rawNodes;
 
     const wikiByTitle = new Map<string, GraphWikiPage>(
-      (pagesRes.data || []).map((p: GraphWikiPage) => [p.title, p])
+      (graph.pages || []).map((p: GraphWikiPage) => [p.title, p])
     );
 
     const nodeById = new Map(rawNodes.map((n) => [n.id, n]));
-    const edgeData = edgesRes.data || [];
+    const edgeData = (graph.edges || []) as { source_id: string; target_id: string; relationship: string }[];
 
     const rawEdges: GraphEdge[] = edgeData
       .filter((e) => nodeById.has(e.source_id) && nodeById.has(e.target_id))
