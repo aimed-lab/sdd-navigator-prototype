@@ -1,6 +1,6 @@
 "use client";
 
-import type { DiscoverItem } from "@/app/api/discover/route";
+import type { DiscoverItem } from "@/types/discover";
 
 // Shared with the Knowledge Hub Discover tab and the Navigator's Live Research
 // Radar panel so both surfaces render live discovery items identically.

@@ -7,7 +7,7 @@ import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import type { DiscoverItem } from "@/app/api/discover/route";
+import type { DiscoverItem } from "@/types/discover";
 
 // ── Discover tab constants ────────────────────────────────────────────────────
 

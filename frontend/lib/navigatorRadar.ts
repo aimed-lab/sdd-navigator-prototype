@@ -1,4 +1,4 @@
-import type { DiscoverItem } from "@/app/api/discover/route";
+import type { DiscoverItem } from "@/types/discover";
 
 export type RadarResult = {
   items: DiscoverItem[];

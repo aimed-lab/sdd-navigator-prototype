@@ -6,7 +6,7 @@
 // unchanged.
 
 import type { ProposalInput, ProposalResearchItem } from "@/types/proposal";
-import type { DiscoverItem } from "@/app/api/discover/route";
+import type { DiscoverItem } from "@/types/discover";
 import { cleanText } from "@/lib/sanitizeText";
 
 // ── Relevant research (reuses the live /api/discover engine) ──────────────────

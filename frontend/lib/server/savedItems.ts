@@ -3,7 +3,7 @@
 // STEP 4a SCAFFOLD: signatures only. Logic moves here from discovery/page.tsx
 // during Phase C. uid is derived from the session, never passed in.
 
-import type { DiscoverItem } from "@/app/api/discover/route";
+import type { DiscoverItem } from "@/types/discover";
 
 const NOT_IMPLEMENTED = "lib/server/savedItems: not implemented yet (Step 4a migration pending)";
 

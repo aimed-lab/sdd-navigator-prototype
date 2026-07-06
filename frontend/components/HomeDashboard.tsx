@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import { DiscoverCard, SkeletonCard } from "@/components/DiscoverCard";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import type { DiscoverItem } from "@/app/api/discover/route";
+import type { DiscoverItem } from "@/types/discover";
 
 // Logged-in home / dashboard (ports design/home-logged-in.html) — rendered by
 // app/page.tsx only when the visitor is authenticated. Every card reflects real

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { DiscoverCard, SkeletonCard } from "@/components/DiscoverCard";
-import type { DiscoverItem } from "@/app/api/discover/route";
+import type { DiscoverItem } from "@/types/discover";
 
 // Landing "Latest in drug discovery" strip. Wired to the REAL /api/discover
 // aggregator (PubMed + OpenAlex + Crossref + Grants.gov + ClinicalTrials.gov +
