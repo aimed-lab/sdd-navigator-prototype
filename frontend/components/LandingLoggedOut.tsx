@@ -107,14 +107,67 @@ export default function LandingLoggedOut() {
                 </p>
               </div>
             </div>
-            {/* Brand gradient panel in place of stock imagery */}
+            {/* Abstract network-graph decoration in place of stock imagery.
+                Purely decorative (nodes + edges) — no data, labels, or UI. */}
             <div className="rounded-xl overflow-hidden border border-outline-variant shadow-sm">
               <div
-                className="aspect-video w-full flex items-center justify-center relative"
+                className="aspect-video w-full relative overflow-hidden"
                 style={{ background: "linear-gradient(135deg, #00523c 0%, #1e6b52 60%, #0d9488 100%)" }}
+                aria-hidden="true"
               >
-                <span className="material-symbols-outlined text-white/15 text-[140px] md:text-[200px]">hub</span>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                <svg
+                  viewBox="0 0 400 225"
+                  className="w-full h-full"
+                  preserveAspectRatio="xMidYMid slice"
+                  role="presentation"
+                >
+                  {/* faint depth halos */}
+                  <g fill="#ffffff" fillOpacity="0.05">
+                    <circle cx="120" cy="110" r="62" />
+                    <circle cx="300" cy="70" r="46" />
+                  </g>
+                  {/* edges */}
+                  <g stroke="#b4ecd3" strokeOpacity="0.35" strokeWidth="1.5" fill="none">
+                    <line x1="70" y1="55" x2="120" y2="110" />
+                    <line x1="150" y1="40" x2="120" y2="110" />
+                    <line x1="150" y1="40" x2="210" y2="95" />
+                    <line x1="120" y1="110" x2="210" y2="95" />
+                    <line x1="210" y1="95" x2="280" y2="55" />
+                    <line x1="280" y1="55" x2="350" y2="60" />
+                    <line x1="280" y1="55" x2="330" y2="120" />
+                    <line x1="210" y1="95" x2="330" y2="120" />
+                    <line x1="330" y1="120" x2="250" y2="165" />
+                    <line x1="250" y1="165" x2="160" y2="185" />
+                    <line x1="160" y1="185" x2="120" y2="110" />
+                    <line x1="160" y1="185" x2="75" y2="155" />
+                    <line x1="75" y1="155" x2="120" y2="110" />
+                    <line x1="210" y1="95" x2="250" y2="165" />
+                  </g>
+                  {/* hub glow rings */}
+                  <g fill="none" stroke="#b4ecd3" strokeOpacity="0.25" strokeWidth="1">
+                    <circle cx="120" cy="110" r="16" />
+                    <circle cx="210" cy="95" r="18" />
+                  </g>
+                  {/* nodes */}
+                  <g fill="#b4ecd3">
+                    <circle cx="120" cy="110" r="9" />
+                    <circle cx="210" cy="95" r="10" />
+                    <circle cx="70" cy="55" r="5" />
+                    <circle cx="150" cy="40" r="6" />
+                    <circle cx="280" cy="55" r="6" />
+                    <circle cx="350" cy="60" r="4" />
+                    <circle cx="330" cy="120" r="6" />
+                    <circle cx="250" cy="165" r="5" />
+                    <circle cx="160" cy="185" r="6" />
+                    <circle cx="75" cy="155" r="5" />
+                  </g>
+                  {/* bright accents */}
+                  <g fill="#ffffff" fillOpacity="0.9">
+                    <circle cx="210" cy="95" r="3.5" />
+                    <circle cx="150" cy="40" r="2.5" />
+                    <circle cx="330" cy="120" r="2.5" />
+                  </g>
+                </svg>
               </div>
             </div>
           </div>

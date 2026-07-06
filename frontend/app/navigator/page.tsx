@@ -170,14 +170,46 @@ export default function NavigatorHubPage() {
               </Link>
             </div>
 
-            {/* Decorative panel (no external image — CSP-safe, honest) */}
-            <div className="hidden md:flex w-40 h-40 rounded-xl bg-secondary-container/40 border border-outline-variant items-center justify-center shrink-0">
-              <span
-                className="material-symbols-outlined text-primary text-[72px]"
-                style={{ fontVariationSettings: "'FILL' 1" }}
+            {/* Abstract network-graph decoration (same motif as the landing hero,
+                CSP-safe inline SVG). Purely decorative — no data, labels, or UI. */}
+            <div className="hidden md:flex w-40 h-40 rounded-xl bg-secondary-container/40 border border-outline-variant items-center justify-center shrink-0 overflow-hidden">
+              <svg
+                viewBox="0 0 160 160"
+                className="w-full h-full"
+                preserveAspectRatio="xMidYMid meet"
+                role="presentation"
+                aria-hidden="true"
               >
-                network_intelligence
-              </span>
+                {/* edges */}
+                <g stroke="#1e6b52" strokeOpacity="0.45" strokeWidth="2" fill="none">
+                  <line x1="45" y1="48" x2="80" y2="85" />
+                  <line x1="112" y1="42" x2="80" y2="85" />
+                  <line x1="112" y1="42" x2="122" y2="100" />
+                  <line x1="80" y1="85" x2="122" y2="100" />
+                  <line x1="80" y1="85" x2="45" y2="115" />
+                  <line x1="122" y1="100" x2="95" y2="130" />
+                  <line x1="45" y1="115" x2="95" y2="130" />
+                  <line x1="80" y1="85" x2="95" y2="130" />
+                </g>
+                {/* hub glow ring */}
+                <g fill="none" stroke="#00523c" strokeOpacity="0.3" strokeWidth="1.5">
+                  <circle cx="80" cy="85" r="14" />
+                </g>
+                {/* nodes */}
+                <g fill="#00523c">
+                  <circle cx="80" cy="85" r="8" />
+                  <circle cx="45" cy="48" r="5" />
+                  <circle cx="112" cy="42" r="6" />
+                  <circle cx="122" cy="100" r="5" />
+                  <circle cx="45" cy="115" r="5" />
+                  <circle cx="95" cy="130" r="6" />
+                </g>
+                {/* accents */}
+                <g fill="#1e6b52">
+                  <circle cx="112" cy="42" r="3" />
+                  <circle cx="95" cy="130" r="3" />
+                </g>
+              </svg>
             </div>
           </div>
         </section>
