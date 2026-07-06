@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
-import { DiscoverCard, SkeletonCard } from "@/components/DiscoverCard";
+import { FeedCard, FeedSkeleton } from "@/components/FeedCard";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import type { DiscoverItem } from "@/types/discover";
@@ -223,7 +223,7 @@ export default function HomeDashboard() {
           {hasInterests && (feedStatus === "loading" || feedStatus === "idle") && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
-                <SkeletonCard key={i} />
+                <FeedSkeleton key={i} />
               ))}
             </div>
           )}
@@ -231,7 +231,7 @@ export default function HomeDashboard() {
           {hasInterests && feedStatus === "ready" && feedItems.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {feedItems.map((item) => (
-                <DiscoverCard key={item.id} item={item} />
+                <FeedCard key={item.id} item={item} showMatch />
               ))}
             </div>
           )}
