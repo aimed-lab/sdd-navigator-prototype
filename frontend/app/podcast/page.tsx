@@ -60,7 +60,6 @@ export default function PodcastPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
-  const [photoError, setPhotoError] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -99,21 +98,19 @@ export default function PodcastPage() {
 
         {/* ── Hero row: photo left + story right ─────────────────────── */}
         <section className="flex flex-col md:flex-row gap-8 md:gap-10 mb-10">
-          {/* Photo (falls back to "JC" initials if it fails to load) */}
+          {/* Photo — TEMPORARY: neutral default avatar shown pending Prof. Chen's
+              approval to use his real photo publicly. The real image file is kept
+              in public/jake-chen.jpg. To restore once approved, swap this
+              placeholder div back for:
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src="/jake-chen.jpg" alt="Prof. Jake Y. Chen, Ph.D."
+                  className="w-[200px] h-[260px] object-cover object-top rounded-xl border border-outline-variant shadow-sm" /> */}
           <div className="shrink-0">
-            {photoError ? (
-              <div className="w-[200px] h-[260px] rounded-xl bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-5xl">
-                JC
-              </div>
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src="/jake-chen.jpg"
-                alt="Prof. Jake Y. Chen, Ph.D."
-                onError={() => setPhotoError(true)}
-                className="w-[200px] h-[260px] object-cover object-top rounded-xl border border-outline-variant shadow-sm"
-              />
-            )}
+            <div className="w-[200px] h-[260px] rounded-xl bg-surface-container-high text-on-surface-variant flex items-center justify-center border border-outline-variant shadow-sm">
+              <span className="material-symbols-outlined text-[96px]" aria-label="Default avatar">
+                person
+              </span>
+            </div>
           </div>
 
           {/* Story */}

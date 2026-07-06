@@ -106,6 +106,16 @@ function ResearchersTab({ user }: { user: unknown }) {
     load();
   }, []);
 
+  // The signed-in user's own id — used to show "Edit profile" (not "Connect")
+  // on their own card below. Client-side so the /api/researchers read stays
+  // anon; undefined for logged-out users, so they have no "own card" concept.
+  const selfId = (user as { id?: string } | null)?.id;
+
+  // Whether the signed-in user already has a (public) researcher profile — true
+  // when their own row is present in the public directory list (is_public + slug).
+  // Drives hiding the "Create your profile" CTA for users who already have one.
+  const hasOwnProfile = Boolean(selfId) && researchers.some((r) => r.id === selfId);
+
   const filtered = researchers.filter((r) => {
     const q = search.toLowerCase().trim();
     const matchSearch =
@@ -286,9 +296,17 @@ function ResearchersTab({ user }: { user: unknown }) {
                   </div>
                 )}
 
-                {/* Connect — gated: real mailto when logged in, soft prompt when out */}
+                {/* Own card → Edit profile (matches the header CTA). Otherwise
+                    Connect — gated: real mailto when logged in, soft prompt when out. */}
                 <div className="mt-auto">
-                  {user ? (
+                  {selfId && r.id === selfId ? (
+                    <Link href="/profile/setup" className="block">
+                      <button className="w-full flex items-center justify-center gap-2 border border-primary/40 text-primary px-8 py-2.5 rounded-lg text-sm font-medium hover:bg-primary/5 transition-colors active:scale-95">
+                        <span className="material-symbols-outlined text-[18px]">edit_square</span>
+                        Edit profile
+                      </button>
+                    </Link>
+                  ) : user ? (
                     <button
                       onClick={() => window.open("mailto:" + r.email)}
                       className="w-full bg-primary text-on-primary px-8 py-2.5 rounded-lg text-sm font-medium hover:bg-primary-container hover:text-on-primary-container transition-colors active:scale-95"
@@ -313,8 +331,9 @@ function ResearchersTab({ user }: { user: unknown }) {
             );
           })}
 
-          {/* Trailing invitation card — encourages setting up a public profile */}
-          <InvitationCard />
+          {/* Trailing invitation card — encourages setting up a public profile.
+              Hidden for users who already have one (their own card is in the grid). */}
+          {!hasOwnProfile && <InvitationCard />}
         </div>
       )}
     </>
