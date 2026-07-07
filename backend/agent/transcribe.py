@@ -44,23 +44,30 @@ def get_processed_numbers(supabase_url: str, supabase_key: str) -> set[int]:
 def _episode_number(entry, index: int, total: int) -> int:
     """
     Three-strategy episode number extraction:
-      1. <itunes:episode> tag
-      2. Regex in title  ("Episode 42", "Ep 7", "#3", etc.)
+      1. Regex in title  ("Episode 42", "Ep 7", "#3", etc.) — AUTHORITATIVE
+      2. <itunes:episode> tag — fallback
       3. Positional fallback — reverse feed order (newest = highest)
-    """
-    raw = getattr(entry, "itunes_episode", None)
-    if raw:
-        try:
-            return int(raw)
-        except (ValueError, TypeError):
-            pass
 
+    The title's #N is preferred over the <itunes:episode> tag because this
+    feed reset its <itunes:episode> tags to a new season (1-21) for the
+    episodes titled #44-#64, while the titles stayed correct. Trusting the
+    tag first mis-numbered #44-#64 as 1-21, colliding with real episodes
+    1-21 already in the DB and reusing their cached transcripts. The title
+    is the authoritative source for this feed.
+    """
     m = re.search(
         r"\b[Ee]p(?:isode)?\s*\.?\s*#?\s*(\d+)\b|(?<!\w)#(\d+)\b",
         entry.get("title", ""),
     )
     if m:
         return int(m.group(1) or m.group(2))
+
+    raw = getattr(entry, "itunes_episode", None)
+    if raw:
+        try:
+            return int(raw)
+        except (ValueError, TypeError):
+            pass
 
     return total - index
 
