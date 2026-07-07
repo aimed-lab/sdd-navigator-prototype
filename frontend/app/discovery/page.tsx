@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { FeedCard, FeedSkeleton } from "@/components/FeedCard";
 import type { DiscoverItem } from "@/types/discover";
@@ -87,18 +86,17 @@ function DiscoverTab({ user }: { user: unknown }) {
   const debouncedSearch = useDebouncedValue(search, 500);
 
   // Pull the signed-in user's interests so the live fetch can scope to them.
+  // Reads through /api/interests — a session-scoped route where RLS ties the
+  // result to the caller (the uid is derived server-side, never sent up).
   useEffect(() => {
     if (!user) {
       setInterests([]);
       return;
     }
-    const uid = (user as { id: string }).id;
-    supabase
-      .from("users")
-      .select("interests")
-      .eq("id", uid)
-      .maybeSingle()
-      .then(({ data }) => setInterests(data?.interests ?? []));
+    fetch("/api/interests")
+      .then((r) => (r.ok ? r.json() : { interests: [] }))
+      .then((data: { interests?: string[] }) => setInterests(data.interests ?? []))
+      .catch(() => {});
   }, [user]);
 
   // Load the user's saved items once so bookmark state is correct across
@@ -110,17 +108,14 @@ function DiscoverTab({ user }: { user: unknown }) {
       setSavedItems([]);
       return;
     }
-    const uid = (user as { id: string }).id;
-    supabase
-      .from("saved_items")
-      .select("item_id, item_data")
-      .eq("user_id", uid)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        const rows = (data ?? []) as { item_id: string; item_data: DiscoverItem }[];
+    fetch("/api/saved-items")
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((data: { items?: { item_id: string; item_data: DiscoverItem }[] }) => {
+        const rows = data.items ?? [];
         setSavedIds(new Set(rows.map((r) => r.item_id)));
         setSavedItems(rows.map((r) => r.item_data).filter(Boolean));
-      });
+      })
+      .catch(() => {});
   }, [user]);
 
   // Guards against out-of-order responses clobbering newer ones — e.g. React
@@ -181,10 +176,14 @@ function DiscoverTab({ user }: { user: unknown }) {
     setActiveTopic(null);
     setSearch("");
     if (!user) return;
-    const uid = (user as { id: string }).id;
     // Fire-and-forget: the feed already re-scoped locally; a failed write just
     // means it won't persist across reloads, which isn't worth blocking the UI.
-    supabase.from("users").update({ interests: next }).eq("id", uid).then(() => {});
+    // The route is session-scoped — no uid is sent; RLS ties it to the caller.
+    fetch("/api/interests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ interests: next }),
+    }).catch(() => {});
   }, [user]);
 
   const addInterest = (raw: string) => {
@@ -200,11 +199,9 @@ function DiscoverTab({ user }: { user: unknown }) {
   };
 
   // Optimistic, fire-and-forget bookmark toggle. UI updates immediately; the
-  // Supabase write persists it. The unique (user_id, item_id) constraint makes
-  // a duplicate insert a no-op-level error we can safely ignore.
+  // API write (session-scoped, RLS) persists it.
   const toggleSave = useCallback((item: DiscoverItem) => {
     if (!user) return;
-    const uid = (user as { id: string }).id;
     const isSaved = savedIds.has(item.id);
 
     setSavedIds((prev) => {
@@ -219,10 +216,19 @@ function DiscoverTab({ user }: { user: unknown }) {
         : prev.some((i) => i.id === item.id) ? prev : [item, ...prev],
     );
 
+    // Fire-and-forget through the session-scoped route (RLS ties writes to the
+    // caller; no uid is sent). The unique (user_id, item_id) constraint keeps a
+    // duplicate insert a harmless no-op, swallowed server-side.
     if (isSaved) {
-      supabase.from("saved_items").delete().eq("user_id", uid).eq("item_id", item.id).then(() => {});
+      fetch(`/api/saved-items?item_id=${encodeURIComponent(item.id)}`, {
+        method: "DELETE",
+      }).catch(() => {});
     } else {
-      supabase.from("saved_items").insert({ user_id: uid, item_id: item.id, item_data: item }).then(() => {});
+      fetch("/api/saved-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item }),
+      }).catch(() => {});
     }
   }, [user, savedIds]);
 

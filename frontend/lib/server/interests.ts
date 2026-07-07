@@ -1,14 +1,28 @@
 // lib/server/interests.ts — users.interests read/write (session-scoped, RLS).
 //
-// STEP 4a SCAFFOLD: signatures only. Logic moves here from discovery/page.tsx
-// and HomeDashboard.tsx during Phase C. uid is derived from the session.
+// STEP 4a: logic moved verbatim from discovery/page.tsx. Same table/column/
+// filter; the only change is that uid is derived from the validated session
+// (requireUser) instead of a client-supplied id, so RLS scopes every op to the
+// caller. See [[project-researcher-profiles]] for the users table shape.
 
-const NOT_IMPLEMENTED = "lib/server/interests: not implemented yet (Step 4a migration pending)";
+import { requireUser } from "./supabaseServer";
 
 export async function getInterests(): Promise<string[]> {
-  throw new Error(NOT_IMPLEMENTED);
+  const { supabase, user } = await requireUser();
+  const { data, error } = await supabase
+    .from("users")
+    .select("interests")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.interests ?? [];
 }
 
-export async function setInterests(_next: string[]): Promise<void> {
-  throw new Error(NOT_IMPLEMENTED);
+export async function setInterests(next: string[]): Promise<void> {
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("users")
+    .update({ interests: next })
+    .eq("id", user.id);
+  if (error) throw error;
 }
