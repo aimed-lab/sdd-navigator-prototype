@@ -12,7 +12,6 @@ Required table — see discover.py's module docstring for the CREATE TABLE.
 
 Exposes:
     save_items(items)  -> tuple[int, int]   # (new_count, duplicate_count)
-    load_progress()     -> dict
     record_run(scope, query, collected, written, duplicates, errors) -> None
 """
 
@@ -112,10 +111,6 @@ def _load_progress() -> dict:
 def _save_progress(prog: dict) -> None:
     with open(PROGRESS_F, "w", encoding="utf-8") as f:
         json.dump(prog, f, indent=2)
-
-
-def load_progress() -> dict:
-    return _load_progress()
 
 
 def record_run(scope: str, query: str | None, collected: int, written: int,

@@ -22,7 +22,6 @@ Raw requests only — no supabase-py (incompatible with Python 3.14).
 import argparse
 import json
 import os
-import sys
 
 from dotenv import load_dotenv
 
