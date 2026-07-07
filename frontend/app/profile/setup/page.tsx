@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -25,6 +24,18 @@ type WorkItem = {
   year: string;
   url: string;
   description: string;
+};
+
+// A researcher_works row as returned by GET /api/profile (DB shape, nullable
+// columns). Mapped into WorkItem for the editable form on preload.
+type WorkRow = {
+  id: string;
+  type: WorkItem["type"];
+  title: string;
+  journal: string | null;
+  year: number | null;
+  url: string | null;
+  description: string | null;
 };
 
 function getInitials(name: string): string {
@@ -103,57 +114,57 @@ export default function ProfileSetupPage() {
   }, [user, loading, router]);
 
   // Pre-populate existing profile fields (create AND edit share this form).
+  // Session-scoped read through /api/profile — the caller's own row + works
+  // (RLS ties both to them; no uid is sent). Same field mapping as before,
+  // including the "no row → fall back to displayName" behavior.
   useEffect(() => {
     if (!user) return;
 
-    supabase
-      .from("users")
-      .select("name, title, affiliation, bio, research_focus, linkedin_url, website_url, scholar_url, orcid_url, github_url, interests, is_public, profile_slug")
-      .eq("id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
+    fetch("/api/profile")
+      .then((res) => (res.ok ? res.json() : { profile: null, works: [] }))
+      .then((body: { profile: Record<string, string | string[] | boolean | null> | null; works: WorkRow[] }) => {
+        const data = body.profile;
         if (!data) {
           setName(displayName || "");
-          return;
+        } else {
+          setName((data.name as string) || displayName || "");
+          if (data.title) setTitleRole(data.title as string);
+          if (data.affiliation) setAffiliation(data.affiliation as string);
+          if (data.bio) setBio(data.bio as string);
+          if (data.research_focus) setResearchFocus(data.research_focus as string);
+          if (data.linkedin_url) setLinkedinUrl(data.linkedin_url as string);
+          if (data.website_url) setWebsiteUrl(data.website_url as string);
+          if (data.scholar_url) setScholarUrl(data.scholar_url as string);
+          if (data.orcid_url) setOrcidUrl(data.orcid_url as string);
+          if (data.github_url) setGithubUrl(data.github_url as string);
+          const ints = data.interests as string[] | null;
+          if (ints?.length) setInterests(ints);
+          // is_public is NOT NULL in the DB, so this only falls back to the
+          // current default (true) when the row itself has no value for it.
+          setIsPublic((data.is_public as boolean) ?? true);
+          setProfileSlug((data.profile_slug as string) ?? null);
         }
-        setName(data.name || displayName || "");
-        if (data.title) setTitleRole(data.title);
-        if (data.affiliation) setAffiliation(data.affiliation);
-        if (data.bio) setBio(data.bio);
-        if (data.research_focus) setResearchFocus(data.research_focus);
-        if (data.linkedin_url) setLinkedinUrl(data.linkedin_url);
-        if (data.website_url) setWebsiteUrl(data.website_url);
-        if (data.scholar_url) setScholarUrl(data.scholar_url);
-        if (data.orcid_url) setOrcidUrl(data.orcid_url);
-        if (data.github_url) setGithubUrl(data.github_url);
-        if (data.interests?.length) setInterests(data.interests);
-        // is_public is NOT NULL in the DB, so this only falls back to the
-        // current default (true) when the row itself has no value for it.
-        setIsPublic(data.is_public ?? true);
-        setProfileSlug(data.profile_slug ?? null);
-      });
 
-    // Pre-populate previously published works so editing/removing them on
-    // re-save actually reconciles against what's already saved, instead of
-    // starting from an empty list and only ever appending.
-    supabase
-      .from("researcher_works")
-      .select("id, type, title, journal, year, url, description")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true })
-      .then(({ data }) => {
-        if (!data || data.length === 0) return;
-        setWorks(
-          data.map((w) => ({
-            clientId: w.id,
-            type: w.type,
-            title: w.title,
-            journal: w.journal ?? "",
-            year: w.year != null ? String(w.year) : "",
-            url: w.url ?? "",
-            description: w.description ?? "",
-          }))
-        );
+        // Pre-populate previously published works so editing/removing them on
+        // re-save actually reconciles against what's already saved, instead of
+        // starting from an empty list and only ever appending.
+        const worksData = body.works;
+        if (worksData && worksData.length > 0) {
+          setWorks(
+            worksData.map((w) => ({
+              clientId: w.id,
+              type: w.type,
+              title: w.title,
+              journal: w.journal ?? "",
+              year: w.year != null ? String(w.year) : "",
+              url: w.url ?? "",
+              description: w.description ?? "",
+            }))
+          );
+        }
+      })
+      .catch(() => {
+        setName(displayName || "");
       });
   }, [user, displayName]);
 
@@ -213,54 +224,52 @@ export default function ProfileSetupPage() {
         slug = generateSlug(effectiveName, user.id);
       }
 
-      const { error: updateErr } = await supabase
-        .from("users")
-        .update({
-          name: effectiveName,
-          title: titleRole || null,
-          affiliation: affiliation || null,
-          bio: bio || null,
-          research_focus: researchFocus || null,
-          linkedin_url: linkedinUrl || null,
-          website_url: websiteUrl || null,
-          scholar_url: scholarUrl || null,
-          orcid_url: orcidUrl || null,
-          github_url: githubUrl || null,
-          interests,
-          is_public: makePublic,
-          profile_slug: slug,
-        })
-        .eq("id", user.id);
+      // Reconcile researcher_works against the current `works` state: the
+      // server deletes this user's existing rows then reinserts the current set.
+      // Blank rows (no title) are dropped so empty repeatable rows never
+      // persist; user_id is stamped from the session server-side, not sent here.
+      const savableWorks = works.filter((w) => w.title.trim());
+      const rows = savableWorks.map((w) => ({
+        type: w.type,
+        title: w.title,
+        journal: w.journal || null,
+        year: w.year ? parseInt(w.year, 10) : null,
+        url: w.url || null,
+        description: w.description || null,
+      }));
 
-      if (updateErr) throw new Error(updateErr.message);
+      // Session-scoped write through /api/profile — users.update then works
+      // reconcile, in that order, all under the caller's session.
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile: {
+            name: effectiveName,
+            title: titleRole || null,
+            affiliation: affiliation || null,
+            bio: bio || null,
+            research_focus: researchFocus || null,
+            linkedin_url: linkedinUrl || null,
+            website_url: websiteUrl || null,
+            scholar_url: scholarUrl || null,
+            orcid_url: orcidUrl || null,
+            github_url: githubUrl || null,
+            interests,
+            is_public: makePublic,
+            profile_slug: slug,
+          },
+          works: rows,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error || "Failed to save profile. Please try again.");
+      }
 
       setIsPublic(makePublic);
       setProfileSlug(slug);
-
-      // Reconcile researcher_works against the current `works` state: delete
-      // this user's existing rows, then reinsert the current set. Blank rows
-      // (no title) are dropped so empty repeatable rows never persist.
-      const savableWorks = works.filter((w) => w.title.trim());
-
-      const { error: deleteErr } = await supabase
-        .from("researcher_works")
-        .delete()
-        .eq("user_id", user.id);
-      if (deleteErr) throw new Error(deleteErr.message);
-
-      if (savableWorks.length > 0) {
-        const rows = savableWorks.map((w) => ({
-          user_id: user.id,
-          type: w.type,
-          title: w.title,
-          journal: w.journal || null,
-          year: w.year ? parseInt(w.year, 10) : null,
-          url: w.url || null,
-          description: w.description || null,
-        }));
-        const { error: worksErr } = await supabase.from("researcher_works").insert(rows);
-        if (worksErr) throw new Error(worksErr.message);
-      }
 
       if (makePublic && slug) {
         router.push(`/researchers/${slug}`);
