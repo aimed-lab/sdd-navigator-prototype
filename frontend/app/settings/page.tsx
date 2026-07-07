@@ -111,18 +111,30 @@ export default function SettingsPage() {
     setLoadingData(true);
     setLoadError(null);
 
-    supabase
-      .from("users")
-      .select("name, affiliation, institution, country, notify_weekly, notify_daily, is_public, profile_slug")
-      .eq("id", user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Settings load error:", error);
+    // Session-scoped read through /api/account (RLS ties it to the caller; no
+    // uid is sent). Same fields/mapping as before — including the "no row → keep
+    // defaults" behavior, preserved by the `if (data)` guard.
+    fetch("/api/account")
+      .then(async (res) => {
+        const body = (await res.json().catch(() => ({}))) as {
+          settings?: {
+            name: string | null;
+            affiliation: string | null;
+            institution: string | null;
+            country: string | null;
+            notify_weekly: boolean | null;
+            notify_daily: boolean | null;
+            is_public: boolean | null;
+            profile_slug: string | null;
+          } | null;
+        };
+        if (!res.ok) {
+          console.error("Settings load error:", body);
           setLoadError("Could not load your settings. Please refresh the page.");
           setLoadingData(false);
           return;
         }
+        const data = body.settings;
         if (data) {
           setName(data.name ?? "");
           setAffiliation(data.affiliation ?? AFFILIATIONS[0]);
@@ -133,6 +145,11 @@ export default function SettingsPage() {
           setIsPublic(data.is_public ?? false);
           setProfileSlug(data.profile_slug ?? null);
         }
+        setLoadingData(false);
+      })
+      .catch((error) => {
+        console.error("Settings load error:", error);
+        setLoadError("Could not load your settings. Please refresh the page.");
         setLoadingData(false);
       });
   }, [user]);
@@ -149,17 +166,23 @@ export default function SettingsPage() {
     setProfileError(null);
     setProfileSuccess(false);
 
-    const { error } = await supabase
-      .from("users")
-      .update({ name, affiliation, institution, country })
-      .eq("id", user.id);
-
-    if (error) {
+    // Session-scoped write through /api/account (uid derived server-side).
+    try {
+      const res = await fetch("/api/account", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, affiliation, institution, country }),
+      });
+      if (!res.ok) {
+        console.error("Profile update error:", await res.json().catch(() => ({})));
+        setProfileError("Could not save your changes. Please try again.");
+      } else {
+        setProfileSuccess(true);
+        setTimeout(() => setProfileSuccess(false), 2500);
+      }
+    } catch (error) {
       console.error("Profile update error:", error);
       setProfileError("Could not save your changes. Please try again.");
-    } else {
-      setProfileSuccess(true);
-      setTimeout(() => setProfileSuccess(false), 2500);
     }
     setProfileSaving(false);
   }
@@ -293,12 +316,16 @@ export default function SettingsPage() {
     if (field === "notify_weekly") setNotifyWeekly(next);
     else setNotifyDaily(next);
 
-    const { error } = await supabase
-      .from("users")
-      .update({ [field]: next })
-      .eq("id", user.id);
-
-    if (error) {
+    // Session-scoped write through /api/account/notifications (uid derived
+    // server-side). Optimistic update above; revert below on failure.
+    try {
+      const res = await fetch("/api/account/notifications", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ field, value: next }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (error) {
       console.error("Notification preference update error:", error);
       // Revert the optimistic toggle.
       if (field === "notify_weekly") setNotifyWeekly(current);
