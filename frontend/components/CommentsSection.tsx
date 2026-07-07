@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/lib/supabase";
 
 // Real comments table schema: id, user_id, wiki_id, content, created_at
 // Joined with users table for: name, affiliation
@@ -66,18 +65,20 @@ export default function CommentsSection({
     setLoadingComments(true);
     setFetchError(null);
 
-    const { data, error } = await supabase
-      .from("comments")
-      .select("id, content, created_at, users(name, affiliation)")
-      .eq("wiki_id", wikiPageId)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Comments fetch error:", error);
-      setFetchError(`Could not load comments: ${error.message}`);
+    // Public read through /api/comments (comments SELECT policy is USING (true)).
+    try {
+      const res = await fetch(`/api/comments?wikiId=${encodeURIComponent(wikiPageId)}`);
+      const data = (await res.json().catch(() => ({}))) as { comments?: Comment[]; error?: string };
+      if (!res.ok) {
+        console.error("Comments fetch error:", data);
+        setFetchError(`Could not load comments: ${data.error ?? res.statusText}`);
+      }
+      setComments(data.comments ?? []);
+    } catch (err) {
+      console.error("Comments fetch error:", err);
+      setFetchError(`Could not load comments: ${err instanceof Error ? err.message : "network error"}`);
+      setComments([]);
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setComments((data as any as Comment[]) ?? []);
     setLoadingComments(false);
   }, [wikiPageId]);
 
@@ -93,20 +94,27 @@ export default function CommentsSection({
     setSubmitError(null);
     setSubmitSuccess(false);
 
-    const { error } = await supabase.from("comments").insert({
-      wiki_id: wikiPageId,
-      user_id: user.id,
-      content: content.trim(),
-    });
-
-    if (error) {
-      console.error("Comment insert error:", error);
-      setSubmitError(`Failed to post: ${error.message}`);
-    } else {
-      setContent("");
-      setSubmitSuccess(true);
-      await loadComments();
-      setTimeout(() => setSubmitSuccess(false), 2000);
+    // Auth-gated write through /api/comments — the author (user_id) is derived
+    // from the session server-side, never sent from here.
+    try {
+      const res = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wikiId: wikiPageId, content: content.trim() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        console.error("Comment insert error:", data);
+        setSubmitError(`Failed to post: ${data.error ?? res.statusText}`);
+      } else {
+        setContent("");
+        setSubmitSuccess(true);
+        await loadComments();
+        setTimeout(() => setSubmitSuccess(false), 2000);
+      }
+    } catch (err) {
+      console.error("Comment insert error:", err);
+      setSubmitError(`Failed to post: ${err instanceof Error ? err.message : "network error"}`);
     }
     setSubmitting(false);
   }
