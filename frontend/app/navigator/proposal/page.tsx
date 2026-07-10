@@ -386,6 +386,28 @@ function PhaseSection({ phase, index }: { phase: ProposalPhase; index: number })
         )}
       </div>
 
+      {/* Expected outcomes / deliverables — what the researcher walks away with */}
+      {phase.outcomes && phase.outcomes.length > 0 && (
+        <div className="mb-8 rounded-xl border border-outline-variant bg-secondary-container/30 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="material-symbols-outlined text-primary text-[20px]">flag</span>
+            <h4 className="font-label-md text-label-md text-on-surface uppercase tracking-wide">
+              Expected outcomes
+            </h4>
+          </div>
+          <ul className="space-y-2">
+            {phase.outcomes.map((outcome, i) => (
+              <li key={i} className="flex items-start gap-2 font-body-md text-body-md text-on-surface">
+                <span className="material-symbols-outlined text-primary text-[18px] mt-0.5 shrink-0">
+                  check_circle
+                </span>
+                <span>{outcome}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Providers */}
       {phase.providers.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -396,9 +418,10 @@ function PhaseSection({ phase, index }: { phase: ProposalPhase; index: number })
       ) : (
         <div className="mb-8 rounded-xl border border-dashed border-outline-variant bg-surface-container-low p-6 text-center">
           <span className="material-symbols-outlined text-on-surface-variant text-[28px]">domain_add</span>
-          <p className="mt-1 text-sm font-medium text-on-surface">No verified providers for this phase yet</p>
-          <p className="text-sm text-on-surface-variant">
-            More will appear here as we onboard partners.
+          <p className="mt-1 text-sm font-medium text-on-surface">No verified SPARC providers for this phase yet</p>
+          <p className="text-sm text-on-surface-variant max-w-md mx-auto">
+            This phase would draw on external providers or the researcher&rsquo;s own
+            capabilities. The relevant research below still applies.
           </p>
         </div>
       )}

@@ -60,6 +60,11 @@ export type ProposalPhase = {
   id: string;                    // slug, e.g. "phase-1"
   title: string;                 // e.g. "Target Validation & Feasibility"
   goal: string;
+  // 1-2 concrete deliverables the researcher WALKS AWAY WITH after this phase,
+  // derived from the phase goal (e.g. "a ranked list of validated hits"). Never
+  // names providers/tools/papers and never overstates — follows logically from
+  // the goal. Optional for backward-compat with proposals saved before outcomes.
+  outcomes?: string[];
   estimated_duration: string;    // e.g. "6–9 weeks"
   providers: ProposalProvider[]; // Verified-only; may be empty (honest empty state)
   // Mixed papers + trials + funding opportunities. Field name kept as `papers`

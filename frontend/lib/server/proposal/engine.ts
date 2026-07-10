@@ -38,6 +38,7 @@ Return ONLY valid JSON, no markdown, no explanation, in this exact shape:
       "id": "string — slug like phase-1",
       "title": "string — e.g. Target Validation & Feasibility",
       "goal": "string — what this phase achieves",
+      "outcomes": ["string — 1-2 concrete deliverables the researcher walks away with after this phase"],
       "estimated_duration": "string — e.g. 6-9 weeks",
       "sparc": { "relevant": boolean, "capabilities": ["..."], "tools": ["..."], "how": "string" }
     }
@@ -47,6 +48,8 @@ Return ONLY valid JSON, no markdown, no explanation, in this exact shape:
 PHASES: Aim for 3 phases that follow the natural arc — typically (1) Target Validation & Feasibility, (2) AI-Enabled Design & Candidate Generation, (3) Validation Planning & Translational Path — but you MAY use 2 or 4 phases if the project clearly warrants it. Do NOT lock to exactly 3, and there is no special "final phase" treatment.
 
 Each phase's "goal" must be specific to THIS researcher's target and rationale, not generic boilerplate.
+
+OUTCOMES: Each phase's "outcomes" is 1-2 concrete DELIVERABLES the researcher walks away with after that phase — the tangible artifacts or decisions the phase produces (e.g. "a ranked shortlist of validated candidate molecules", "a go/no-go feasibility decision with supporting data", "an IND-enabling study plan"). Each outcome must follow LOGICALLY from that phase's goal and be specific to THIS target — never generic. Do NOT overstate: promise only what the phase's work actually produces (data, a validated shortlist, a plan, a decision), not clinical success or guaranteed efficacy. Outcomes are deliverables ONLY — never name providers, CROs, companies, tools, or papers in them.
 
 You do NOT choose providers or papers — the system attaches real, verified providers and real research to each phase. Your ONLY provider-related job is the "sparc" field per phase (see the SPARC rules below). Never output company names, CROs, tools, or papers anywhere else in the JSON.`;
 
@@ -223,10 +226,19 @@ export async function generateProposal(
     pc += PAPERS_PER_PHASE;
     tc += TRIALS_PER_PHASE;
     gc += GRANTS_PER_PHASE;
+    // Outcomes: 1-2 deliverables, kept only as non-empty strings, capped at 2.
+    // These describe what the researcher walks away with — no providers/tools.
+    const outcomes = Array.isArray(p.outcomes)
+      ? p.outcomes
+          .filter((o): o is string => typeof o === "string" && o.trim().length > 0)
+          .map((o) => o.trim())
+          .slice(0, 2)
+      : [];
     return {
       id: typeof p.id === "string" && p.id.trim() ? p.id.trim() : `phase-${i + 1}`,
       title: typeof p.title === "string" ? p.title : `Phase ${i + 1}`,
       goal: typeof p.goal === "string" ? p.goal : "",
+      outcomes,
       estimated_duration: typeof p.estimated_duration === "string" ? p.estimated_duration : "",
       providers,
       papers,

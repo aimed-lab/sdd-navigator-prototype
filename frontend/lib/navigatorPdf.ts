@@ -193,6 +193,25 @@ export async function downloadProposalPDF(document: ProposalDocument) {
       y += goalWrapped.length * LINE_H + 3;
     }
 
+    // Expected outcomes / deliverables.
+    if (phase.outcomes && phase.outcomes.length > 0) {
+      y = ensureSpace(doc, y, 5);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(0, 82, 60);
+      doc.text("Expected Outcomes:", MARGIN, y);
+      y += 5;
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(40, 40, 40);
+      for (const outcome of phase.outcomes) {
+        const wrapped = doc.splitTextToSize(`  • ${outcome}`, usableW);
+        y = ensureSpace(doc, y, wrapped.length * LINE_H);
+        doc.text(wrapped, MARGIN, y);
+        y += wrapped.length * LINE_H;
+      }
+      y += 3;
+    }
+
     // Verified providers.
     y = ensureSpace(doc, y, 5);
     doc.setFont("helvetica", "bold");
@@ -202,11 +221,16 @@ export async function downloadProposalPDF(document: ProposalDocument) {
     y += 5;
 
     if (phase.providers.length === 0) {
-      y = ensureSpace(doc, y, 6);
       doc.setFont("helvetica", "italic");
+      doc.setFontSize(9);
       doc.setTextColor(110, 110, 110);
-      doc.text("  No verified providers for this phase yet.", MARGIN, y);
-      y += 6;
+      const note = doc.splitTextToSize(
+        "  No verified SPARC providers for this phase yet — this phase would draw on external providers or the researcher's own capabilities. The relevant research below still applies.",
+        usableW,
+      );
+      y = ensureSpace(doc, y, note.length * LINE_H + 2);
+      doc.text(note, MARGIN, y);
+      y += note.length * LINE_H + 2;
     } else {
       for (const p of phase.providers) {
         y = ensureSpace(doc, y, 5);
