@@ -56,9 +56,13 @@ export default function ProposalOutputPage() {
 }
 
 function ProposalOutputContent() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, displayName, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const projectId = searchParams.get("id"); // reopen a saved proposal by id
+
+  // Open "Connect" modal target — the provider + capability the user clicked.
+  // null = closed. Rendered once at this level so it overlays the whole page.
+  const [connectFor, setConnectFor] = useState<{ providerName: string; capability: string } | null>(null);
 
   // `undefined` = still loading; `null` = nothing to show.
   const [doc, setDoc] = useState<ProposalDocument | null | undefined>(undefined);
@@ -306,11 +310,23 @@ function ProposalOutputContent() {
         {/* 3. Phases */}
         <div className="space-y-16">
           {doc.phases.map((phase, i) => (
-            <PhaseSection key={phase.id || i} phase={phase} index={i} />
+            <PhaseSection key={phase.id || i} phase={phase} index={i} onConnect={setConnectFor} />
           ))}
         </div>
       </main>
       <Footer />
+
+      {/* Connect request modal — on-platform, no external contact shown */}
+      {connectFor && (
+        <ConnectModal
+          providerName={connectFor.providerName}
+          capability={connectFor.capability}
+          projectId={savedId}
+          requesterName={displayName}
+          requesterEmail={user.email ?? ""}
+          onClose={() => setConnectFor(null)}
+        />
+      )}
     </div>
   );
 }
@@ -364,7 +380,15 @@ function RecapBlock({ recap }: { recap: ProposalRecap }) {
 
 // ── Phase section ─────────────────────────────────────────────────────────────
 
-function PhaseSection({ phase, index }: { phase: ProposalPhase; index: number }) {
+function PhaseSection({
+  phase,
+  index,
+  onConnect,
+}: {
+  phase: ProposalPhase;
+  index: number;
+  onConnect: (target: { providerName: string; capability: string }) => void;
+}) {
   return (
     <section>
       {/* Phase header */}
@@ -412,7 +436,7 @@ function PhaseSection({ phase, index }: { phase: ProposalPhase; index: number })
       {phase.providers.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {phase.providers.map((p, i) => (
-            <ProviderCard key={`${p.name}-${i}`} provider={p} />
+            <ProviderCard key={`${p.name}-${i}`} provider={p} onConnect={onConnect} />
           ))}
         </div>
       ) : (
@@ -439,19 +463,23 @@ function PhaseSection({ phase, index }: { phase: ProposalPhase; index: number })
 
 // ── Provider card (generic Verified — SPARC is not special-cased) ─────────────
 
-function ProviderCard({ provider }: { provider: ProposalProvider }) {
+function ProviderCard({
+  provider,
+  onConnect,
+}: {
+  provider: ProposalProvider;
+  onConnect: (target: { providerName: string; capability: string }) => void;
+}) {
   const cost = provider.cost_symbol ?? "—";
 
+  // The specific service the researcher is asking about — the card's grounded
+  // capabilities, falling back to its speciality. Kept on-platform: we open a
+  // request modal, never an email or the provider's external contact.
+  const capability = provider.capabilities.join(", ") || provider.speciality || "";
+
   function handleConnect() {
-    track("provider_connect_clicked"); // fire-and-forget, before navigation
-    if (!provider.contact) {
-      window.open("mailto:sparc@uab.edu");
-      return;
-    }
-    const url = /^https?:\/\//i.test(provider.contact)
-      ? provider.contact
-      : "https://" + provider.contact;
-    window.open(url, "_blank", "noopener,noreferrer");
+    track("provider_connect_clicked"); // fire-and-forget, before opening the modal
+    onConnect({ providerName: provider.name, capability });
   }
 
   return (
@@ -525,6 +553,184 @@ function ProviderCard({ provider }: { provider: ProposalProvider }) {
       >
         Connect
       </button>
+    </div>
+  );
+}
+
+// ── Connect request modal (on-platform capture; no external contact shown) ────
+
+type ConnectState = "idle" | "sending" | "sent" | "error";
+
+function ConnectModal({
+  providerName,
+  capability,
+  projectId,
+  requesterName,
+  requesterEmail,
+  onClose,
+}: {
+  providerName: string;
+  capability: string;
+  projectId: string | null;
+  requesterName: string;
+  requesterEmail: string;
+  onClose: () => void;
+}) {
+  const [message, setMessage] = useState("");
+  const [state, setState] = useState<ConnectState>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const sending = state === "sending";
+
+  async function handleSend() {
+    if (sending) return;
+    setState("sending");
+    setError(null);
+    try {
+      const res = await fetch("/api/connections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider_name: providerName,
+          capability,
+          project_id: projectId, // may be null (unsaved proposal) — that's fine
+          message,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Could not send your request. Please try again.");
+        setState("error");
+        return;
+      }
+      track("connection_request_sent"); // fire-and-forget, only after success
+      setState("sent");
+    } catch {
+      setError("Network error. Please try again.");
+      setState("error");
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Connect with ${providerName}`}
+      onClick={() => !sending && onClose()}
+    >
+      <div
+        className="w-full max-w-lg bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-xl p-6 md:p-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {state === "sent" ? (
+          // ── Confirmation ──────────────────────────────────────────────────
+          <div className="text-center flex flex-col items-center gap-4 py-4">
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-secondary-container">
+              <span className="material-symbols-outlined text-primary text-[32px]">mark_email_read</span>
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-headline-md text-headline-md text-on-surface">Request sent</h3>
+              <p className="text-sm text-on-surface-variant leading-relaxed">
+                Request sent — UAB SPARC will respond through the platform.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="mt-2 px-6 py-2.5 rounded-xl bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-all"
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          // ── Request form ──────────────────────────────────────────────────
+          <>
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div>
+                <h3 className="font-headline-md text-headline-md text-on-surface">Connect with {providerName}</h3>
+                <p className="text-sm text-on-surface-variant mt-1">
+                  Your request stays on the platform — SPARC responds here.
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                disabled={sending}
+                aria-label="Close"
+                className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container disabled:opacity-50 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[22px]">close</span>
+              </button>
+            </div>
+
+            {/* Read-only context: what they're asking about + who's asking */}
+            <div className="space-y-4 mb-5">
+              <div>
+                <span className="font-label-sm text-label-sm text-on-surface-variant block uppercase mb-1">Provider</span>
+                <p className="font-body-md text-body-md text-on-surface">{providerName}</p>
+              </div>
+              {capability && (
+                <div>
+                  <span className="font-label-sm text-label-sm text-on-surface-variant block uppercase mb-1">Service</span>
+                  <p className="font-body-md text-body-md text-on-surface">{capability}</p>
+                </div>
+              )}
+              <div>
+                <span className="font-label-sm text-label-sm text-on-surface-variant block uppercase mb-1">Requesting as</span>
+                <p className="font-body-md text-body-md text-on-surface">
+                  {requesterName}
+                  {requesterEmail ? <span className="text-on-surface-variant"> · {requesterEmail}</span> : null}
+                </p>
+              </div>
+            </div>
+
+            {/* Optional message */}
+            <label htmlFor="connect-message" className="font-label-sm text-label-sm text-on-surface-variant block uppercase mb-2">
+              What do you need help with? <span className="normal-case font-normal">(optional)</span>
+            </label>
+            <textarea
+              id="connect-message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              disabled={sending}
+              rows={4}
+              placeholder="Briefly describe what you're looking for…"
+              className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest p-3 text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary disabled:opacity-60 resize-none"
+            />
+
+            {state === "error" && error && (
+              <div className="mt-4 flex items-start gap-2 rounded-xl border border-error/40 bg-error/5 p-3" role="alert">
+                <span className="material-symbols-outlined text-error text-[20px]">error</span>
+                <p className="text-sm text-on-surface flex-1">{error}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={onClose}
+                disabled={sending}
+                className="px-5 py-2.5 rounded-xl border-2 border-outline-variant text-on-surface font-label-md text-label-md hover:bg-surface-container disabled:opacity-50 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={sending}
+                className="px-6 py-2.5 rounded-xl bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 disabled:opacity-70 transition-all flex items-center gap-2"
+              >
+                {sending ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                    Sending…
+                  </>
+                ) : state === "error" ? (
+                  "Retry"
+                ) : (
+                  "Send request"
+                )}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

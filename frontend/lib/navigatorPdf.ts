@@ -262,16 +262,14 @@ export async function downloadProposalPDF(document: ProposalDocument) {
         if (p.tools.length > 0) {
           y = addListLine(doc, usableW, y, "     Tools", p.tools);
         }
-        // Clickable contact link (only when a real URL exists).
-        if (p.contact && p.contact.trim()) {
-          const url = /^https?:\/\//i.test(p.contact) ? p.contact : `https://${p.contact}`;
-          y = ensureSpace(doc, y, LINE_H);
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(9);
-          doc.setTextColor(...LINK_RGB);
-          doc.textWithLink(`     Connect: ${p.contact}`, MARGIN, y, { url });
-          y += LINE_H;
-        }
+        // On-platform note — Connect requests stay on the platform, so we never
+        // print SPARC's external URL/email here (the attribution mechanism).
+        y = ensureSpace(doc, y, LINE_H);
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(9);
+        doc.setTextColor(110, 110, 110);
+        doc.text("     Connect through SDD Navigator to reach this provider.", MARGIN, y);
+        y += LINE_H;
         y += 2;
       }
     }

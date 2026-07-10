@@ -405,6 +405,46 @@ CREATE POLICY "projects_delete_own"
 
 
 -- =============================================================================
+-- TABLE: connection_requests
+-- =============================================================================
+-- On-platform "Connect" requests from a researcher to a provider (SPARC) from
+-- their Navigator proposal. This is the attribution/tracking mechanism — no
+-- email/external contact is ever exchanged; SPARC responds through the platform
+-- (admin/response UI is a later phase). Writes are session-scoped (user_id from
+-- the validated session, never the body) and RLS-enforced. project_id is
+-- ON DELETE SET NULL so the attribution record survives a proposal deletion, and
+-- nullable because the proposal may be unsaved when Connect is clicked.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.connection_requests (
+    id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id       UUID        NOT NULL REFERENCES auth.users (id)  ON DELETE CASCADE,   -- the requester (from session)
+    provider_name TEXT        NOT NULL,                             -- e.g. "UAB SPARC"
+    capability    TEXT,                                             -- the specific capability/service clicked
+    project_id    UUID        REFERENCES public.projects (id)      ON DELETE SET NULL,  -- proposal, if saved (nullable)
+    message       TEXT        NOT NULL DEFAULT '',                  -- optional researcher note
+    status        TEXT        NOT NULL DEFAULT 'new'                -- lifecycle; admin flow lands later
+                      CHECK (status IN ('new', 'seen', 'responded', 'closed')),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.connection_requests ENABLE ROW LEVEL SECURITY;
+
+-- A user can read only their OWN requests. (SPARC-admin read is a later phase —
+-- intentionally NOT added here.)
+CREATE POLICY "connection_requests_select_own"
+    ON public.connection_requests FOR SELECT
+    TO authenticated
+    USING (auth.uid() = user_id);
+
+-- A user can insert requests attributed to themselves only.
+CREATE POLICY "connection_requests_insert_own"
+    ON public.connection_requests FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+
+-- =============================================================================
 -- INDEXES
 -- =============================================================================
 -- Additional indexes on columns used in frequent queries / filters.
@@ -421,5 +461,7 @@ CREATE INDEX IF NOT EXISTS idx_discovery_items_type      ON public.discovery_ite
 CREATE INDEX IF NOT EXISTS idx_discovery_items_collected ON public.discovery_items (collected_at DESC);
 CREATE INDEX IF NOT EXISTS idx_saved_items_user           ON public.saved_items (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_projects_user              ON public.projects (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_connection_requests_user   ON public.connection_requests (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_connection_requests_status ON public.connection_requests (status);
 
 
