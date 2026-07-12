@@ -72,7 +72,7 @@ University of Alabama at Birmingham).
 ```
 sdd-navigator/
 ├── frontend/     → Next.js application
-├── backend/      → Python pipeline + discovery engine
+├── backend/      → Python pipeline
 └── database/     → SQL schema (schema.sql)
 ```
 
@@ -121,14 +121,6 @@ python pipeline.py --retry-failed    # retry failed episodes
 python graph_agent.py                # rebuild the knowledge graph only
 ```
 
-**Discovery collection engine** (independent of the podcast pipeline):
-
-```bash
-python discover.py --dry-run                                   # broad scope, no write
-python discover.py                                             # broad, writes discovery_items
-python discover.py --query "PHGDH inhibitors Alzheimer's"      # targeted scope, writes
-```
-
 ---
 
 ## Environment Variables
@@ -160,7 +152,7 @@ RSS_URL=                           # optional — defaults to the UAB SPARC podc
 
 The complete schema lives in [`database/schema.sql`](database/schema.sql) — run
 it in the Supabase SQL editor to recreate every table (users, wiki_pages, nodes,
-edges, providers, discovery_items, comments) with Row Level Security policies,
+edges, providers, comments) with Row Level Security policies,
 indexes, and the UAB SPARC provider seed. `auth.users` is managed by Supabase
 Auth and is not recreated by the script.
 

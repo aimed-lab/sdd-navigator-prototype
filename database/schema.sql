@@ -294,42 +294,6 @@ WHERE NOT EXISTS (
 
 
 -- =============================================================================
--- TABLE: discovery_items
--- =============================================================================
--- Research signals (papers, preprints, grants, trials, patents, repos, news)
--- collected from external APIs by the Python Discovery engine (discover.py),
--- deduped + relevance-ranked, then upserted by dedup_key. Independent of the
--- podcast pipeline. Written only by the service-role key; openly readable.
--- =============================================================================
-
-CREATE TABLE IF NOT EXISTS public.discovery_items (
-    id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    type           TEXT        NOT NULL,                 -- paper | preprint | grant | trial | patent | repo | news
-    title          TEXT        NOT NULL,
-    description    TEXT        DEFAULT '',
-    source         TEXT        NOT NULL,                 -- PubMed | OpenAlex | Crossref | NIH Reporter | ...
-    url            TEXT,
-    published_date DATE,
-    score          SMALLINT    NOT NULL DEFAULT 1,       -- relevance score 1-5
-    topics         TEXT[]      NOT NULL DEFAULT '{}',
-    dedup_key      TEXT        NOT NULL UNIQUE,          -- stable idempotent upsert key
-    raw            JSONB       NOT NULL DEFAULT '{}',     -- original source payload
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-    collected_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.discovery_items ENABLE ROW LEVEL SECURITY;
-
--- Public read — the Discovery feed is openly browsable.
-CREATE POLICY "discovery_items_select_public"
-    ON public.discovery_items FOR SELECT
-    USING (true);
-
--- Only the service-role key (backend Discovery engine) may write rows.
--- (RLS denies anon/authenticated writes by default — no explicit policy needed.)
-
-
--- =============================================================================
 -- TABLE: comments
 -- =============================================================================
 -- Researcher discussion threads attached to individual wiki pages.
@@ -509,8 +473,6 @@ CREATE INDEX IF NOT EXISTS idx_comments_wiki_id          ON public.comments (wik
 CREATE INDEX IF NOT EXISTS idx_comments_user_id          ON public.comments (user_id);
 CREATE INDEX IF NOT EXISTS idx_researcher_works_user     ON public.researcher_works (user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_providers_type            ON public.providers (type);
-CREATE INDEX IF NOT EXISTS idx_discovery_items_type      ON public.discovery_items (type);
-CREATE INDEX IF NOT EXISTS idx_discovery_items_collected ON public.discovery_items (collected_at DESC);
 CREATE INDEX IF NOT EXISTS idx_saved_items_user           ON public.saved_items (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_projects_user              ON public.projects (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_connection_requests_user   ON public.connection_requests (user_id, created_at DESC);
