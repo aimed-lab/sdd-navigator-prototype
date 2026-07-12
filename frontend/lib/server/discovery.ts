@@ -16,6 +16,7 @@ import { fetchCrossref } from "@/lib/server/sources/crossref";
 import { fetchGrantsGov } from "@/lib/server/sources/grantsGov";
 import { fetchClinicalTrials } from "@/lib/server/sources/clinicalTrials";
 import { fetchGitHubTools } from "@/lib/server/sources/github";
+import { validateDiscoverItems } from "@/lib/server/validation";
 
 const DEFAULT_QUERY = "drug discovery AI";
 const PER_SOURCE_CAP = 6;
@@ -247,8 +248,18 @@ export async function runDiscover(params: DiscoverParams): Promise<DiscoverRespo
     (a, b) => b.relevance - a.relevance || new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime()
   );
 
-  pruneDiscoverCache(now);
-  discoverCache.set(cacheKey, { items, cachedAt: now });
+  // Quality layer (Starling-style named axes): rule-based integrity/recency/dedup
+  // on everything, then a batched LLM relevance judge on the top survivors. Runs
+  // on the sorted list so the judge sees the strongest candidates first, and its
+  // re-rank (flagged below passing) refines the sort above. Fail-open by contract
+  // — a validation error returns the unvalidated items rather than an empty feed.
+  // We validate BEFORE caching so cache hits serve already-validated results and
+  // never re-incur the LLM cost. Both consumers (Discovery feed + Navigator
+  // per-phase research) inherit this through runDiscover.
+  const validated = await validateDiscoverItems(items, queryLabel);
 
-  return { items, personalized, query: queryLabel, cachedAt: now, fromCache: false };
+  pruneDiscoverCache(now);
+  discoverCache.set(cacheKey, { items: validated, cachedAt: now });
+
+  return { items: validated, personalized, query: queryLabel, cachedAt: now, fromCache: false };
 }
