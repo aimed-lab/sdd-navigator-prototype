@@ -19,20 +19,6 @@ const DISCOVER_FILTERS = [
   { value: "tool",  label: "Tools" },
 ] as const;
 
-// Curated drug-discovery topics offered as one-click feed scopes. Each value is
-// passed verbatim as the `q` scope to /api/discover, so they read as real search
-// terms. Merged at render time with the signed-in user's saved interests.
-const DISCOVER_TOPICS = [
-  "PHGDH inhibitors",
-  "Alzheimer's disease",
-  "Oncology targets",
-  "ADMET / pharmacokinetics",
-  "CRISPR screens",
-  "Protein-protein interactions",
-  "Antibody design",
-  "Multi-omics biomarkers",
-] as const;
-
 // Optional one-tap fills for the "What's your field?" question in the modal.
 // Purely a convenience — clicking one just sets the existing `field` state.
 const FIELD_SUGGESTIONS = [
@@ -71,7 +57,6 @@ function DiscoverTab({ user }: { user: unknown }) {
   const [filter, setFilter]           = useState("all");
   const [sortBy, setSortBy]           = useState<"relevance" | "recent">("relevance");
   const [search, setSearch]           = useState("");
-  const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [page, setPage]               = useState(1);
   const [interests, setInterests]     = useState<string[]>([]);
   const [personalized, setPersonalized] = useState(false);
@@ -139,8 +124,6 @@ function DiscoverTab({ user }: { user: unknown }) {
     const params = new URLSearchParams();
     if (debouncedSearch.trim()) {
       params.set("q", debouncedSearch.trim());
-    } else if (activeTopic) {
-      params.set("q", activeTopic);
     } else if (interests.length > 0) {
       params.set("interests", interests.join(","));
     }
@@ -161,19 +144,18 @@ function DiscoverTab({ user }: { user: unknown }) {
         if (force) setRefreshing(false);
         else setLoading(false);
       });
-  }, [debouncedSearch, activeTopic, interests]);
+  }, [debouncedSearch, interests]);
 
   useEffect(() => { loadFeed(false); }, [loadFeed]);
 
   // Reset pagination whenever a new result set comes in or the type filter/sort changes
-  useEffect(() => { setPage(1); }, [filter, debouncedSearch, activeTopic, sortBy]);
+  useEffect(() => { setPage(1); }, [filter, debouncedSearch, sortBy]);
 
   // Persist the user's interests to users.interests and re-scope the feed.
-  // Clearing search/topic makes the interest-driven (multi-term) feed the active
+  // Clearing search makes the interest-driven (multi-term) feed the active
   // scope so the change is immediately visible; setInterests re-fires loadFeed.
   const saveInterests = useCallback((next: string[]) => {
     setInterests(next);
-    setActiveTopic(null);
     setSearch("");
     if (!user) return;
     // Fire-and-forget: the feed already re-scoped locally; a failed write just
@@ -231,19 +213,6 @@ function DiscoverTab({ user }: { user: unknown }) {
       }).catch(() => {});
     }
   }, [user, savedIds]);
-
-  // One-click curated scopes. The signed-in user's own interests are managed
-  // separately as editable chips (see "My Discovery Interests" below), so they're
-  // not merged in here — this list stays the fixed "explore more" set.
-  const topicChips = DISCOVER_TOPICS;
-
-  // Clicking a topic sets it as the feed scope; clicking the active one again
-  // deselects (back to interest-scoped / default). Picking a topic clears any
-  // typed search so precedence (search > topic > interests) stays unambiguous.
-  const onTopicClick = (topic: string) => {
-    setActiveTopic((current) => (current === topic ? null : topic));
-    setSearch("");
-  };
 
   // "Saved" shows the user's bookmarked items straight from saved_items (no live
   // fetch). Otherwise the type pills are a fast client-side filter over whatever
@@ -451,12 +420,7 @@ function DiscoverTab({ user }: { user: unknown }) {
             <input
               type="text"
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                // Typing a free-text search takes precedence over a picked topic;
-                // clear the topic so the active scope is unambiguous.
-                if (e.target.value.trim()) setActiveTopic(null);
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search papers, grants, trials, tools..."
               className="w-full pl-10 pr-9 py-2 bg-surface-container-low border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary-fixed focus:border-primary transition-all outline-none font-body-md text-body-md"
             />
@@ -473,33 +437,6 @@ function DiscoverTab({ user }: { user: unknown }) {
               </button>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Topic chips — one-click feed scopes (search > topic > interests) */}
-      <div className="mb-6">
-        <p className="text-label-sm font-label-sm uppercase tracking-wider text-on-surface-variant mb-2">
-          Explore topics
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {topicChips.map((topic) => {
-            const selected = activeTopic === topic;
-            return (
-              <button
-                key={topic}
-                onClick={() => onTopicClick(topic)}
-                aria-pressed={selected}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-label-sm text-label-sm transition-all ${
-                  selected
-                    ? "bg-primary text-on-primary border border-primary"
-                    : "border border-outline-variant text-on-surface-variant hover:bg-surface-container"
-                }`}
-              >
-                {selected && <span className="material-symbols-outlined text-[14px]">check</span>}
-                {topic}
-              </button>
-            );
-          })}
         </div>
       </div>
 
