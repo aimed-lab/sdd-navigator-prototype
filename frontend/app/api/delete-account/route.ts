@@ -6,17 +6,6 @@ import { createClient } from "@supabase/supabase-js";
 const FRIENDLY_ERROR =
   "Something went wrong while deleting your account. Please try again or contact support.";
 
-type FlaggedProject = { id: string; name: string | null; otherMemberCount: number };
-
-// `projects` / `project_members` aren't part of this app's documented schema (see CLAUDE.md) —
-// they may not exist in the live database at all. Treat "relation does not exist" as a no-op,
-// not a failure, so the rest of account deletion still proceeds.
-function isMissingTableError(error: { code?: string; message?: string } | null): boolean {
-  if (!error) return false;
-  if (error.code === "42P01" || error.code === "PGRST205") return true;
-  return /does not exist|could not find the table/i.test(error.message ?? "");
-}
-
 export async function POST(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -86,8 +75,6 @@ export async function POST(req: NextRequest) {
   });
 
   const userId = user.id;
-  const warnings: string[] = [];
-  const flaggedProjects: FlaggedProject[] = [];
 
   try {
     const { error: worksError } = await admin.from("researcher_works").delete().eq("user_id", userId);
@@ -96,83 +83,21 @@ export async function POST(req: NextRequest) {
     const { error: commentsError } = await admin.from("comments").delete().eq("user_id", userId);
     if (commentsError) throw commentsError;
 
-    // ── Projects / project_members — defensive, schema not documented in this app. ──────
-    const { data: ownedProjects, error: ownedError } = await admin
-      .from("projects")
-      .select("id, name")
-      .eq("owner_id", userId);
-
-    if (ownedError && !isMissingTableError(ownedError)) {
-      console.error("delete-account: projects lookup failed", ownedError);
-      warnings.push("Could not check project ownership — any owned projects were left untouched.");
-    } else if (!ownedError && ownedProjects) {
-      const { data: myMemberships, error: membershipError } = await admin
-        .from("project_members")
-        .select("project_id")
-        .eq("user_id", userId);
-
-      if (membershipError && !isMissingTableError(membershipError)) {
-        console.error("delete-account: project_members lookup failed", membershipError);
-        warnings.push("Could not check project memberships — left untouched.");
-      } else if (!membershipError) {
-        const soleOwnedIds: string[] = [];
-
-        for (const project of ownedProjects) {
-          const { data: otherMembers, error: othersError } = await admin
-            .from("project_members")
-            .select("user_id")
-            .eq("project_id", project.id)
-            .neq("user_id", userId);
-
-          if (othersError) {
-            console.error("delete-account: project_members check failed", othersError);
-            warnings.push(`Could not verify members of project "${project.name ?? project.id}" — left untouched.`);
-            continue;
-          }
-
-          if (otherMembers && otherMembers.length > 0) {
-            flaggedProjects.push({
-              id: project.id,
-              name: project.name ?? null,
-              otherMemberCount: otherMembers.length,
-            });
-          } else {
-            soleOwnedIds.push(project.id);
-          }
-        }
-
-        // Remove this user's own membership rows everywhere EXCEPT the flagged projects,
-        // which are left fully intact (project + all memberships) for manual review.
-        const flaggedIds = new Set(flaggedProjects.map((p) => p.id));
-        const membershipIdsToClear = (myMemberships ?? [])
-          .map((m) => m.project_id)
-          .filter((id) => !flaggedIds.has(id));
-
-        if (membershipIdsToClear.length > 0) {
-          const { error: memberDeleteError } = await admin
-            .from("project_members")
-            .delete()
-            .eq("user_id", userId)
-            .in("project_id", membershipIdsToClear);
-          if (memberDeleteError) {
-            console.error("delete-account: project_members delete failed", memberDeleteError);
-            warnings.push("Could not remove all project memberships.");
-          }
-        }
-
-        if (soleOwnedIds.length > 0) {
-          const { error: projectDeleteError } = await admin.from("projects").delete().in("id", soleOwnedIds);
-          if (projectDeleteError) {
-            console.error("delete-account: projects delete failed", projectDeleteError);
-            warnings.push("Could not delete one or more solely-owned projects.");
-          }
-        }
-      }
-    }
+    // The live `projects` table is single-owner, keyed by user_id (not the old
+    // owner_id / project_members multi-member design, which no longer exists).
+    // Its user_id → auth.users FK is ON DELETE CASCADE, so admin.deleteUser below
+    // would remove these anyway; we delete them explicitly here (as with
+    // works/comments above) so the cleanup is self-documenting and stays correct
+    // even if that cascade is ever dropped.
+    const { error: projectsError } = await admin.from("projects").delete().eq("user_id", userId);
+    if (projectsError) throw projectsError;
 
     const { error: usersError } = await admin.from("users").delete().eq("id", userId);
     if (usersError) throw usersError;
 
+    // Removing the auth user cascades (ON DELETE CASCADE) to any remaining
+    // user-owned rows — saved_items, connection_requests, and the tables above —
+    // so nothing is left orphaned.
     const { error: deleteAuthError } = await admin.auth.admin.deleteUser(userId);
     if (deleteAuthError) throw deleteAuthError;
   } catch (err) {
@@ -181,5 +106,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: FRIENDLY_ERROR }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, flaggedProjects, warnings });
+  return NextResponse.json({ success: true });
 }

@@ -288,15 +288,6 @@ export default function SettingsPage() {
         return;
       }
 
-      if (Array.isArray(result?.flaggedProjects) && result.flaggedProjects.length > 0) {
-        const names = result.flaggedProjects
-          .map((p: { name: string | null; id: string }) => p.name ?? p.id)
-          .join(", ");
-        window.alert(
-          `Your account was deleted. Note: you owned project(s) with other active members (${names}) — these were left untouched and need manual review.`
-        );
-      }
-
       await supabase.auth.signOut();
       router.push("/");
     } catch (err) {

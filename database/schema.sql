@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     id             UUID        PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
     name           TEXT,
     email          TEXT        NOT NULL DEFAULT '',
+    title          TEXT,                               -- job title / role, e.g. "Laboratory Head"
     affiliation    TEXT,                               -- "Researcher" | "Laboratory Head" | etc.
     institution    TEXT,
     country        TEXT,
@@ -32,6 +33,9 @@ CREATE TABLE IF NOT EXISTS public.users (
     research_focus TEXT,
     linkedin_url   TEXT,
     website_url    TEXT,
+    scholar_url    TEXT,                               -- Google Scholar profile
+    orcid_url      TEXT,                               -- ORCID profile
+    github_url     TEXT,                               -- GitHub profile
     interests      TEXT[]      DEFAULT '{}',
     is_public      BOOLEAN     NOT NULL DEFAULT false,
     profile_slug   TEXT        UNIQUE,
@@ -84,6 +88,53 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+
+-- =============================================================================
+-- TABLE: researcher_works
+-- =============================================================================
+-- Publications / patents / other outputs listed on a researcher's public profile.
+-- Edited in /profile/setup (delete-and-reinsert of the caller's own rows) and
+-- shown on the public /researchers/[slug] page. One row per work; owner is
+-- stamped from the session (user_id), never the client payload.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.researcher_works (
+    id          UUID        NOT NULL DEFAULT gen_random_uuid(),
+    user_id     UUID        REFERENCES public.users (id),   -- owner (nullable); no cascade on this FK
+    type        TEXT,                                 -- e.g. 'publication' | 'patent' | 'preprint'
+    title       TEXT,
+    description TEXT,                                 -- short summary
+    url         TEXT,                                 -- link to the work
+    year        INTEGER,                              -- publication year
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    journal     TEXT,                                 -- venue / journal
+    CONSTRAINT researcher_works_pkey PRIMARY KEY (id)
+);
+
+ALTER TABLE public.researcher_works ENABLE ROW LEVEL SECURITY;
+
+-- Public read — works appear on public researcher profiles (read via the anon key).
+CREATE POLICY "researcher_works_select_public"
+    ON public.researcher_works FOR SELECT
+    USING (true);
+
+-- Owners manage only their OWN works (insert / update / delete).
+CREATE POLICY "researcher_works_insert_own"
+    ON public.researcher_works FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "researcher_works_update_own"
+    ON public.researcher_works FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "researcher_works_delete_own"
+    ON public.researcher_works FOR DELETE
+    TO authenticated
+    USING (auth.uid() = user_id);
 
 
 -- =============================================================================
@@ -456,6 +507,7 @@ CREATE INDEX IF NOT EXISTS idx_edges_source              ON public.edges (source
 CREATE INDEX IF NOT EXISTS idx_edges_target              ON public.edges (target_id);
 CREATE INDEX IF NOT EXISTS idx_comments_wiki_id          ON public.comments (wiki_id);
 CREATE INDEX IF NOT EXISTS idx_comments_user_id          ON public.comments (user_id);
+CREATE INDEX IF NOT EXISTS idx_researcher_works_user     ON public.researcher_works (user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_providers_type            ON public.providers (type);
 CREATE INDEX IF NOT EXISTS idx_discovery_items_type      ON public.discovery_items (type);
 CREATE INDEX IF NOT EXISTS idx_discovery_items_collected ON public.discovery_items (collected_at DESC);
