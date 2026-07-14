@@ -5,12 +5,10 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
-import { useAuth } from "@/context/AuthContext";
 
 type Researcher = {
   id: string;
   name: string;
-  email: string;
   affiliation: string | null;
   institution: string | null;
   country: string | null;
@@ -58,7 +56,6 @@ function avatarColor(name: string) {
 export default function ResearcherProfilePage() {
   const params = useParams();
   const slug = params.slug as string;
-  const { user, loading: authLoading } = useAuth();
 
   const [researcher, setResearcher] = useState<Researcher | null>(null);
   const [works, setWorks] = useState<Work[]>([]);
@@ -147,7 +144,6 @@ export default function ResearcherProfilePage() {
     .filter(Boolean)
     .join(" | ");
   const firstName = researcher.name.split(" ")[0];
-  const loginHref = `/login?callbackUrl=${encodeURIComponent(`/researchers/${slug}`)}`;
   const interests = researcher.interests ?? [];
 
   // Same works array, grouped by type into the design's separate sections.
@@ -198,29 +194,20 @@ export default function ResearcherProfilePage() {
               )}
             </div>
 
-            {/* Connect gate — real mailto when logged in, soft prompt when out */}
+            {/* Connect — on-platform networking (coming soon) for everyone.
+                Auth-independent: logging in shouldn't promise a connect feature
+                that isn't built yet. The mailto path was removed with the
+                researcher email (PII) it relied on. */}
             <div className="shrink-0">
-              {!authLoading && user ? (
-                <button
-                  onClick={() => window.open("mailto:" + researcher.email)}
-                  className="bg-secondary text-on-secondary px-6 py-2.5 rounded-xl text-sm font-medium hover:opacity-90 transition-all flex items-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-[20px]">person_add</span>
-                  Connect
-                </button>
-              ) : (
-                <Link href={loginHref}>
-                  <button className="bg-white border border-outline text-on-surface px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-surface-container transition-colors shadow-sm flex items-center gap-2">
-                    <span
-                      className="material-symbols-outlined text-[20px]"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      lock
-                    </span>
-                    Log in to connect
-                  </button>
-                </Link>
-              )}
+              <button
+                type="button"
+                disabled
+                title="On-platform networking is coming soon"
+                className="bg-surface-container text-on-surface-variant px-6 py-2.5 rounded-xl text-sm font-medium cursor-default opacity-70 flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[20px]">hourglass_empty</span>
+                Connect — coming soon
+              </button>
             </div>
           </div>
         </section>
@@ -432,29 +419,17 @@ export default function ResearcherProfilePage() {
                 Interested in collaborating with {firstName}?
               </h3>
               <p className="font-body-md text-body-md text-on-primary-container opacity-90 mb-6 relative z-10">
-                Reach out to start a conversation.
+                On-platform networking is coming soon.
               </p>
-              {!authLoading && user ? (
-                <button
-                  onClick={() => window.open("mailto:" + researcher.email)}
-                  className="w-full bg-secondary text-on-secondary px-4 py-3 rounded-xl text-sm font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2 relative z-10"
-                >
-                  <span className="material-symbols-outlined text-[20px]">mail</span>
-                  Send collaboration request
-                </button>
-              ) : (
-                <Link href={loginHref} className="block relative z-10">
-                  <button className="w-full bg-secondary text-on-secondary px-4 py-3 rounded-xl text-sm font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2">
-                    <span
-                      className="material-symbols-outlined text-[20px]"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      lock
-                    </span>
-                    Log in to connect
-                  </button>
-                </Link>
-              )}
+              <button
+                type="button"
+                disabled
+                title="On-platform networking is coming soon"
+                className="w-full bg-secondary/60 text-on-secondary px-4 py-3 rounded-xl text-sm font-medium cursor-default opacity-80 flex items-center justify-center gap-2 relative z-10"
+              >
+                <span className="material-symbols-outlined text-[20px]">hourglass_empty</span>
+                On-platform connect coming soon
+              </button>
             </section>
 
             {related.length > 0 && (

@@ -11,7 +11,6 @@ import { useAuth } from "@/context/AuthContext";
 type ResearcherCard = {
   id: string;
   name: string;
-  email: string;
   affiliation: string | null;
   institution: string | null;
   bio: string | null;
@@ -297,7 +296,10 @@ function ResearchersTab({ user }: { user: unknown }) {
                 )}
 
                 {/* Own card → Edit profile (matches the header CTA). Otherwise
-                    Connect — gated: real mailto when logged in, soft prompt when out. */}
+                    Connect — on-platform networking (coming soon) for everyone.
+                    Auth-independent: logging in shouldn't promise a connect
+                    feature that isn't built yet. The old mailto path was removed
+                    with the researcher email (PII) it depended on. */}
                 <div className="mt-auto">
                   {selfId && r.id === selfId ? (
                     <Link href="/profile/setup" className="block">
@@ -306,25 +308,16 @@ function ResearchersTab({ user }: { user: unknown }) {
                         Edit profile
                       </button>
                     </Link>
-                  ) : user ? (
-                    <button
-                      onClick={() => window.open("mailto:" + r.email)}
-                      className="w-full bg-primary text-on-primary px-8 py-2.5 rounded-lg text-sm font-medium hover:bg-primary-container hover:text-on-primary-container transition-colors active:scale-95"
-                    >
-                      Connect
-                    </button>
                   ) : (
-                    <Link href="/login?callbackUrl=/researchers" className="block">
-                      <button className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border border-primary/40 text-primary text-sm font-medium hover:bg-primary/5 transition-colors active:scale-[0.98]">
-                        <span
-                          className="material-symbols-outlined text-[18px]"
-                          style={{ fontVariationSettings: "'FILL' 1" }}
-                        >
-                          lock
-                        </span>
-                        Log in to connect
-                      </button>
-                    </Link>
+                    <button
+                      type="button"
+                      disabled
+                      title="On-platform networking is coming soon"
+                      className="w-full flex items-center justify-center gap-2 border border-outline-variant text-on-surface-variant px-8 py-2.5 rounded-lg text-sm font-medium cursor-default opacity-70"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">hourglass_empty</span>
+                      Connect — coming soon
+                    </button>
                   )}
                 </div>
               </article>

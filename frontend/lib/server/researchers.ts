@@ -17,7 +17,6 @@ import { getAnonServerClient } from "@/lib/server/supabaseServer";
 export type ResearcherCard = {
   id: string;
   name: string;
-  email: string;
   affiliation: string | null;
   institution: string | null;
   bio: string | null;
@@ -48,7 +47,10 @@ export async function listPublicResearchers(): Promise<PublicResearchersResult> 
     supabase
       .from("users")
       .select(
-        "id, name, email, affiliation, institution, bio, research_focus, interests, is_public, profile_slug",
+        // NOTE: email is deliberately EXCLUDED — it is PII and must never reach
+        // this public (anon-readable) directory payload. Researcher-to-researcher
+        // contact is moving on-platform; no mailto path depends on it anymore.
+        "id, name, affiliation, institution, bio, research_focus, interests, is_public, profile_slug",
       )
       .eq("is_public", true)
       .order("name"),
@@ -67,7 +69,6 @@ export async function listPublicResearchers(): Promise<PublicResearchersResult> 
 export type ResearcherProfileRow = {
   id: string;
   name: string;
-  email: string;
   affiliation: string | null;
   institution: string | null;
   country: string | null;
@@ -123,7 +124,9 @@ export async function getResearcherProfile(slug: string): Promise<ResearcherProf
   const { data, error } = await supabase
     .from("users")
     .select(
-      "id, name, email, affiliation, institution, country, bio, research_focus, linkedin_url, website_url, interests, is_public, profile_slug",
+      // email deliberately EXCLUDED (PII) — see listPublicResearchers. This
+      // payload is anon-readable, so it must not carry the researcher's email.
+      "id, name, affiliation, institution, country, bio, research_focus, linkedin_url, website_url, interests, is_public, profile_slug",
     )
     .eq("profile_slug", slug)
     .eq("is_public", true)

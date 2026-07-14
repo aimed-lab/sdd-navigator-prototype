@@ -34,7 +34,6 @@ export type SparcStepContribution = {
 export type ResearcherMini = {
   id: string;
   name: string;
-  email: string;
   research_focus: string | null;
   interests: string[] | null;
   profile_slug: string | null;

@@ -4,7 +4,9 @@ import type { ResearcherMini } from "@/types/navigator";
 export async function fetchPublicResearchers(): Promise<ResearcherMini[]> {
   const { data } = await supabase
     .from("users")
-    .select("id, name, email, research_focus, interests, profile_slug")
+    // email deliberately EXCLUDED (PII) — this is an anon-readable public read
+    // and email is never consumed downstream (see ResearcherMini).
+    .select("id, name, research_focus, interests, profile_slug")
     .eq("is_public", true)
     .limit(50);
   return data ?? [];
