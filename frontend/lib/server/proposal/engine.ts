@@ -171,10 +171,10 @@ export type GenerateResult =
   | { ok: false; status: number; error: string };
 
 // Full pipeline: SPARC grounding → LLM generation ‖ research gathering → assemble
-// the phased document. `origin` is needed for the internal /api/* sub-fetches.
+// the phased document. Research now runs fully in-process (gatherResearch calls
+// runDiscover / the keyword extractor directly), so no request origin is needed.
 export async function generateProposal(
   input: ProposalInput,
-  origin: string,
 ): Promise<GenerateResult> {
   // Fetch SPARC first — its real capabilities/tools must be in hand BEFORE the
   // LLM call so we can inject them as grounding for the per-phase selection.
@@ -195,7 +195,7 @@ export async function generateProposal(
   // adds no serial latency. gatherResearch never throws (returns empty pools).
   const [generation, research] = await Promise.all([
     runGeneration(systemPrompt, buildUserMessage(input), groqKey),
-    gatherResearch(origin, input),
+    gatherResearch(input),
   ]);
 
   if (!generation.ok) {

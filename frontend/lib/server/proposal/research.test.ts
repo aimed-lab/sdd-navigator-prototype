@@ -20,7 +20,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { precisionFilter, precisionFilterPapers, focusTerms } from "./research.ts";
+import { precisionFilter, precisionFilterPapers, focusTerms } from "./researchFilters.ts";
 import type { DiscoverItem } from "@/types/discover";
 import type { ProposalInput } from "@/types/proposal";
 
