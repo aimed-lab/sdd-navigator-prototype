@@ -460,6 +460,39 @@ CREATE POLICY "connection_requests_insert_own"
 
 
 -- =============================================================================
+-- TABLE: promote_captures
+-- =============================================================================
+-- Captured identity of an EXTERNAL researcher (an author of a paper) submitted
+-- through the "Promote" flow — NOT the logged-in caller's own profile. Because
+-- the subject is a third party, this table intentionally does NOT follow the
+-- auth.uid() = user_id ownership model used by users / researcher_works: anyone
+-- (including anonymous visitors) may INSERT a capture, and there is deliberately
+-- NO client-facing SELECT/UPDATE/DELETE policy — reads happen server-side with
+-- the service-role key only. (Step 1 of the Promote feature: schema + fetch only.)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.promote_captures (
+    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    doi          TEXT,                                 -- paper DOI (nullable; PMID-only captures)
+    pmid         TEXT,                                 -- paper PubMed ID (nullable)
+    paper_title  TEXT,                                 -- resolved title of the promoted paper
+    author_name  TEXT,                                 -- captured external researcher's name
+    orcid        TEXT,                                 -- their ORCID iD
+    linkedin_url TEXT,                                 -- their LinkedIn profile
+    created_at   TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.promote_captures ENABLE ROW LEVEL SECURITY;
+
+-- Public insert only — this captures an external researcher's identity, not the
+-- logged-in caller's. No select/update/delete policy for the client; reads
+-- happen server-side/service-role only.
+CREATE POLICY "anyone can insert promote captures"
+    ON public.promote_captures FOR INSERT
+    WITH CHECK (true);
+
+
+-- =============================================================================
 -- INDEXES
 -- =============================================================================
 -- Additional indexes on columns used in frequent queries / filters.
