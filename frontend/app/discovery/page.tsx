@@ -11,13 +11,32 @@ import type { DiscoverItem } from "@/types/discover";
 
 // ── Discover tab constants ────────────────────────────────────────────────────
 
-const DISCOVER_FILTERS = [
-  { value: "all",   label: "All" },
-  { value: "paper", label: "Papers" },
-  { value: "grant", label: "Grants" },
-  { value: "trial", label: "Trials" },
-  { value: "tool",  label: "Tools" },
+// Labeled feed sections (in fixed display order). Grouping by these replaces the
+// old flat list + type-filter pills — each `type` matches the item's DiscoverItem.type.
+const FEED_SECTIONS = [
+  { type: "paper", label: "Scientific Knowledge", anchor: "sec-scientific" },
+  { type: "trial", label: "Clinical Landscape",   anchor: "sec-clinical" },
+  { type: "grant", label: "Funding Landscape",    anchor: "sec-funding" },
+  { type: "tool",  label: "Computational",        anchor: "sec-computational" },
 ] as const;
+
+// Clinical Landscape sub-groups. Trial status is ClinicalTrials.gov's overallStatus,
+// which fetchClinicalTrials already carries as tags[1] (tags[0] is always "Trial") —
+// so no new fetch/field is needed; we derive the bucket from what's already parsed.
+const TRIAL_BUCKETS = [
+  { key: "active",    label: "Active" },
+  { key: "completed", label: "Completed" },
+  { key: "other",     label: "Other / Unknown" },
+] as const;
+
+type TrialBucketKey = (typeof TRIAL_BUCKETS)[number]["key"];
+
+function trialBucket(item: DiscoverItem): TrialBucketKey {
+  const status = (item.tags?.[1] ?? "").toUpperCase();
+  if (/RECRUIT|ACTIVE|ENROLL|AVAILABLE/.test(status)) return "active";
+  if (/COMPLETED/.test(status)) return "completed";
+  return "other"; // TERMINATED / WITHDRAWN / SUSPENDED / UNKNOWN / fallback "Clinical Trial"
+}
 
 // Optional one-tap fills for the "What's your field?" question in the modal.
 // Purely a convenience — clicking one just sets the existing `field` state.
@@ -57,7 +76,6 @@ function DiscoverTab({ user }: { user: unknown }) {
   const [filter, setFilter]           = useState("all");
   const [sortBy, setSortBy]           = useState<"relevance" | "recent">("relevance");
   const [search, setSearch]           = useState("");
-  const [page, setPage]               = useState(1);
   const [interests, setInterests]     = useState<string[]>([]);
   const [personalized, setPersonalized] = useState(false);
   const [fromCache, setFromCache]     = useState(false);
@@ -66,7 +84,6 @@ function DiscoverTab({ user }: { user: unknown }) {
   const [newChip, setNewChip]         = useState("");
   const [savedIds, setSavedIds]       = useState<Set<string>>(new Set());
   const [savedItems, setSavedItems]   = useState<DiscoverItem[]>([]);
-  const PAGE_SIZE = 9;
 
   const debouncedSearch = useDebouncedValue(search, 500);
 
@@ -148,8 +165,6 @@ function DiscoverTab({ user }: { user: unknown }) {
 
   useEffect(() => { loadFeed(false); }, [loadFeed]);
 
-  // Reset pagination whenever a new result set comes in or the type filter/sort changes
-  useEffect(() => { setPage(1); }, [filter, debouncedSearch, sortBy]);
 
   // Persist the user's interests to users.interests and re-scope the feed.
   // Clearing search makes the interest-driven (multi-term) feed the active
@@ -218,20 +233,26 @@ function DiscoverTab({ user }: { user: unknown }) {
   // fetch). Otherwise the type pills are a fast client-side filter over whatever
   // the live fetch returned.
   const savedView = filter === "saved";
-  const filtered = savedView
-    ? savedItems
-    : items.filter((item) => filter === "all" || item.type === filter);
+  const baseList = savedView ? savedItems : items;
 
-  // Client-side ordering for the Sort control. Relevance reproduces the server's
-  // relevance-then-recency order; Recent sorts purely by date.
-  const ordered = [...filtered].sort((a, b) =>
+  // Client-side ordering for the Sort control, applied to the WHOLE list BEFORE
+  // grouping so search + sort work across every section (not per-section).
+  // Relevance reproduces the server's relevance-then-recency order; Recent sorts
+  // purely by date.
+  const ordered = [...baseList].sort((a, b) =>
     sortBy === "recent"
       ? new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime()
       : b.relevance - a.relevance || new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime(),
   );
 
-  const shown   = ordered.slice(0, page * PAGE_SIZE);
-  const hasMore  = shown.length < ordered.length;
+  // Group the sorted list into the labeled feed sections by item type. Grouping
+  // (not pill-filtering) is how the feed is now organized; sort order is preserved
+  // within each section.
+  const grouped: Record<string, DiscoverItem[]> = { paper: [], trial: [], grant: [], tool: [] };
+  for (const item of ordered) {
+    (grouped[item.type] ??= []).push(item);
+  }
+
   // The live-fetch skeleton only applies to live views, never the saved list.
   const viewLoading = loading && !savedView;
 
@@ -380,24 +401,10 @@ function DiscoverTab({ user }: { user: unknown }) {
         </div>
       )}
 
-      {/* Type filters + Sort + Search */}
+      {/* Global controls — Sort + Search sit above ALL sections and apply across
+          the whole list (the section grouping below replaces the old type pills;
+          there is no horizontal filter bar anymore). */}
       <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          {DISCOVER_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setFilter(f.value)}
-              className={`px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                filter === f.value
-                  ? "bg-primary text-on-primary"
-                  : "border border-outline-variant text-on-surface-variant hover:bg-surface-container"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
         <div className="flex items-center gap-3 lg:ml-auto flex-wrap">
           <div className="flex items-center gap-2">
             <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider hidden sm:inline">
@@ -476,7 +483,7 @@ function DiscoverTab({ user }: { user: unknown }) {
         </div>
       )}
 
-      {!viewLoading && shown.length === 0 && (
+      {!viewLoading && ordered.length === 0 && (
         savedView ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-16 h-16 bg-surface-container rounded-full flex items-center justify-center mb-4">
@@ -498,45 +505,79 @@ function DiscoverTab({ user }: { user: unknown }) {
             <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">search_off</span>
             <h3 className="text-headline-md font-headline-md text-on-surface mb-2">No results found</h3>
             <p className="text-body-md text-on-surface-variant mb-6">
-              Try adjusting your filters or search keywords.
+              Try a different search term.
             </p>
             <button
-              onClick={() => { setFilter("all"); setSearch(""); }}
+              onClick={() => setSearch("")}
               className="px-6 py-2.5 bg-primary text-on-primary rounded-full text-sm font-medium hover:opacity-90 transition-all active:scale-95"
             >
-              Clear all filters
+              Clear search
             </button>
           </div>
         )
       )}
 
-      {!viewLoading && shown.length > 0 && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {shown.map((item) => (
-              <FeedCard
-                key={item.id}
-                item={item}
-                canSave={Boolean(user)}
-                showMatch={Boolean(user)}
-                saved={savedIds.has(item.id)}
-                onToggleSave={toggleSave}
-              />
-            ))}
-          </div>
+      {/* Grouped feed — one labeled section per type, in fixed order. Empty
+          sections are skipped so the page never shows a bare header. */}
+      {!viewLoading && ordered.length > 0 && (
+        <div className="space-y-12">
+          {FEED_SECTIONS.map((section) => {
+            const sectionItems = grouped[section.type] ?? [];
+            if (sectionItems.length === 0) return null;
 
-          {hasMore && (
-            <div className="mt-12 flex justify-center">
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                className="px-8 py-3 bg-white border border-outline text-primary text-sm font-medium rounded-xl hover:bg-surface-container transition-all active:scale-95 flex items-center gap-2"
-              >
-                <span className="material-symbols-outlined">refresh</span>
-                Load more scientific insights
-              </button>
-            </div>
-          )}
-        </>
+            return (
+              <section key={section.type} id={section.anchor} className="scroll-mt-24">
+                <div className="flex items-baseline gap-2 mb-5 pb-2 border-b border-outline-variant">
+                  <h2 className="text-headline-md font-headline-md text-on-surface">{section.label}</h2>
+                  <span className="text-body-md text-on-surface-variant">({sectionItems.length})</span>
+                </div>
+
+                {section.type === "trial" ? (
+                  // Clinical Landscape — sub-grouped by trial status (from tags[1]).
+                  <div className="space-y-8">
+                    {TRIAL_BUCKETS.map((bucket) => {
+                      const bucketItems = sectionItems.filter((it) => trialBucket(it) === bucket.key);
+                      if (bucketItems.length === 0) return null;
+                      return (
+                        <div key={bucket.key}>
+                          <h3 className="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider mb-3">
+                            {bucket.label}{" "}
+                            <span className="text-on-surface-variant/60">({bucketItems.length})</span>
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {bucketItems.map((item) => (
+                              <FeedCard
+                                key={item.id}
+                                item={item}
+                                canSave={Boolean(user)}
+                                showMatch={Boolean(user)}
+                                saved={savedIds.has(item.id)}
+                                onToggleSave={toggleSave}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {sectionItems.map((item) => (
+                      <FeedCard
+                        key={item.id}
+                        item={item}
+                        canSave={Boolean(user)}
+                        showMatch={Boolean(user)}
+                        saved={savedIds.has(item.id)}
+                        onToggleSave={toggleSave}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
       )}
 
       {/* Guided AI personalization form */}

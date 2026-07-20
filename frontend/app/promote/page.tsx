@@ -28,6 +28,17 @@ const TONE_LABELS: Record<Tone, string> = {
 
 const TONE_ORDER: Tone[] = ["plain-impact", "peer-technical", "narrative", "milestone"];
 
+// The two non-LinkedIn extra outputs, shown as tabs ALONGSIDE the 4 tones.
+type ExtraKey = "funding-pitch" | "lay-summary";
+type TabKey = Tone | ExtraKey;
+
+const EXTRA_LABELS: Record<ExtraKey, string> = {
+  "funding-pitch": "Funding Pitch",
+  "lay-summary": "Lay Summary",
+};
+
+const EXTRA_ORDER: ExtraKey[] = ["funding-pitch", "lay-summary"];
+
 // Compose a variant into the exact plain text that gets copied / previewed —
 // the way it would actually read on LinkedIn.
 function composePost(v: PromoVariant): string {
@@ -38,7 +49,9 @@ export default function PromotePage() {
   const [idInput, setIdInput] = useState("");
   const [paper, setPaper] = useState<PaperMetadata | null>(null);
   const [variants, setVariants] = useState<PromoVariant[] | null>(null);
-  const [activeTone, setActiveTone] = useState<Tone>("plain-impact");
+  const [fundingPitch, setFundingPitch] = useState<string | null>(null);
+  const [laySummary, setLaySummary] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>("plain-impact");
 
   const [fetching, setFetching] = useState(false); // fetch-paper in flight
   const [generating, setGenerating] = useState(false); // generate-posts in flight
@@ -62,6 +75,8 @@ export default function PromotePage() {
     setError(null);
     setPaper(null);
     setVariants(null);
+    setFundingPitch(null);
+    setLaySummary(null);
     setCopied(false);
     setShowCapture(false);
     setCaptureDismissed(false);
@@ -100,7 +115,9 @@ export default function PromotePage() {
       }
       const vs = data.variants as PromoVariant[];
       setVariants(vs);
-      setActiveTone(vs[0]?.tone ?? "plain-impact");
+      setFundingPitch(typeof data.fundingPitch === "string" ? data.fundingPitch : null);
+      setLaySummary(typeof data.laySummary === "string" ? data.laySummary : null);
+      setActiveTab(vs[0]?.tone ?? "plain-impact");
     } catch {
       setError("Network error while generating posts. Please try again.");
     } finally {
@@ -108,13 +125,30 @@ export default function PromotePage() {
     }
   }
 
-  const active = variants?.find((v) => v.tone === activeTone) ?? null;
+  const active = variants?.find((v) => v.tone === activeTab) ?? null;
+  const isExtra = activeTab === "funding-pitch" || activeTab === "lay-summary";
+  const activeExtraText =
+    activeTab === "funding-pitch" ? fundingPitch : activeTab === "lay-summary" ? laySummary : null;
 
   // ── Preview actions ─────────────────────────────────────────────────────────
   async function handleCopy() {
     if (!active) return;
     try {
       await navigator.clipboard.writeText(composePost(active));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Couldn't access the clipboard. You can select and copy the text manually.");
+    }
+    revealCapture();
+  }
+
+  // Same clipboard + reveal-capture behavior as handleCopy, for the plain-text
+  // extra outputs (funding pitch / lay summary), which have no composePost
+  // hashtag/closing assembly — the copied text is just the paragraph itself.
+  async function handleCopyText(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -230,17 +264,17 @@ export default function PromotePage() {
         )}
 
         {/* Step 3 — variants + preview */}
-        {variants && active && (
+        {variants && (
           <section>
-            {/* Tone selector */}
+            {/* Tab selector — 4 LinkedIn tones + 2 extra outputs */}
             <div className="flex flex-wrap gap-2 mb-4">
               {TONE_ORDER.filter((t) => variants.some((v) => v.tone === t)).map((tone) => {
-                const isActive = tone === activeTone;
+                const isActive = tone === activeTab;
                 return (
                   <button
                     key={tone}
                     type="button"
-                    onClick={() => setActiveTone(tone)}
+                    onClick={() => setActiveTab(tone)}
                     className={`px-5 py-2 rounded-full border text-label-md font-label-md transition-all ${
                       isActive
                         ? "bg-secondary-container text-on-secondary-container border-secondary-container"
@@ -251,9 +285,28 @@ export default function PromotePage() {
                   </button>
                 );
               })}
+              {EXTRA_ORDER.map((key) => {
+                const isActive = key === activeTab;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setActiveTab(key)}
+                    className={`px-5 py-2 rounded-full border text-label-md font-label-md transition-all ${
+                      isActive
+                        ? "bg-secondary-container text-on-secondary-container border-secondary-container"
+                        : "border-outline-variant text-on-surface-variant hover:bg-surface-container-high"
+                    }`}
+                  >
+                    {EXTRA_LABELS[key]}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* LinkedIn-style preview card */}
+            {/* LinkedIn-style preview card (tone tabs only — unchanged) */}
+            {!isExtra && active && (
+            <>
             <article className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
               {/* Post header — avatar + name placeholders */}
               <div className="flex items-center gap-3 p-4 border-b border-outline-variant/60">
@@ -310,6 +363,34 @@ export default function PromotePage() {
                 Open LinkedIn
               </button>
             </div>
+            </>
+            )}
+
+            {/* Plain-text preview for the extra outputs (funding pitch / lay
+                summary) — no hashtags, no LinkedIn framing, just clean text with
+                the same Copy to Clipboard button. */}
+            {isExtra && activeExtraText && (
+              <>
+                <article className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm p-5">
+                  <p className="font-body-md text-body-md text-on-surface whitespace-pre-wrap leading-relaxed">
+                    {activeExtraText}
+                  </p>
+                </article>
+
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={() => handleCopyText(activeExtraText)}
+                    className="w-full sm:w-auto px-6 py-3 bg-primary text-on-primary font-label-md text-label-md rounded-xl shadow-md hover:bg-primary-container transition-all flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {copied ? "check" : "content_copy"}
+                    </span>
+                    {copied ? "Copied!" : "Copy to Clipboard"}
+                  </button>
+                </div>
+              </>
+            )}
 
             {/* Optional capture — revealed after first Copy/Open, skippable */}
             {showCapture && paper && (
