@@ -40,7 +40,7 @@ const PODCAST_FILTER_CHIPS = [
 // Real consumer listening destinations only. (The anchor.fm RSS feed is the
 // raw XML the backend pipeline ingests — not a user-facing listen link — so
 // it's intentionally not shown here.) Spotify show URL from
-// backend/agent/transcribe.py (SPOTIFY_SHOW_URL).
+// backend/podcast-agent/transcribe.py (SPOTIFY_SHOW_URL).
 const LISTEN_LINKS = [
   { label: "Spotify", icon: "podcasts", href: "https://open.spotify.com/show/50grwY6FX198o7BoYlRH6D" },
   {

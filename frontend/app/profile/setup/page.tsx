@@ -393,6 +393,19 @@ export default function ProfileSetupPage() {
     setError(null);
 
     try {
+      // If Technique is checked, both name and PI/lab are REQUIRED. Without this
+      // guard the technique block below silently no-ops on blank fields — the
+      // profile saves, the page redirects, and the user believes they registered
+      // a technique that was never persisted (this is why lab_resources can end up
+      // empty). Fail loudly so a registration is never silently lost.
+      if (checkedCats.has("technique") && (!techName.trim() || !techPiLab.trim())) {
+        setError(
+          "To register a Technique, add both a technique name and a PI / lab name — or uncheck Technique under Lab Resources.",
+        );
+        setSaving(false);
+        return;
+      }
+
       const effectiveName = name.trim() || displayName || user.email?.split("@")[0] || "researcher";
 
       let slug = profileSlug;

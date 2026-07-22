@@ -113,7 +113,7 @@ pip install -r requirements.txt
 **Podcast pipeline** (RSS → Whisper → Groq → Supabase):
 
 ```bash
-cd agent
+cd podcast-agent
 python pipeline.py                   # latest unprocessed episode
 python pipeline.py --episode 43      # a specific episode
 python pipeline.py --all             # all unprocessed episodes
