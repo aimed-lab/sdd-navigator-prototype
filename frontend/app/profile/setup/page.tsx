@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Nav from "@/components/Nav";
@@ -8,35 +8,65 @@ import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Single shared create/edit researcher-profile form (design:
-// /design/researcher-profile-editor.html). One flat scrolling form — NOT a
-// wizard. Opened from BOTH the Researchers header and Settings; single source
-// of truth. Data plumbing is intentionally FROZEN: preload existing `users` +
-// `researcher_works` on mount, and save = update `users` + delete-and-reinsert
-// `researcher_works`. Only the UI layer + the new fields changed.
+// Shared create/edit researcher-profile form. One flat scrolling form. Opened
+// from BOTH the Researchers header and Settings; single source of truth.
+//
+// KEEP (unchanged plumbing): Basics, About, Research Areas, Online Presence,
+// Visibility save through the existing PUT /api/profile flow (users.update +
+// researcher_works delete-and-reinsert).
+//
+// CHANGED:
+//   • Publications are now ORCID-imported (pub.orcid.org public API, no key) into
+//     editable rows, replacing the old manual Publications/Tools/Datasets add-a-
+//     row UI. They still persist as researcher_works rows of type 'paper' via the
+//     same PUT flow, so the public profile renders them exactly as before.
+//   • A new Lab Resources section (the Collaborate feature): 8 category toggles;
+//     only Technique has real fields in v1 (the other 7 say "coming soon"). On
+//     save, each checked category WITH data is POSTed to /api/collaborate/resources
+//     as its own lab_resources row (owner from session). This is additive to — and
+//     independent of — the PUT /api/profile save.
 // ─────────────────────────────────────────────────────────────────────────────
 
-type WorkItem = {
+// A publication row (ORCID-imported or preloaded from researcher_works type=paper).
+type PublicationItem = {
   clientId: string;
-  type: "paper" | "tool" | "dataset";
   title: string;
   journal: string;
   year: string;
   url: string;
-  description: string;
 };
 
-// A researcher_works row as returned by GET /api/profile (DB shape, nullable
-// columns). Mapped into WorkItem for the editable form on preload.
+// A researcher_works row as returned by GET /api/profile.
 type WorkRow = {
   id: string;
-  type: WorkItem["type"];
+  type: "paper" | "tool" | "dataset";
   title: string;
   journal: string | null;
   year: number | null;
   url: string | null;
   description: string | null;
 };
+
+// The caller's own lab_resources, as returned by GET /api/profile (for prefill).
+type OwnResourceRow = {
+  id: string;
+  category: string;
+  fields: Record<string, unknown>;
+  contact_info: string | null;
+};
+
+// The 8 lab-resource categories. Only 'technique' is live in v1; the rest render
+// as toggles that say "coming soon" when checked (no fake fields).
+const LAB_CATEGORIES: { value: string; label: string; live: boolean }[] = [
+  { value: "technique", label: "Technique", live: true },
+  { value: "equipment", label: "Equipment", live: false },
+  { value: "vector", label: "Vector", live: false },
+  { value: "animal_model", label: "Animal Model", live: false },
+  { value: "cell_line", label: "Cell Line", live: false },
+  { value: "protein_antibody", label: "Protein/Antibody", live: false },
+  { value: "software", label: "Software", live: false },
+  { value: "drug", label: "Drug", live: false },
+];
 
 function getInitials(name: string): string {
   return name
@@ -57,6 +87,10 @@ function generateSlug(name: string, uid: string): string {
 
 function makeId() {
   return `${Date.now()}-${Math.random()}`;
+}
+
+function str(v: unknown): string {
+  return typeof v === "string" ? v : "";
 }
 
 // Shared field styles
@@ -92,8 +126,12 @@ export default function ProfileSetupPage() {
   const [interests, setInterests] = useState<string[]>([]);
   const [newArea, setNewArea] = useState("");
 
-  // Work (papers / tools / datasets) — editable repeatable rows
-  const [works, setWorks] = useState<WorkItem[]>([]);
+  // ORCID import + resulting editable publications (replaces manual works UI)
+  const [orcidId, setOrcidId] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [publications, setPublications] = useState<PublicationItem[]>([]);
 
   // Online presence
   const [linkedinUrl, setLinkedinUrl] = useState("");
@@ -102,9 +140,31 @@ export default function ProfileSetupPage() {
   const [orcidUrl, setOrcidUrl] = useState("");
   const [githubUrl, setGithubUrl] = useState("");
 
+  // Lab Resources (Collaborate)
+  const [checkedCats, setCheckedCats] = useState<Set<string>>(new Set());
+  const [techName, setTechName] = useState("");
+  const [techPiLab, setTechPiLab] = useState("");
+  const [techProtocol, setTechProtocol] = useState("");
+  const [contactInfo, setContactInfo] = useState("");
+  // Signature of an already-registered technique row, so a re-save of unchanged
+  // data doesn't POST a duplicate. Null when none is registered yet.
+  const [savedTechSig, setSavedTechSig] = useState<string | null>(null);
+
   // Visibility
   const [isPublic, setIsPublic] = useState(true);
   const [profileSlug, setProfileSlug] = useState<string | null>(null);
+
+  // Baseline of the values AUTO-LOADED on mount (displayName default, or the row
+  // read from /api/profile). ORCID import may overwrite a field that still equals
+  // its baseline — that's an auto-default, NOT something the researcher manually
+  // typed — but must never clobber a value the user edited this session. Set once
+  // the preload resolves; a ref so it never triggers a re-render.
+  const autoLoaded = useRef<{ name: string; bio: string; interests: string[]; linkedin: string }>({
+    name: "",
+    bio: "",
+    interests: [],
+    linkedin: "",
+  });
 
   // Redirect if not logged in
   useEffect(() => {
@@ -113,58 +173,91 @@ export default function ProfileSetupPage() {
     }
   }, [user, loading, router]);
 
-  // Pre-populate existing profile fields (create AND edit share this form).
-  // Session-scoped read through /api/profile — the caller's own row + works
-  // (RLS ties both to them; no uid is sent). Same field mapping as before,
-  // including the "no row → fall back to displayName" behavior.
+  // Pre-populate existing profile fields + publications + lab resources.
   useEffect(() => {
     if (!user) return;
 
     fetch("/api/profile")
-      .then((res) => (res.ok ? res.json() : { profile: null, works: [] }))
-      .then((body: { profile: Record<string, string | string[] | boolean | null> | null; works: WorkRow[] }) => {
-        const data = body.profile;
-        if (!data) {
-          setName(displayName || "");
-        } else {
-          setName((data.name as string) || displayName || "");
-          if (data.title) setTitleRole(data.title as string);
-          if (data.affiliation) setAffiliation(data.affiliation as string);
-          if (data.bio) setBio(data.bio as string);
-          if (data.research_focus) setResearchFocus(data.research_focus as string);
-          if (data.linkedin_url) setLinkedinUrl(data.linkedin_url as string);
-          if (data.website_url) setWebsiteUrl(data.website_url as string);
-          if (data.scholar_url) setScholarUrl(data.scholar_url as string);
-          if (data.orcid_url) setOrcidUrl(data.orcid_url as string);
-          if (data.github_url) setGithubUrl(data.github_url as string);
-          const ints = data.interests as string[] | null;
-          if (ints?.length) setInterests(ints);
-          // is_public is NOT NULL in the DB, so this only falls back to the
-          // current default (true) when the row itself has no value for it.
-          setIsPublic((data.is_public as boolean) ?? true);
-          setProfileSlug((data.profile_slug as string) ?? null);
-        }
+      .then((res) => (res.ok ? res.json() : { profile: null, works: [], resources: [] }))
+      .then(
+        (body: {
+          profile: Record<string, string | string[] | boolean | null> | null;
+          works: WorkRow[];
+          resources: OwnResourceRow[];
+        }) => {
+          const data = body.profile;
+          // Effective auto-loaded values (used both to seed the fields and to
+          // record the import baseline).
+          const effName = data ? ((data.name as string) || displayName || "") : displayName || "";
+          const effBio = (data?.bio as string) || "";
+          const effInterests = (data?.interests as string[] | null)?.length
+            ? (data!.interests as string[])
+            : [];
+          const effLinkedin = (data?.linkedin_url as string) || "";
 
-        // Pre-populate previously published works so editing/removing them on
-        // re-save actually reconciles against what's already saved, instead of
-        // starting from an empty list and only ever appending.
-        const worksData = body.works;
-        if (worksData && worksData.length > 0) {
-          setWorks(
-            worksData.map((w) => ({
-              clientId: w.id,
-              type: w.type,
-              title: w.title,
-              journal: w.journal ?? "",
-              year: w.year != null ? String(w.year) : "",
-              url: w.url ?? "",
-              description: w.description ?? "",
-            }))
-          );
-        }
-      })
+          if (!data) {
+            setName(effName);
+          } else {
+            setName(effName);
+            if (data.title) setTitleRole(data.title as string);
+            if (data.affiliation) setAffiliation(data.affiliation as string);
+            if (data.bio) setBio(effBio);
+            if (data.research_focus) setResearchFocus(data.research_focus as string);
+            if (data.linkedin_url) setLinkedinUrl(effLinkedin);
+            if (data.website_url) setWebsiteUrl(data.website_url as string);
+            if (data.scholar_url) setScholarUrl(data.scholar_url as string);
+            if (data.orcid_url) setOrcidUrl(data.orcid_url as string);
+            if (data.github_url) setGithubUrl(data.github_url as string);
+            if (effInterests.length) setInterests(effInterests);
+            setIsPublic((data.is_public as boolean) ?? true);
+            setProfileSlug((data.profile_slug as string) ?? null);
+          }
+
+          // Record what was auto-loaded, so ORCID import can distinguish an
+          // untouched auto-default from a manual edit.
+          autoLoaded.current = {
+            name: effName,
+            bio: effBio,
+            interests: effInterests,
+            linkedin: effLinkedin,
+          };
+
+          // Existing publications (researcher_works type=paper) → editable rows.
+          // Tool/dataset works are intentionally NOT loaded; those manual
+          // categories are gone (anything tool/dataset-like now lives under Lab
+          // Resources). Re-saving reconciles works to publications only.
+          const papers = (body.works ?? []).filter((w) => w.type === "paper");
+          if (papers.length > 0) {
+            setPublications(
+              papers.map((w) => ({
+                clientId: w.id,
+                title: w.title,
+                journal: w.journal ?? "",
+                year: w.year != null ? String(w.year) : "",
+                url: w.url ?? "",
+              })),
+            );
+          }
+
+          // Prefill the Technique toggle + fields from an already-registered row.
+          const tech = (body.resources ?? []).find((r) => r.category === "technique");
+          if (tech) {
+            setCheckedCats((prev) => new Set(prev).add("technique"));
+            const n = str(tech.fields.name);
+            const pi = str(tech.fields.pi_lab);
+            const proto = str(tech.fields.protocol_link);
+            const contact = tech.contact_info ?? "";
+            setTechName(n);
+            setTechPiLab(pi);
+            setTechProtocol(proto);
+            setContactInfo(contact);
+            setSavedTechSig(techSignature(n, pi, proto, contact));
+          }
+        },
+      )
       .catch(() => {
         setName(displayName || "");
+        autoLoaded.current = { name: displayName || "", bio: "", interests: [], linkedin: "" };
       });
   }, [user, displayName]);
 
@@ -191,23 +284,109 @@ export default function ProfileSetupPage() {
     setInterests((prev) => prev.filter((i) => i !== area));
   }
 
-  // ── Repeatable work rows ────────────────────────────────────────────────────
-  function addWork(type: WorkItem["type"]) {
-    setWorks((prev) => [
-      ...prev,
-      { clientId: makeId(), type, title: "", journal: "", year: "", url: "", description: "" },
-    ]);
+  // ── ORCID import ────────────────────────────────────────────────────────────
+  async function importFromOrcid() {
+    setImportError(null);
+    setImportMsg(null);
+    if (!orcidId.trim()) {
+      setImportError("Paste your ORCID iD first, e.g. 0000-0002-1825-0097.");
+      return;
+    }
+    setImporting(true);
+    try {
+      const res = await fetch(`/api/orcid/works?id=${encodeURIComponent(orcidId.trim())}`);
+      const body = (await res.json().catch(() => ({}))) as {
+        works?: { title: string; year: number | null; url: string | null }[];
+        orcid?: string;
+        person?: {
+          name: string | null;
+          bio: string | null;
+          keywords: string[];
+          linkedin: string | null;
+        };
+        error?: string;
+      };
+      if (!res.ok) throw new Error(body.error || "Could not import from ORCID.");
+
+      const imported = (body.works ?? []).map((w) => ({
+        clientId: makeId(),
+        title: w.title,
+        journal: "",
+        year: w.year != null ? String(w.year) : "",
+        url: w.url ?? "",
+      }));
+
+      // Import REPLACES the publications list (paste-ORCID-and-see-results). The
+      // list stays fully editable afterwards. The server already caps this at the
+      // 5 most recent.
+      setPublications(imported);
+      if (body.orcid && !orcidUrl.trim()) {
+        setOrcidUrl(`https://orcid.org/${body.orcid}`);
+      }
+
+      // Pre-fill person-level fields NON-DESTRUCTIVELY. A field is fillable when it
+      // is blank OR still equals its auto-loaded baseline (an auto-default like the
+      // account displayName, or a previously-saved value the user hasn't touched
+      // this session) — but never when the user manually edited it. This is the
+      // fix for the earlier bug: `name` was pre-seeded with displayName, so a plain
+      // `!name.trim()` check always blocked the ORCID name. Keywords are a list, so
+      // they map to Research Areas (interests), not the single-line research_focus.
+      const person = body.person;
+      const base = autoLoaded.current;
+      const fillable = (cur: string, baseVal: string) => !cur.trim() || cur === baseVal;
+      const filled: string[] = [];
+      if (person?.name && fillable(name, base.name)) {
+        setName(person.name);
+        filled.push("name");
+      }
+      if (person?.bio && fillable(bio, base.bio)) {
+        setBio(person.bio);
+        filled.push("bio");
+      }
+      if (
+        person?.keywords?.length &&
+        (interests.length === 0 || JSON.stringify(interests) === JSON.stringify(base.interests))
+      ) {
+        setInterests(person.keywords);
+        filled.push("research areas");
+      }
+      if (person?.linkedin && fillable(linkedinUrl, base.linkedin)) {
+        setLinkedinUrl(person.linkedin);
+        filled.push("LinkedIn");
+      }
+
+      const pubMsg =
+        imported.length > 0
+          ? `Imported ${imported.length} recent publication${imported.length !== 1 ? "s" : ""} (most recent first).`
+          : "That ORCID record has no public works to import.";
+      const fieldMsg = filled.length > 0 ? ` Also pre-filled: ${filled.join(", ")}.` : "";
+      setImportMsg(`${pubMsg}${fieldMsg} Edit or remove anything below.`);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Could not import from ORCID.");
+    } finally {
+      setImporting(false);
+    }
   }
 
-  function updateWork(clientId: string, patch: Partial<WorkItem>) {
-    setWorks((prev) => prev.map((w) => (w.clientId === clientId ? { ...w, ...patch } : w)));
+  function updatePublication(clientId: string, patch: Partial<PublicationItem>) {
+    setPublications((prev) => prev.map((p) => (p.clientId === clientId ? { ...p, ...patch } : p)));
   }
 
-  function removeWork(clientId: string) {
-    setWorks((prev) => prev.filter((w) => w.clientId !== clientId));
+  function removePublication(clientId: string) {
+    setPublications((prev) => prev.filter((p) => p.clientId !== clientId));
   }
 
-  // ── Save (frozen plumbing: update users + delete-and-reinsert works) ────────
+  // ── Lab Resources toggles ───────────────────────────────────────────────────
+  function toggleCategory(value: string) {
+    setCheckedCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  }
+
+  // ── Save ────────────────────────────────────────────────────────────────────
   async function save(makePublic: boolean) {
     if (!user) return;
     setSaving(true);
@@ -216,30 +395,24 @@ export default function ProfileSetupPage() {
     try {
       const effectiveName = name.trim() || displayName || user.email?.split("@")[0] || "researcher";
 
-      // Slug preservation: keep an existing slug verbatim so editing the name
-      // never breaks a live profile URL. Only mint a slug on first publish
-      // when none exists yet.
       let slug = profileSlug;
       if (makePublic && !slug) {
         slug = generateSlug(effectiveName, user.id);
       }
 
-      // Reconcile researcher_works against the current `works` state: the
-      // server deletes this user's existing rows then reinserts the current set.
-      // Blank rows (no title) are dropped so empty repeatable rows never
-      // persist; user_id is stamped from the session server-side, not sent here.
-      const savableWorks = works.filter((w) => w.title.trim());
-      const rows = savableWorks.map((w) => ({
-        type: w.type,
-        title: w.title,
-        journal: w.journal || null,
-        year: w.year ? parseInt(w.year, 10) : null,
-        url: w.url || null,
-        description: w.description || null,
-      }));
+      // Publications → researcher_works rows (type 'paper'). Blank-title rows drop.
+      const rows = publications
+        .filter((p) => p.title.trim())
+        .map((p) => ({
+          type: "paper",
+          title: p.title.trim(),
+          journal: p.journal.trim() || null,
+          year: p.year ? parseInt(p.year, 10) : null,
+          url: p.url.trim() || null,
+          description: null,
+        }));
 
-      // Session-scoped write through /api/profile — users.update then works
-      // reconcile, in that order, all under the caller's session.
+      // 1) Existing profile + works save (unchanged PUT flow).
       const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -268,6 +441,36 @@ export default function ProfileSetupPage() {
         throw new Error(body.error || "Failed to save profile. Please try again.");
       }
 
+      // 2) Lab Resources: POST each checked category that has real data. v1 has
+      // real fields only for Technique. A row is created only when the data is new
+      // or changed vs an already-registered technique (so re-saving an unchanged
+      // profile never duplicates it).
+      if (checkedCats.has("technique") && techName.trim() && techPiLab.trim()) {
+        const sig = techSignature(techName, techPiLab, techProtocol, contactInfo);
+        if (sig !== savedTechSig) {
+          const rRes = await fetch("/api/collaborate/resources", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              category: "technique",
+              fields: {
+                name: techName.trim(),
+                pi_lab: techPiLab.trim(),
+                protocol_link: techProtocol.trim() || null,
+              },
+              contact_info: contactInfo.trim() || null,
+            }),
+          });
+          if (!rRes.ok) {
+            const body = (await rRes.json().catch(() => ({}))) as { error?: string };
+            throw new Error(
+              body.error || "Your profile saved, but the technique could not be registered.",
+            );
+          }
+          setSavedTechSig(sig);
+        }
+      }
+
       setIsPublic(makePublic);
       setProfileSlug(slug);
 
@@ -282,9 +485,7 @@ export default function ProfileSetupPage() {
     }
   }
 
-  const papers = works.filter((w) => w.type === "paper");
-  const tools = works.filter((w) => w.type === "tool");
-  const datasets = works.filter((w) => w.type === "dataset");
+  const anyCategoryChecked = checkedCats.size > 0;
 
   return (
     <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col">
@@ -326,6 +527,55 @@ export default function ProfileSetupPage() {
           </header>
 
           <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
+
+            {/* ── ORCID import ───────────────────────────────────────────── */}
+            <section className={sectionCls}>
+              <h2 className={`${sectionTitleCls} mb-2`}>Import from ORCID</h2>
+              <p className="font-body-md text-body-md text-on-surface-variant mb-4">
+                Paste your ORCID iD to pull your 5 most recent publications, plus your name, bio,
+                research areas, and LinkedIn from your public record — no login or key needed.
+                Blank fields are filled in for you (anything you&apos;ve already typed is kept);
+                edit or remove anything afterward.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  value={orcidId}
+                  onChange={(e) => setOrcidId(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      importFromOrcid();
+                    }
+                  }}
+                  className={inputCls}
+                  placeholder="e.g. 0000-0002-1825-0097"
+                />
+                <button
+                  type="button"
+                  onClick={importFromOrcid}
+                  disabled={importing}
+                  className="bg-primary text-on-primary px-6 py-2.5 rounded-xl font-label-md text-label-md hover:bg-primary-container transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shrink-0"
+                >
+                  {importing && (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  )}
+                  {importing ? "Importing…" : "Import"}
+                </button>
+              </div>
+              {importMsg && (
+                <p className="mt-3 text-sm text-primary flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                  {importMsg}
+                </p>
+              )}
+              {importError && (
+                <p className="mt-3 text-sm text-error flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[18px]">error</span>
+                  {importError}
+                </p>
+              )}
+            </section>
 
             {/* ── Basics ─────────────────────────────────────────────────── */}
             <section className={sectionCls}>
@@ -441,22 +691,26 @@ export default function ProfileSetupPage() {
               </div>
             </section>
 
-            {/* ── Publications ───────────────────────────────────────────── */}
+            {/* ── Publications (ORCID-sourced, editable) ─────────────────── */}
             <section className={sectionCls}>
-              <h2 className={`${sectionTitleCls} mb-6`}>Publications</h2>
-              {papers.length > 0 && (
-                <div className="space-y-4 mb-6">
-                  {papers.map((w) => (
+              <h2 className={`${sectionTitleCls} mb-2`}>Publications</h2>
+              <p className="font-body-md text-body-md text-on-surface-variant mb-6">
+                Imported from ORCID above. Edit titles/years/links or remove entries you don&apos;t
+                want on your public profile.
+              </p>
+              {publications.length > 0 ? (
+                <div className="space-y-4">
+                  {publications.map((p) => (
                     <div
-                      key={w.clientId}
+                      key={p.clientId}
                       className="grid grid-cols-12 gap-3 items-end p-4 bg-surface rounded-lg border border-outline-variant/60"
                     >
                       <div className="col-span-12 md:col-span-5">
                         <label className={labelCls}>Title</label>
                         <input
                           type="text"
-                          value={w.title}
-                          onChange={(e) => updateWork(w.clientId, { title: e.target.value })}
+                          value={p.title}
+                          onChange={(e) => updatePublication(p.clientId, { title: e.target.value })}
                           className={rowInputCls}
                           placeholder="Paper title"
                         />
@@ -465,8 +719,8 @@ export default function ProfileSetupPage() {
                         <label className={labelCls}>Journal</label>
                         <input
                           type="text"
-                          value={w.journal}
-                          onChange={(e) => updateWork(w.clientId, { journal: e.target.value })}
+                          value={p.journal}
+                          onChange={(e) => updatePublication(p.clientId, { journal: e.target.value })}
                           className={rowInputCls}
                           placeholder="e.g. Nature"
                         />
@@ -475,8 +729,8 @@ export default function ProfileSetupPage() {
                         <label className={labelCls}>Year</label>
                         <input
                           type="number"
-                          value={w.year}
-                          onChange={(e) => updateWork(w.clientId, { year: e.target.value })}
+                          value={p.year}
+                          onChange={(e) => updatePublication(p.clientId, { year: e.target.value })}
                           className={rowInputCls}
                           placeholder="2024"
                         />
@@ -485,8 +739,8 @@ export default function ProfileSetupPage() {
                         <label className={labelCls}>URL</label>
                         <input
                           type="url"
-                          value={w.url}
-                          onChange={(e) => updateWork(w.clientId, { url: e.target.value })}
+                          value={p.url}
+                          onChange={(e) => updatePublication(p.clientId, { url: e.target.value })}
                           className={rowInputCls}
                           placeholder="doi.org/…"
                         />
@@ -494,7 +748,7 @@ export default function ProfileSetupPage() {
                       <div className="col-span-1 flex justify-center pb-1.5">
                         <button
                           type="button"
-                          onClick={() => removeWork(w.clientId)}
+                          onClick={() => removePublication(p.clientId)}
                           className="text-on-surface-variant hover:text-error transition-colors"
                           aria-label="Remove publication"
                         >
@@ -504,118 +758,122 @@ export default function ProfileSetupPage() {
                     </div>
                   ))}
                 </div>
+              ) : (
+                <p className="text-on-surface-variant italic text-sm">
+                  No publications yet — import your ORCID record above to populate this list.
+                </p>
               )}
-              <button type="button" onClick={() => addWork("paper")} className={addBtnCls}>
-                <span className="material-symbols-outlined">add_circle</span> Add publication
-              </button>
             </section>
 
-            {/* ── Tools & Software ───────────────────────────────────────── */}
+            {/* ── Lab Resources (Collaborate) ────────────────────────────── */}
             <section className={sectionCls}>
-              <h2 className={`${sectionTitleCls} mb-6`}>Tools &amp; Software</h2>
-              {tools.length > 0 && (
-                <div className="space-y-4 mb-6">
-                  {tools.map((w) => (
-                    <div
-                      key={w.clientId}
-                      className="grid grid-cols-12 gap-3 items-end p-4 bg-surface rounded-lg border border-outline-variant/60"
-                    >
-                      <div className="col-span-12 md:col-span-3">
-                        <label className={labelCls}>Tool name</label>
-                        <input
-                          type="text"
-                          value={w.title}
-                          onChange={(e) => updateWork(w.clientId, { title: e.target.value })}
-                          className={rowInputCls}
-                          placeholder="e.g. PyRigid-ML"
-                        />
-                      </div>
-                      <div className="col-span-12 md:col-span-5">
-                        <label className={labelCls}>Short description</label>
-                        <input
-                          type="text"
-                          value={w.description}
-                          onChange={(e) => updateWork(w.clientId, { description: e.target.value })}
-                          className={rowInputCls}
-                          placeholder="What it does"
-                        />
-                      </div>
-                      <div className="col-span-11 md:col-span-3">
-                        <label className={labelCls}>URL</label>
-                        <input
-                          type="url"
-                          value={w.url}
-                          onChange={(e) => updateWork(w.clientId, { url: e.target.value })}
-                          className={rowInputCls}
-                          placeholder="github.com/…"
-                        />
-                      </div>
-                      <div className="col-span-1 flex justify-center pb-1.5">
-                        <button
-                          type="button"
-                          onClick={() => removeWork(w.clientId)}
-                          className="text-on-surface-variant hover:text-error transition-colors"
-                          aria-label="Remove tool"
-                        >
-                          <span className="material-symbols-outlined">delete</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <button type="button" onClick={() => addWork("tool")} className={addBtnCls}>
-                <span className="material-symbols-outlined">add_circle</span> Add tool
-              </button>
-            </section>
+              <h2 className={`${sectionTitleCls} mb-2`}>Lab Resources</h2>
+              <p className="font-body-md text-body-md text-on-surface-variant mb-6">
+                Offer resources your lab can share for collaboration. Check the categories that
+                apply — you likely only have one or two. Only <span className="font-bold">Technique</span>{" "}
+                is live in v1; the rest are coming soon.
+              </p>
 
-            {/* ── Datasets ───────────────────────────────────────────────── */}
-            <section className={sectionCls}>
-              <h2 className={`${sectionTitleCls} mb-6`}>Datasets</h2>
-              {datasets.length > 0 && (
-                <div className="space-y-4 mb-6">
-                  {datasets.map((w) => (
-                    <div
-                      key={w.clientId}
-                      className="grid grid-cols-12 gap-3 items-end p-4 bg-surface rounded-lg border border-outline-variant/60"
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                {LAB_CATEGORIES.map((c) => {
+                  const checked = checkedCats.has(c.value);
+                  return (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => toggleCategory(c.value)}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium text-left transition-colors ${
+                        checked
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-outline-variant bg-surface text-on-surface hover:border-primary/50"
+                      }`}
                     >
-                      <div className="col-span-12 md:col-span-6">
-                        <label className={labelCls}>Dataset name</label>
-                        <input
-                          type="text"
-                          value={w.title}
-                          onChange={(e) => updateWork(w.clientId, { title: e.target.value })}
-                          className={rowInputCls}
-                          placeholder="e.g. UAB Compound Screening Set"
-                        />
-                      </div>
-                      <div className="col-span-11 md:col-span-5">
-                        <label className={labelCls}>URL</label>
-                        <input
-                          type="url"
-                          value={w.url}
-                          onChange={(e) => updateWork(w.clientId, { url: e.target.value })}
-                          className={rowInputCls}
-                          placeholder="Repository link"
-                        />
-                      </div>
-                      <div className="col-span-1 flex justify-center pb-1.5">
-                        <button
-                          type="button"
-                          onClick={() => removeWork(w.clientId)}
-                          className="text-on-surface-variant hover:text-error transition-colors"
-                          aria-label="Remove dataset"
-                        >
-                          <span className="material-symbols-outlined">delete</span>
-                        </button>
-                      </div>
+                      <span className="material-symbols-outlined text-[20px]">
+                        {checked ? "check_box" : "check_box_outline_blank"}
+                      </span>
+                      <span className="min-w-0 truncate">{c.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Technique — the only category with real fields in v1 */}
+              {checkedCats.has("technique") && (
+                <div className="p-4 bg-surface rounded-lg border border-outline-variant/60 mb-4 space-y-4">
+                  <p className="font-label-md text-label-md text-on-surface flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[20px] text-primary">biotech</span>
+                    Technique details
+                  </p>
+                  <div>
+                    <label className={labelCls}>Technique name</label>
+                    <input
+                      type="text"
+                      value={techName}
+                      onChange={(e) => setTechName(e.target.value)}
+                      className={rowInputCls}
+                      placeholder="e.g. Patient-derived organoid culture"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelCls}>PI / lab name</label>
+                      <input
+                        type="text"
+                        value={techPiLab}
+                        onChange={(e) => setTechPiLab(e.target.value)}
+                        className={rowInputCls}
+                        placeholder="e.g. Nakano Lab, UAB Neuro-oncology"
+                      />
                     </div>
-                  ))}
+                    <div>
+                      <label className={labelCls}>Protocol / SOP link (optional)</label>
+                      <input
+                        type="url"
+                        value={techProtocol}
+                        onChange={(e) => setTechProtocol(e.target.value)}
+                        className={rowInputCls}
+                        placeholder="https://…"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
-              <button type="button" onClick={() => addWork("dataset")} className={addBtnCls}>
-                <span className="material-symbols-outlined">add_circle</span> Add dataset
-              </button>
+
+              {/* Other 7 categories — honest "coming soon", no fake fields */}
+              {LAB_CATEGORIES.filter((c) => !c.live && checkedCats.has(c.value)).map((c) => (
+                <div
+                  key={c.value}
+                  className="p-4 bg-surface-container rounded-lg border border-outline-variant/60 mb-4 flex items-center gap-3"
+                >
+                  <span className="material-symbols-outlined text-on-surface-variant">
+                    hourglass_empty
+                  </span>
+                  <p className="text-sm text-on-surface-variant">
+                    <span className="font-bold text-on-surface">{c.label}</span> registration is
+                    coming soon — this category doesn&apos;t have fields yet, so nothing will be saved
+                    for it.
+                  </p>
+                </div>
+              ))}
+
+              {/* Shared contact — used across whichever categories are checked */}
+              {anyCategoryChecked && (
+                <div className="pt-2">
+                  <label className={labelCls}>How should people reach you about this?</label>
+                  <textarea
+                    value={contactInfo}
+                    onChange={(e) => setContactInfo(e.target.value)}
+                    rows={2}
+                    className={`${inputCls} resize-none`}
+                    placeholder="e.g. Email jdoe@uab.edu, or ping the lab Slack #neuro-onc"
+                  />
+                  <p className="text-xs text-on-surface-variant mt-1.5 ml-1">
+                    Shown to signed-in members who click Connect on your resource. This is{" "}
+                    <span className="font-bold">not</span> auto-filled from your account email —
+                    enter exactly what you want people to use.
+                  </p>
+                </div>
+              )}
             </section>
 
             {/* ── Online Presence ────────────────────────────────────────── */}
@@ -722,6 +980,11 @@ export default function ProfileSetupPage() {
       <Footer />
     </div>
   );
+}
+
+// Stable signature of a technique's data, for dedup on re-save.
+function techSignature(name: string, piLab: string, protocol: string, contact: string): string {
+  return [name.trim(), piLab.trim(), protocol.trim(), contact.trim()].join("||");
 }
 
 function LinkField({

@@ -29,21 +29,33 @@ export type ResearcherCard = {
 // A single researcher_works row (only the columns the directory counts by).
 export type ResearcherWorkRow = { user_id: string; type: string };
 
-// Both raw query results, so the client keeps its exact per-user work-count
-// aggregation unchanged (the counting is presentation, not data access).
+// A public lab_resources row for the directory (owner_id so the client can group
+// resources under their researcher card). contact_info is NEVER selected here —
+// it is revealed only through the auth-gated /contact route.
+export type LabResourceCard = {
+  id: string;
+  owner_id: string;
+  category: string;
+  fields: Record<string, unknown>;
+};
+
+// The three raw query results, so the client keeps its exact per-user
+// aggregation (work counts + resource grouping) as presentation, not data access.
 export type PublicResearchersResult = {
   researchers: ResearcherCard[];
   works: ResearcherWorkRow[];
+  resources: LabResourceCard[];
 };
 
-// Fetch the public researcher directory + all researcher_works rows, in parallel.
-// Same queries as before, verbatim: users filtered to is_public=true, ordered by
-// name; researcher_works selecting (user_id, type). Degrades to empty arrays.
+// Fetch the public researcher directory + all researcher_works rows + all public
+// lab_resources, in parallel. users filtered to is_public=true, ordered by name;
+// researcher_works selecting (user_id, type); lab_resources selecting the public
+// columns (no contact_info). Degrades to empty arrays.
 export async function listPublicResearchers(): Promise<PublicResearchersResult> {
   const supabase = getAnonServerClient();
-  if (!supabase) return { researchers: [], works: [] };
+  if (!supabase) return { researchers: [], works: [], resources: [] };
 
-  const [resRes, worksRes] = await Promise.all([
+  const [resRes, worksRes, resourcesRes] = await Promise.all([
     supabase
       .from("users")
       .select(
@@ -55,11 +67,15 @@ export async function listPublicResearchers(): Promise<PublicResearchersResult> 
       .eq("is_public", true)
       .order("name"),
     supabase.from("researcher_works").select("user_id, type"),
+    // Public lab-resource rows — NEVER select contact_info here (that lives only
+    // on the auth-gated /contact route).
+    supabase.from("lab_resources").select("id, owner_id, category, fields"),
   ]);
 
   return {
     researchers: (resRes.data ?? []) as ResearcherCard[],
     works: (worksRes.data ?? []) as ResearcherWorkRow[],
+    resources: (resourcesRes.data ?? []) as LabResourceCard[],
   };
 }
 
@@ -105,11 +121,23 @@ export type RelatedResearcher = {
   interests: string[] | null;
 };
 
-// Full public profile payload: the researcher, their works, and the related-pool
-// candidates. The client still does the interest-overlap sort + top-3 slice.
+// One of this researcher's registered lab resources, for the profile page. No
+// contact_info — each resource's Connect button reveals that via the auth-gated
+// /contact route, per-resource.
+export type ProfileLabResource = {
+  id: string;
+  category: string;
+  fields: Record<string, unknown>;
+  created_at: string;
+};
+
+// Full public profile payload: the researcher, their works, their registered lab
+// resources, and the related-pool candidates. The client still does the
+// interest-overlap sort + top-3 slice.
 export type ResearcherProfile = {
   profile: ResearcherProfileRow;
   works: ResearcherWorkFull[];
+  resources: ProfileLabResource[];
   related: RelatedResearcher[];
 };
 
@@ -136,11 +164,18 @@ export async function getResearcherProfile(slug: string): Promise<ResearcherProf
 
   const profile = data as ResearcherProfileRow;
 
-  const [worksRes, relatedRes] = await Promise.all([
+  const [worksRes, resourcesRes, relatedRes] = await Promise.all([
     supabase
       .from("researcher_works")
       .select("*")
       .eq("user_id", profile.id)
+      .order("created_at", { ascending: false }),
+    // This researcher's registered lab resources (public columns only — no
+    // contact_info; that's revealed per-resource via the auth-gated /contact route).
+    supabase
+      .from("lab_resources")
+      .select("id, category, fields, created_at")
+      .eq("owner_id", profile.id)
       .order("created_at", { ascending: false }),
     supabase
       .from("users")
@@ -153,6 +188,7 @@ export async function getResearcherProfile(slug: string): Promise<ResearcherProf
   return {
     profile,
     works: (worksRes.data ?? []) as ResearcherWorkFull[],
+    resources: (resourcesRes.data ?? []) as ProfileLabResource[],
     related: (relatedRes.data ?? []) as RelatedResearcher[],
   };
 }

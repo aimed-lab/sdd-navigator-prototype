@@ -493,6 +493,55 @@ CREATE POLICY "anyone can insert promote captures"
 
 
 -- =============================================================================
+-- TABLE: lab_resources
+-- =============================================================================
+-- "Collaboration" feature — a lab resource registry replacing the manually-
+-- shared spreadsheet UAB's Neuro-oncology group uses to offer resources for
+-- collaboration. ONE generic table across all 8 spreadsheet categories; only the
+-- 'technique' UI/flow is built in v1, the other 7 are schema-ready (add new forms
+-- later with NO schema change). Category-specific data lives in `fields` (jsonb),
+-- e.g. {"name","pi_lab","protocol_link"} for a technique. `contact_info` is what
+-- the owner explicitly chooses to show on Connect — NOT their account email, and
+-- never joined from public.users. It is returned by exactly one auth-gated route
+-- (/contact); the public browse read never selects it.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.lab_resources (
+    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_id     UUID        NOT NULL REFERENCES public.users (id),  -- owner (from session, never client body)
+    category     TEXT        NOT NULL,   -- 'technique' | 'equipment' | 'vector' | 'animal_model'
+                                         -- | 'cell_line' | 'protein_antibody' | 'software' | 'drug'
+    fields       JSONB       NOT NULL DEFAULT '{}',   -- category-specific data (e.g. name, pi_lab, protocol_link)
+    contact_info TEXT,                                -- owner-chosen contact text; NOT their account email
+    created_at   TIMESTAMPTZ DEFAULT now(),
+    updated_at   TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.lab_resources ENABLE ROW LEVEL SECURITY;
+
+-- Public read — the registry is openly browsable. Exposes every column at the DB
+-- level; the public browse API deliberately does NOT select contact_info (only
+-- the auth-gated /contact route returns it).
+CREATE POLICY "anyone can read lab resources"
+    ON public.lab_resources FOR SELECT
+    USING (true);
+
+-- Authenticated users may insert resources they own only.
+CREATE POLICY "authenticated users can insert own resource"
+    ON public.lab_resources FOR INSERT
+    WITH CHECK (auth.uid() = owner_id);
+
+-- Owners may update / delete only their own resources.
+CREATE POLICY "owner can update own resource"
+    ON public.lab_resources FOR UPDATE
+    USING (auth.uid() = owner_id);
+
+CREATE POLICY "owner can delete own resource"
+    ON public.lab_resources FOR DELETE
+    USING (auth.uid() = owner_id);
+
+
+-- =============================================================================
 -- INDEXES
 -- =============================================================================
 -- Additional indexes on columns used in frequent queries / filters.
@@ -510,5 +559,7 @@ CREATE INDEX IF NOT EXISTS idx_saved_items_user           ON public.saved_items 
 CREATE INDEX IF NOT EXISTS idx_projects_user              ON public.projects (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_connection_requests_user   ON public.connection_requests (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_connection_requests_status ON public.connection_requests (status);
+CREATE INDEX IF NOT EXISTS idx_lab_resources_category      ON public.lab_resources (category, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_lab_resources_owner         ON public.lab_resources (owner_id);
 
 

@@ -25,13 +25,27 @@ export type ResearcherWork = {
   description: string | null;
 };
 
+// One of the caller's own lab_resources, for prefilling the profile editor's Lab
+// Resources section. Includes contact_info because it's the caller's OWN row
+// (session-scoped read) — this is the only place the owner sees their own saved
+// contact text to edit it. Never used for other people's resources.
+export type OwnLabResource = {
+  id: string;
+  category: string;
+  fields: Record<string, unknown>;
+  contact_info: string | null;
+};
+
 export type ProfileData = {
   profile: Record<string, unknown> | null;
   works: ResearcherWork[];
+  resources: OwnLabResource[];
 };
 
-// Read the caller's own profile row + their works (works ordered oldest-first,
-// matching the original preload). Either may be empty for a brand-new profile.
+// Read the caller's own profile row + their works + their registered lab
+// resources (all ordered oldest-first). Any may be empty for a new profile. The
+// resources read is session-scoped (own rows only) and used purely to prefill the
+// editor so a re-save doesn't blindly duplicate an already-registered resource.
 export async function getProfile(): Promise<ProfileData> {
   const { supabase, user } = await requireUser();
 
@@ -49,9 +63,17 @@ export async function getProfile(): Promise<ProfileData> {
     .order("created_at", { ascending: true });
   if (worksErr) throw worksErr;
 
+  const { data: resources, error: resourcesErr } = await supabase
+    .from("lab_resources")
+    .select("id, category, fields, contact_info")
+    .eq("owner_id", user.id)
+    .order("created_at", { ascending: true });
+  if (resourcesErr) throw resourcesErr;
+
   return {
     profile: (profile ?? null) as Record<string, unknown> | null,
     works: (works ?? []) as ResearcherWork[],
+    resources: (resources ?? []) as OwnLabResource[],
   };
 }
 
