@@ -54,6 +54,10 @@ const STEPS = [
 export default function LandingLoggedOut() {
   return (
     <div className="bg-background text-on-surface min-h-screen">
+      {/* Preview deployment test banner — remove after verifying */}
+      <div className="bg-blue-600 text-white text-center py-2 text-sm font-medium">
+        Preview Deployment Test — this banner confirms Vercel PR previews are working
+      </div>
       <Nav />
 
       <main>
