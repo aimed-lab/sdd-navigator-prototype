@@ -178,6 +178,18 @@ test("recency axis keeps future-dated GRANTS (forecasted opportunities are legit
   assert.deepEqual(ids(out), ["g"]);
 });
 
+test("recency axis keeps not-yet-recruiting TRIALS dated by a future start date", async () => {
+  const trial: DiscoverItem = { ...paper({ id: "t" }), type: "trial", dateISO: iso(90 * 86_400_000) };
+  const out = await validateDiscoverItems([trial], "anything", noJudge);
+  assert.deepEqual(ids(out), ["t"]);
+});
+
+test("recency axis keeps papers stamped with an upcoming issue month", async () => {
+  const issue = paper({ id: "issue", dateISO: iso(22 * 86_400_000) }); // e.g. Dec issue, online now
+  const out = await validateDiscoverItems([issue], "anything", noJudge);
+  assert.deepEqual(ids(out), ["issue"]);
+});
+
 // ── Rule axis: dedup → near-duplicate titles across sources ───────────────────
 
 test("dedup axis drops a near-duplicate title from a second source", async () => {

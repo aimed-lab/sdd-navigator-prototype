@@ -63,7 +63,9 @@ export type ValidationConfig = {
 function resolveConfig(overrides?: Partial<ValidationConfig>): ValidationConfig {
   const base: ValidationConfig = {
     recencyStaleDays: 365 * 3, // ~3 years — older literature still shows, just demoted
-    futureToleranceDays: 2, // small clock/timezone slack; beyond this a date is impossible
+    // Journals stamp papers with their upcoming issue month (Crossref "issued" = Dec 1
+    // for a December issue already online), so a few weeks ahead is normal, not impossible.
+    futureToleranceDays: 45,
     maxLlmJudged: 20, // one Groq call judges at most the top 20 survivors
     llmJudgeEnabled: process.env.DISCOVERY_LLM_JUDGE !== "off",
     llmModel: "llama-3.3-70b-versatile",
@@ -92,9 +94,10 @@ function checkIntegrity(item: DiscoverItem): AxisResult {
 }
 
 // ── Rule axis: recency ────────────────────────────────────────────────────────
-// Future-dated results are impossible for most types and get DROPPED. Grants are
-// the documented exception — Grants.gov forecasted opportunities are legitimately
-// future-dated — so they're never dropped on this axis. Stale items are FLAGGED
+// Future-dated results are impossible for most types and get DROPPED. Grants and
+// trials are the exceptions — Grants.gov forecasts and not-yet-recruiting trials
+// (dated by start date) are legitimately future-dated — so they're never dropped
+// on this axis. Stale items are FLAGGED
 // (still shown, ranked lower), never dropped: old ≠ wrong.
 
 function checkRecency(item: DiscoverItem, cfg: ValidationConfig, now: number): AxisResult {
@@ -102,7 +105,8 @@ function checkRecency(item: DiscoverItem, cfg: ValidationConfig, now: number): A
   if (isNaN(t)) return { verdict: "pass", reason: "No parseable date" }; // can't judge → don't punish
 
   const futureMs = t - now;
-  if (item.type !== "grant" && futureMs > cfg.futureToleranceDays * 86_400_000) {
+  const futureDatedByDesign = item.type === "grant" || item.type === "trial";
+  if (!futureDatedByDesign && futureMs > cfg.futureToleranceDays * 86_400_000) {
     const days = Math.round(futureMs / 86_400_000);
     return { verdict: "fail", reason: `Impossible future date (+${days}d)` };
   }
